@@ -112,3 +112,13 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(card);
     });
 });
+
+// Waitlist functionality
+function joinWaitlist() {
+    const subject = 'Join Lexaya Waitlist';
+    const body = `Hi Lexaya team,\n\nI'm interested in joining your waitlist for early access to your shopping search platform.\n\nI'm excited to stop wasting time shopping and would love to be notified when you launch.\n\nBest regards,\n[Your Name]`;
+    
+    const mailtoLink = `mailto:hello@lexaya.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    
+    window.open(mailtoLink);
+}

@@ -347,6 +347,38 @@ body {
     color: #e2e8f0;
 }
 
+/* Waitlist Section */
+.waitlist-section {
+    margin-top: 3rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.waitlist-text {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    color: #e2e8f0;
+}
+
+.waitlist-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.waitlist-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.waitlist-btn i {
+    margin-right: 0.5rem;
+}
+
 /* Footer */
 footer {
     background: #1e293b;
