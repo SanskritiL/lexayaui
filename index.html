@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lexaya - Stop Wasting Time Shopping</title>
+    <title>Lexaya - Coming Soon</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -15,10 +15,8 @@
                 <h1>Lexaya</h1>
             </div>
             <div class="nav-links">
-                <a href="#how-it-works">How it Works</a>
-                <a href="#categories">Categories</a>
-                <a href="#about">About</a>
-                <button class="btn-secondary">Sign In</button>
+                <a href="#waitlist">Join Waitlist</a>
+                <a href="#social">Follow Us</a>
             </div>
         </nav>
     </header>
@@ -26,120 +24,29 @@
     <main>
         <section class="hero">
             <div class="hero-content">
-                <h1 class="hero-title">Opening 20 tabs to find one shirt?</h1>
-                <h2 class="hero-tagline">We already did that for you.</h2>
-                <p class="hero-subtitle">Your time is valuable. We search millions of products across thousands of stores so you don't have to. Find what you need in seconds, not hours.</p>
+                <h1 class="hero-title">Lexaya</h1>
+                <h2 class="hero-tagline">Opening 20 tabs to find one shirt?</h2>
+                <h3 class="hero-subtitle">We already did that for you.</h3>
+                <p class="hero-description">Your time is valuable. We search millions of products across thousands of stores so you don't have to. Find what you need in seconds, not hours.</p>
                 
-                <div class="search-container">
-                    <div class="search-box">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" placeholder="Search anything - we'll find it faster" class="search-input">
-                        <button class="search-btn">Search</button>
-                    </div>
-                    <div class="search-suggestions">
-                        <span class="suggestion-tag">Electronics</span>
-                        <span class="suggestion-tag">Fashion</span>
-                        <span class="suggestion-tag">Home & Garden</span>
-                        <span class="suggestion-tag">Sports</span>
-                    </div>
+                <div class="waitlist-section" id="waitlist">
+                    <button class="btn-primary btn-large waitlist-btn" onclick="joinWaitlist()">
+                        <i class="fas fa-envelope"></i> Join the Waitlist
+                    </button>
+                    <p class="waitlist-text">Be the first to experience the future of online shopping</p>
                 </div>
 
-                <div class="hero-stats">
-                    <div class="stat">
-                        <span class="stat-number">10M+</span>
-                        <span class="stat-label">Products Searched</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number">50K+</span>
-                        <span class="stat-label">Stores Monitored</span>
-                    </div>
-                    <div class="stat">
-                        <span class="stat-number">4.2 hrs</span>
-                        <span class="stat-label">Average Time Saved</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="features" id="how-it-works">
-            <div class="container">
-                <h2 class="section-title">Stop Wasting Your Time</h2>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-search"></i>
-                        </div>
-                        <h3>One Search, Everything</h3>
-                        <p>No more opening 20 tabs. Search once and see results from every major store instantly.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h3>Instant Price Comparison</h3>
-                        <p>See prices from all stores side-by-side. Find the best deal in seconds, not hours.</p>
-                    </div>
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <i class="fas fa-bell"></i>
-                        </div>
-                        <h3>Smart Notifications</h3>
-                        <p>We'll watch prices for you. Get notified when your items go on sale.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="categories" id="categories">
-            <div class="container">
-                <h2 class="section-title">Popular Categories</h2>
-                <div class="categories-grid">
-                    <div class="category-card">
-                        <i class="fas fa-laptop"></i>
-                        <h3>Electronics</h3>
-                        <p>Phones, Laptops, Gaming</p>
-                    </div>
-                    <div class="category-card">
-                        <i class="fas fa-tshirt"></i>
-                        <h3>Fashion</h3>
-                        <p>Clothing, Shoes, Accessories</p>
-                    </div>
-                    <div class="category-card">
-                        <i class="fas fa-home"></i>
-                        <h3>Home & Garden</h3>
-                        <p>Furniture, Decor, Tools</p>
-                    </div>
-                    <div class="category-card">
-                        <i class="fas fa-dumbbell"></i>
-                        <h3>Sports & Outdoors</h3>
-                        <p>Equipment, Apparel, Gear</p>
-                    </div>
-                    <div class="category-card">
-                        <i class="fas fa-heart"></i>
-                        <h3>Health & Beauty</h3>
-                        <p>Skincare, Supplements, Wellness</p>
-                    </div>
-                    <div class="category-card">
-                        <i class="fas fa-car"></i>
-                        <h3>Automotive</h3>
-                        <p>Parts, Accessories, Tools</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="cta">
-            <div class="container">
-                <div class="cta-content">
-                    <h2>Ready to Get Your Time Back?</h2>
-                    <p>Join over a million shoppers who've stopped wasting hours browsing</p>
-                    <button class="btn-primary btn-large">Save Time Now - It's Free</button>
-                    
-                    <div class="waitlist-section">
-                        <p class="waitlist-text">Want early access? Join our waitlist!</p>
-                        <button class="btn-secondary btn-large waitlist-btn" onclick="joinWaitlist()">
-                            <i class="fas fa-envelope"></i> Join Waitlist
-                        </button>
+                <div class="social-section" id="social">
+                    <h3>Follow Our Journey</h3>
+                    <div class="social-links">
+                        <a href="https://instagram.com/lexaya.io" target="_blank" class="social-link">
+                            <i class="fab fa-instagram"></i>
+                            <span>@lexaya.io</span>
+                        </a>
+                        <a href="https://tiktok.com/@lexaya" target="_blank" class="social-link">
+                            <i class="fab fa-tiktok"></i>
+                            <span>@lexaya</span>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -151,22 +58,13 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <h3>Lexaya</h3>
-                    <p>Because your time is too valuable to waste</p>
+                    <p>Revolutionizing online shopping</p>
                 </div>
                 <div class="footer-section">
-                    <h4>Company</h4>
+                    <h4>Connect</h4>
                     <ul>
-                        <li><a href="#about">About</a></li>
-                        <li><a href="#careers">Careers</a></li>
-                        <li><a href="#press">Press</a></li>
-                    </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Support</h4>
-                    <ul>
-                        <li><a href="#help">Help Center</a></li>
-                        <li><a href="#contact">Contact</a></li>
-                        <li><a href="#privacy">Privacy</a></li>
+                        <li><a href="https://instagram.com/lexaya.io" target="_blank">Instagram</a></li>
+                        <li><a href="https://tiktok.com/@lexaya" target="_blank">TikTok</a></li>
                     </ul>
                 </div>
             </div>
