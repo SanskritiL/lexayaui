@@ -336,6 +336,11 @@
 
     <script src="/js/config.js"></script>
     <script>
+        // Map product keys to their download URLs
+        const PRODUCT_DOWNLOADS = {
+            'regularDigital': '/pdfs/ai_engineer_resources_guide.pdf'
+        };
+
         async function checkout(productKey) {
             const priceId = CONFIG.PRODUCTS[productKey];
 
@@ -344,12 +349,16 @@
                 return;
             }
 
+            const successUrl = window.location.origin + (PRODUCT_DOWNLOADS[productKey] || '/cs/?success=true');
+
             try {
                 const response = await fetch('/api/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         priceId: priceId,
+                        productKey: productKey,
+                        successUrl: successUrl,
                         userEmail: null,
                         userId: null
                     })

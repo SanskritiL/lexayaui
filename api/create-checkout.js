@@ -18,13 +18,16 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { priceId, userEmail, userId } = req.body;
+        const { priceId, userEmail, userId, productKey, successUrl } = req.body;
 
         if (!priceId) {
             return res.status(400).json({ error: 'Price ID is required' });
         }
 
-        const session = await stripe.checkout.sessions.create({
+        const origin = req.headers.origin || 'https://lexaya.io';
+        const redirectUrl = successUrl || `${origin}/members.html?success=true`;
+
+        const sessionConfig = {
             mode: 'payment',
             payment_method_types: ['card'],
             line_items: [
@@ -33,13 +36,20 @@ module.exports = async (req, res) => {
                     quantity: 1,
                 },
             ],
-            customer_email: userEmail,
             metadata: {
-                userId: userId,
+                userId: userId || 'guest',
+                productKey: productKey || 'unknown',
             },
-            success_url: `${req.headers.origin}/members.html?success=true`,
-            cancel_url: `${req.headers.origin}/members.html?canceled=true`,
-        });
+            success_url: redirectUrl,
+            cancel_url: `${origin}/cs/?canceled=true`,
+        };
+
+        // Only set customer_email if provided
+        if (userEmail) {
+            sessionConfig.customer_email = userEmail;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
 
         res.status(200).json({ url: session.url });
     } catch (error) {

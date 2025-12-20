@@ -54,11 +54,11 @@ module.exports = async (req, res) => {
             const { error } = await supabase
                 .from('purchases')
                 .insert([{
-                    user_id: session.metadata.userId,
+                    user_id: session.metadata?.userId || null,
                     stripe_session_id: session.id,
                     amount: session.amount_total,
-                    product_id: session.line_items?.data[0]?.price?.id || 'unknown',
-                    customer_email: session.customer_email,
+                    product_id: session.metadata?.productKey || 'unknown',
+                    customer_email: session.customer_details?.email || session.customer_email,
                     status: 'completed',
                     created_at: new Date().toISOString()
                 }]);
@@ -66,7 +66,7 @@ module.exports = async (req, res) => {
             if (error) {
                 console.error('Error saving purchase:', error);
             } else {
-                console.log('Purchase saved for user:', session.metadata.userId);
+                console.log('Purchase saved:', session.customer_details?.email, session.metadata?.productKey);
             }
             break;
 
