@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courses - Lexaya</title>
+    <meta name="description" content="Courses and resources for CS students. Resume templates, AI roadmaps, and project ideas.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script defer data-domain="lexaya.io" src="https://plausible.io/js/script.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #ffffff;
+            --bg-card: #fafafa;
+            --text-primary: #1e40af;
+            --text-secondary: #3b82f6;
+            --text-muted: #93c5fd;
+            --border: #1e40af;
+            --border-light: #93c5fd;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--bg);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Navigation */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 2px dashed var(--border-light);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-brand a {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 1.5rem;
+            text-decoration: none;
+        }
+
+        .nav-divider {
+            color: var(--border-light);
+            font-size: 1.5rem;
+        }
+
+        .nav-section {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 4rem 2rem;
+            text-align: center;
+            border-bottom: 2px dashed var(--border-light);
+        }
+
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Courses Section */
+        .courses {
+            padding: 3rem 0;
+        }
+
+        .courses-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .course-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg);
+            padding: 1.5rem 2rem;
+            border: 3px solid var(--border);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .course-card:nth-child(2) {
+            border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
+        }
+
+        .course-card:nth-child(3) {
+            border-radius: 225px 15px 255px 15px/15px 255px 15px 225px;
+        }
+
+        .course-card:nth-child(4) {
+            border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
+        }
+
+        .course-card:hover {
+            transform: translateX(5px);
+            box-shadow: -5px 5px 0 var(--border-light);
+        }
+
+        .course-info {
+            flex: 1;
+        }
+
+        .course-info h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .course-info p {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .course-badge {
+            display: inline-block;
+            padding: 0.4rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 20px;
+            margin-left: 1rem;
+            white-space: nowrap;
+        }
+
+        .badge-free {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #065f46;
+        }
+
+        .badge-paid {
+            background: #fef3c7;
+            color: #92400e;
+            border: 2px solid #92400e;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg);
+            padding: 2rem 0;
+            border-top: 2px dashed var(--border-light);
+            margin-top: 3rem;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-brand a {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .footer-brand p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .footer-social a {
+            color: var(--text-secondary);
+            font-size: 1.3rem;
+            transition: all 0.3s ease;
+        }
+
+        .footer-social a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px dashed var(--border-light);
+        }
+
+        .footer-bottom p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .course-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .course-badge {
+                margin-left: 0;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-brand">
+                <a href="/">Lexaya</a>
+                <span class="nav-divider">/</span>
+                <span class="nav-section">Courses</span>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1 class="hero-title">Courses & Resources</h1>
+            <p class="hero-description">Everything I've learned about breaking into tech, packaged for you.</p>
+        </section>
+
+        <section class="courses">
+            <div class="container">
+                <div class="courses-grid">
+                    <a href="#" class="course-card">
+                        <div class="course-info">
+                            <h3>Resume That Got Me Internship at FAANG</h3>
+                            <p>The exact resume template and tips that landed me interviews</p>
+                        </div>
+                        <span class="course-badge badge-free">Free</span>
+                    </a>
+
+                    <a href="#" class="course-card">
+                        <div class="course-info">
+                            <h3>AI Roadmap - Become Fluent in AI</h3>
+                            <p>Step-by-step guide to understanding and building with AI</p>
+                        </div>
+                        <span class="course-badge badge-free">Free</span>
+                    </a>
+
+                    <a href="/cs/ai-projects.html" class="course-card">
+                        <div class="course-info">
+                            <h3>AI Project Ideas</h3>
+                            <p>Starter project ideas to build your AI portfolio</p>
+                        </div>
+                        <span class="course-badge badge-free">Free</span>
+                    </a>
+
+                    <a href="#" class="course-card">
+                        <div class="course-info">
+                            <h3>AI Project Ideas: Premium</h3>
+                            <p>Advanced projects with full code, tutorials, and guidance</p>
+                        </div>
+                        <span class="course-badge badge-paid">Premium</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="/">Lexaya</a>
+                    <p>Courses for CS Students</p>
+                </div>
+                <div class="footer-social">
+                    <a href="https://instagram.com/lexaya.io" target="_blank" aria-label="Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://x.com/LamsalSans" target="_blank" aria-label="X/Twitter">
+                        <i class="fa-brands fa-x-twitter"></i>
+                    </a>
+                    <a href="https://tiktok.com/@lexaya_io" target="_blank" aria-label="TikTok">
+                        <i class="fab fa-tiktok"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Lexaya. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

@@ -3,56 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lexaya - Coming Soon</title>
+    <title>Lexaya - UGC Creator</title>
+    <meta name="description" content="Learn UGC and marketing videos from a transparent creator. Tips, behind the scenes, resources, and more.">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css?v=6.5.1">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script defer data-domain="lexaya.io" src="https://plausible.io/js/script.js"></script>
 </head>
 <body>
     <header>
         <nav class="navbar">
             <div class="nav-brand">
-                <h1>Lexaya</h1>
+                <a href="#">Lexaya</a>
             </div>
             <div class="nav-links">
-                <a href="#waitlist">Join Waitlist</a>
-                <a href="#social">Follow Us</a>
+                <a href="#what">What's Inside</a>
+                <a href="#about">About</a>
+                <a href="/login.html" class="nav-cta">Join Free</a>
             </div>
+            <button class="mobile-menu-btn" aria-label="Toggle menu">
+                <i class="fas fa-bars"></i>
+            </button>
         </nav>
     </header>
 
     <main>
+        <!-- Hero Section -->
         <section class="hero">
             <div class="hero-content">
-                <h1 class="hero-title">Lexaya</h1>
-                <h2 class="hero-tagline">Opening 20 tabs to find one shirt?</h2>
-                <h3 class="hero-subtitle">We already did that for you.</h3>
-                <p class="hero-description">Your time is valuable. We search millions of products across thousands of stores so you don't have to. Find what you need in seconds, not hours.</p>
-                
-                <div class="waitlist-section" id="waitlist">
-                    <button class="btn-primary btn-large waitlist-btn" onclick="joinWaitlist()">
-                        <i class="fas fa-envelope"></i> Join the Waitlist
-                    </button>
-                    <p class="waitlist-text">Be the first to experience the future of online shopping</p>
+                <p class="hero-label">transparent creator</p>
+                <h1 class="hero-title">I make UGC.<br><span class="gradient-text">You learn how.</span></h1>
+                <p class="hero-description">Everything I've learned about creating content that converts - the wins, the fails, the real stuff. Free access.</p>
+                <div class="hero-cta">
+                    <a href="/login.html" class="btn-primary">Get Free Access</a>
                 </div>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-glow"></div>
+            </div>
+        </section>
 
-                <div class="social-section" id="social">
-                    <h3>Follow Our Journey</h3>
-                    <div class="social-links">
-                        <a href="https://instagram.com/lexaya.io" target="_blank" class="social-link">
-                            <i class="fab fa-instagram"></i>
-                            <span>@lexaya.io</span>
-                        </a>
-                        <a href="https://x.com/LamsalSans" target="_blank" class="social-link">
-                            <i class="fa-solid fa-x"></i>
-                            <span>@lexayaio</span>
-                        </a>
-                        <a href="https://tiktok.com/@lexaya_io" target="_blank" class="social-link">
-                            <i class="fab fa-tiktok"></i>
-                            <span>@lexaya_io</span>
-                        </a>
+        <!-- What's Inside Section -->
+        <section class="features" id="what">
+            <div class="container">
+                <div class="section-header">
+                    <p class="section-label">Members get</p>
+                    <h2 class="section-title">What's Inside</h2>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-lightbulb"></i>
+                        </div>
+                        <h3>Tips & Learnings</h3>
+                        <p>Real lessons from real projects. What worked, what flopped, and why.</p>
                     </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-video"></i>
+                        </div>
+                        <h3>Behind the Scenes</h3>
+                        <p>My process, my setup, how I actually make the videos. No secrets.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <h3>Resources & Templates</h3>
+                        <p>Scripts, templates, tools I use daily. Copy what works.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <h3>Real Talk</h3>
+                        <p>Honest updates on my journey. The numbers, the struggles, all of it.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section class="about" id="about">
+            <div class="container">
+                <div class="about-content">
+                    <div class="about-text">
+                        <p class="section-label">Hey, I'm</p>
+                        <h2 class="section-title">The creator behind Lexaya</h2>
+                        <p>I make UGC and marketing videos for brands. Started not too long ago, learned a ton, made mistakes, and figured some things out.</p>
+                        <p>I'm building this in public because I wish someone did this when I started. No gatekeeping, no "buy my course" - just real stuff that helps.</p>
+                        <p>Sign up, poke around, take what's useful.</p>
+                        <a href="/login.html" class="btn-primary" style="margin-top: 1.5rem;">Join for Free</a>
+                    </div>
+                    <div class="about-image">
+                        <div class="image-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="cta-section">
+            <div class="container">
+                <div class="cta-content">
+                    <h2>Ready to peek behind the curtain?</h2>
+                    <p>Free access. Real content. No spam.</p>
+                    <a href="/login.html" class="btn-primary btn-large">Get Free Access</a>
                 </div>
             </div>
         </section>
@@ -61,18 +119,24 @@
     <footer>
         <div class="container">
             <div class="footer-content">
-                <div class="footer-section">
+                <div class="footer-brand">
                     <h3>Lexaya</h3>
-                    <p>Revolutionizing online shopping</p>
+                    <p>UGC Creator</p>
                 </div>
-                <div class="footer-section">
-                    <h4>Connect</h4>
-                    <ul>
-                        <li><a href="https://instagram.com/lexaya.io" target="_blank">Instagram</a></li>
-                        <li><a href="https://x.com/lexayaio" target="_blank">Twitter/X</a></li>
-                        <li><a href="https://tiktok.com/@lexaya_io" target="_blank">TikTok</a></li>
-                    </ul>
+                <div class="footer-social">
+                    <a href="https://instagram.com/lexaya.io" target="_blank" aria-label="Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://x.com/LamsalSans" target="_blank" aria-label="X/Twitter">
+                        <i class="fa-brands fa-x-twitter"></i>
+                    </a>
+                    <a href="https://tiktok.com/@lexaya_io" target="_blank" aria-label="TikTok">
+                        <i class="fab fa-tiktok"></i>
+                    </a>
                 </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Lexaya. All rights reserved.</p>
             </div>
         </div>
     </footer>

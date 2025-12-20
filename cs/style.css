@@ -1,0 +1,356 @@
+/* Reset & Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #ffffff;
+    --bg-card: #fafafa;
+    --text-primary: #1e40af;
+    --text-secondary: #3b82f6;
+    --text-muted: #93c5fd;
+    --border: #1e40af;
+    --border-light: #93c5fd;
+}
+
+body {
+    font-family: 'Caveat', 'Patrick Hand', cursive;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background-color: var(--bg);
+}
+
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+/* Navigation */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 2rem;
+    background: rgba(255, 255, 255, 0.95);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 2px dashed var(--border-light);
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-brand a {
+    color: var(--text-primary);
+    font-weight: 700;
+    font-size: 2rem;
+    text-decoration: none;
+}
+
+.nav-divider {
+    color: var(--text-muted);
+    font-weight: 300;
+    font-size: 1.5rem;
+}
+
+.nav-section {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+.nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 1.2rem;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover {
+    color: var(--text-primary);
+}
+
+/* Hero Section */
+.hero {
+    padding: 10rem 2rem 4rem;
+    text-align: center;
+    border-bottom: 2px dashed var(--border-light);
+}
+
+.hero-content {
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+.hero-label {
+    color: var(--text-muted);
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.hero-title {
+    font-size: clamp(3rem, 8vw, 5rem);
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+    position: relative;
+    display: inline-block;
+}
+
+.hero-title::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    left: -10px;
+    right: -10px;
+    height: 6px;
+    background: var(--border-light);
+    transform: rotate(-1deg);
+    z-index: -1;
+}
+
+.hero-description {
+    font-size: 1.4rem;
+    color: var(--text-secondary);
+    max-width: 550px;
+    margin: 0 auto;
+}
+
+/* Resources Sections */
+.resources {
+    padding: 4rem 0;
+    border-bottom: 2px dashed var(--border-light);
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.section-icon {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 3px solid var(--border);
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+    color: var(--text-primary);
+    font-size: 1.3rem;
+}
+
+.section-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+/* Resource Cards */
+.resources-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.resource-card {
+    display: block;
+    background: var(--bg);
+    padding: 1.75rem;
+    border: 3px solid var(--border);
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.3s ease;
+}
+
+.resource-card:nth-child(2) {
+    border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
+}
+
+.resource-card:nth-child(3) {
+    border-radius: 225px 15px 255px 15px/15px 255px 15px 225px;
+}
+
+.resource-card:nth-child(4) {
+    border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
+}
+
+.resource-card:hover {
+    transform: rotate(-1deg) scale(1.02);
+    box-shadow: 8px 8px 0 var(--border-light);
+}
+
+.resource-tag {
+    display: inline-block;
+    padding: 0.3rem 0.8rem;
+    background: var(--bg-card);
+    border: 2px solid var(--border-light);
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.resource-card h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.resource-card p {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+}
+
+.resource-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+    color: var(--text-muted);
+    transition: color 0.3s ease;
+}
+
+.resource-card:hover .resource-link {
+    color: var(--text-primary);
+}
+
+.resource-link i {
+    font-size: 0.9rem;
+    transition: transform 0.3s ease;
+}
+
+.resource-card:hover .resource-link i {
+    transform: translateX(5px);
+}
+
+/* Footer */
+footer {
+    padding: 3rem 0 1.5rem;
+    border-top: 2px dashed var(--border-light);
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 2rem;
+    border-bottom: 2px dashed var(--border-light);
+    margin-bottom: 1.5rem;
+}
+
+.footer-brand a {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-decoration: none;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.footer-brand p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+.footer-social {
+    display: flex;
+    gap: 1.25rem;
+}
+
+.footer-social a {
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.footer-social a:hover {
+    color: var(--text-primary);
+    transform: rotate(-10deg);
+}
+
+.footer-bottom {
+    text-align: center;
+}
+
+.footer-bottom p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+
+    .hero {
+        padding: 8rem 1.5rem 3rem;
+    }
+
+    .hero-title {
+        font-size: 3rem;
+    }
+
+    .resources {
+        padding: 3rem 0;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .resources-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        gap: 1.5rem;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 0 1.25rem;
+    }
+
+    .navbar {
+        padding: 1rem 1.25rem;
+    }
+
+    .nav-brand a {
+        font-size: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+    }
+
+    .resource-card {
+        padding: 1.5rem;
+    }
+}

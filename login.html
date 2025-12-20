@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Lexaya</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .login-card {
+            background: var(--bg);
+            padding: 3rem;
+            border: 3px solid var(--border);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .login-card h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .login-card p {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1.2rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            border: 3px solid var(--border-light);
+            border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
+            background: var(--bg);
+            color: var(--text-primary);
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--border);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            background: var(--text-primary);
+            color: white;
+            border: 3px solid var(--text-primary);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-btn:hover {
+            background: transparent;
+            color: var(--text-primary);
+            transform: rotate(-1deg);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 15px;
+            font-size: 1.1rem;
+        }
+
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #065f46;
+        }
+
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #991b1b;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 2rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+
+        .divider {
+            margin: 2rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: var(--text-muted);
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 2px;
+            background: var(--border-light);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-card">
+            <h1>Welcome</h1>
+            <p>Enter your email to get a magic link</p>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                </div>
+                <button type="submit" class="login-btn" id="submitBtn">
+                    Send Magic Link
+                </button>
+            </form>
+
+            <div id="message" class="message" style="display: none;"></div>
+
+            <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to home</a>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/supabase.js"></script>
+    <script>
+        const form = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const messageEl = document.getElementById('message');
+
+        // Check if already logged in
+        (async () => {
+            const user = await auth.getUser();
+            if (user) {
+                window.location.href = '/members.html';
+            }
+        })();
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+
+            const { data, error } = await auth.sendMagicLink(email);
+
+            if (error) {
+                messageEl.className = 'message error';
+                messageEl.textContent = error.message;
+                messageEl.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Magic Link';
+            } else {
+                messageEl.className = 'message success';
+                messageEl.textContent = 'Check your email for the magic link!';
+                messageEl.style.display = 'block';
+                submitBtn.textContent = 'Email Sent!';
+            }
+        });
+    </script>
+</body>
+</html>

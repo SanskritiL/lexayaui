@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Project Ideas - Lexaya</title>
+    <meta name="description" content="AI project ideas with source code. Build your portfolio with these beginner-friendly projects.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script defer data-domain="lexaya.io" src="https://plausible.io/js/script.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #ffffff;
+            --bg-card: #fafafa;
+            --text-primary: #1e40af;
+            --text-secondary: #3b82f6;
+            --text-muted: #93c5fd;
+            --border: #1e40af;
+            --border-light: #93c5fd;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--bg);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Navigation */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 2px dashed var(--border-light);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-brand a {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 1.5rem;
+            text-decoration: none;
+        }
+
+        .nav-divider {
+            color: var(--border-light);
+            font-size: 1.5rem;
+        }
+
+        .nav-section {
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        .back-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 3rem 2rem;
+            text-align: center;
+            border-bottom: 2px dashed var(--border-light);
+        }
+
+        .hero-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .hero-description {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* Projects */
+        .projects {
+            padding: 3rem 0;
+        }
+
+        .projects-grid {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .project-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg);
+            padding: 1.5rem 2rem;
+            border: 3px solid var(--border);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .project-card:nth-child(2) {
+            border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
+        }
+
+        .project-card:nth-child(3) {
+            border-radius: 225px 15px 255px 15px/15px 255px 15px 225px;
+        }
+
+        .project-card:hover {
+            transform: translateX(5px);
+            box-shadow: -5px 5px 0 var(--border-light);
+        }
+
+        .project-info h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .project-info p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .project-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .project-link i {
+            font-size: 1.3rem;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--bg);
+            padding: 2rem 0;
+            border-top: 2px dashed var(--border-light);
+            margin-top: 3rem;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-brand a {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .footer-brand p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .footer-social {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .footer-social a {
+            color: var(--text-secondary);
+            font-size: 1.3rem;
+            transition: all 0.3s ease;
+        }
+
+        .footer-social a:hover {
+            color: var(--text-primary);
+        }
+
+        .footer-bottom {
+            text-align: center;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px dashed var(--border-light);
+        }
+
+        .footer-bottom p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 600px) {
+            .project-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar">
+            <div class="nav-brand">
+                <a href="/">Lexaya</a>
+                <span class="nav-divider">/</span>
+                <span class="nav-section">AI Projects</span>
+            </div>
+            <a href="/cs/" class="back-link">
+                <i class="fas fa-arrow-left"></i> Back to Courses
+            </a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero">
+            <h1 class="hero-title">AI Project Ideas</h1>
+            <p class="hero-description">Projects I've built to learn AI/ML. Clone them, learn from them, make them your own.</p>
+        </section>
+
+        <section class="projects">
+            <div class="container">
+                <div class="projects-grid">
+                    <a href="https://github.com/SanskritiL/ai_models_resources/blob/main/ai_model_to_predict_crush_like_you.ipynb" target="_blank" class="project-card">
+                        <div class="project-info">
+                            <h3>ML Model to Predict if Your Crush Likes You</h3>
+                            <p>Machine learning model trained on behavioral signals to predict romantic interest</p>
+                        </div>
+                        <span class="project-link">
+                            <i class="fab fa-github"></i> View Code
+                        </span>
+                    </a>
+
+                    <a href="https://github.com/SanskritiL/screen-time-receipt" target="_blank" class="project-card">
+                        <div class="project-info">
+                            <h3>Screen Time Receipt</h3>
+                            <p>Generate a receipt-style summary of your daily screen time usage</p>
+                        </div>
+                        <span class="project-link">
+                            <i class="fab fa-github"></i> View Code
+                        </span>
+                    </a>
+
+                    <a href="https://github.com/SanskritiL/pawcataion" target="_blank" class="project-card">
+                        <div class="project-info">
+                            <h3>Pawcataion</h3>
+                            <p>AI-powered pet vacation planner and travel companion app</p>
+                        </div>
+                        <span class="project-link">
+                            <i class="fab fa-github"></i> View Code
+                        </span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="/">Lexaya</a>
+                    <p>AI Projects</p>
+                </div>
+                <div class="footer-social">
+                    <a href="https://instagram.com/lexaya.io" target="_blank" aria-label="Instagram">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="https://x.com/LamsalSans" target="_blank" aria-label="X/Twitter">
+                        <i class="fa-brands fa-x-twitter"></i>
+                    </a>
+                    <a href="https://tiktok.com/@lexaya_io" target="_blank" aria-label="TikTok">
+                        <i class="fab fa-tiktok"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Lexaya. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

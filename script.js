@@ -9,23 +9,44 @@ document.addEventListener('DOMContentLoaded', function() {
                     behavior: 'smooth',
                     block: 'start'
                 });
+                // Close mobile menu if open
+                if (window.innerWidth <= 768) {
+                    const navLinks = document.querySelector('.nav-links');
+                    navLinks.classList.remove('active');
+                }
             }
         });
     });
 
-    // Navbar background change on scroll
+    // Mobile menu toggle
+    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+    const navLinks = document.querySelector('.nav-links');
+
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', function() {
+            navLinks.classList.toggle('active');
+            const icon = this.querySelector('i');
+            if (navLinks.classList.contains('active')) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            } else {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            }
+        });
+    }
+
+    // Navbar style on scroll
+    const navbar = document.querySelector('.navbar');
     window.addEventListener('scroll', function() {
-        const navbar = document.querySelector('.navbar');
         if (window.scrollY > 50) {
-            navbar.style.background = 'rgba(255, 255, 255, 0.95)';
-            navbar.style.backdropFilter = 'blur(10px)';
+            navbar.style.borderBottomColor = '#444';
         } else {
-            navbar.style.background = 'white';
-            navbar.style.backdropFilter = 'none';
+            navbar.style.borderBottomColor = '#333';
         }
     });
 
-    // Intersection Observer for animations
+    // Intersection Observer for fade-in animations
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
@@ -34,27 +55,51 @@ document.addEventListener('DOMContentLoaded', function() {
     const observer = new IntersectionObserver(function(entries) {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
+                entry.target.classList.add('visible');
             }
         });
     }, observerOptions);
 
     // Observe elements for animation
-    document.querySelectorAll('.waitlist-section, .social-section').forEach(section => {
-        section.style.opacity = '0';
-        section.style.transform = 'translateY(30px)';
-        section.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-        observer.observe(section);
+    const animatedElements = document.querySelectorAll('.service-card, .portfolio-card, .about-content, .contact-content');
+    animatedElements.forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(30px)';
+        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(el);
     });
-});
 
-// Waitlist functionality
-function joinWaitlist() {
-    const subject = 'Join Lexaya Waitlist';
-    const body = `Hi Lexaya team,\n\nI'm interested in joining your waitlist for early access to your platform.\n\nI'm excited to see what you're building and would love to be notified when you launch.\n\nBest regards,\n[Your Name]`;
-    
-    const mailtoLink = `mailto:hello@lexaya.io?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    
-    window.open(mailtoLink);
-}
+    // Add visible class styles
+    const style = document.createElement('style');
+    style.textContent = `
+        .visible {
+            opacity: 1 !important;
+            transform: translateY(0) !important;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: rgba(10, 10, 10, 0.98);
+                flex-direction: column;
+                padding: 1.5rem;
+                gap: 1.5rem;
+                border-bottom: 1px solid #333;
+                display: none;
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            .nav-cta {
+                width: 100%;
+                text-align: center;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+});

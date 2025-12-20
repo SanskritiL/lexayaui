@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Lexaya</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        .dashboard-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 2px dashed var(--border-light);
+        }
+
+        .dashboard-nav .nav-brand a {
+            color: var(--text-primary);
+            font-weight: 700;
+            font-size: 2rem;
+            text-decoration: none;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .user-email {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .logout-btn {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 2px solid var(--border);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            color: var(--text-primary);
+            font-family: 'Caveat', cursive;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: var(--text-primary);
+            color: white;
+        }
+
+        .dashboard-content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        .welcome-section {
+            margin-bottom: 3rem;
+        }
+
+        .welcome-section h1 {
+            font-size: 3rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-section p {
+            color: var(--text-secondary);
+            font-size: 1.3rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--border-light);
+            transform: rotate(-1deg);
+        }
+
+        /* Services/Products Grid */
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .product-card {
+            background: var(--bg);
+            padding: 2rem;
+            border: 3px solid var(--border);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            transition: all 0.3s ease;
+        }
+
+        .product-card:nth-child(2) {
+            border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
+        }
+
+        .product-card:nth-child(3) {
+            border-radius: 225px 15px 255px 15px/15px 255px 15px 225px;
+        }
+
+        .product-card:hover {
+            transform: rotate(-1deg);
+            box-shadow: 8px 8px 0 var(--border-light);
+        }
+
+        .product-card h3 {
+            font-size: 1.6rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .product-card .price {
+            font-size: 2rem;
+            color: var(--text-primary);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .product-card p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .buy-btn {
+            width: 100%;
+            padding: 0.8rem 1.5rem;
+            background: var(--text-primary);
+            color: white;
+            border: 3px solid var(--text-primary);
+            border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
+            font-family: 'Caveat', cursive;
+            font-size: 1.3rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .buy-btn:hover {
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        /* Purchases Section */
+        .purchases-section {
+            margin-top: 3rem;
+        }
+
+        .purchases-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .purchase-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border: 2px solid var(--border-light);
+            border-radius: 15px;
+        }
+
+        .purchase-item .product-name {
+            font-size: 1.3rem;
+            color: var(--text-primary);
+        }
+
+        .purchase-item .purchase-date {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .no-purchases {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            text-align: center;
+            padding: 2rem;
+            border: 2px dashed var(--border-light);
+            border-radius: 15px;
+        }
+
+        /* Loading state */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 50vh;
+            font-size: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-nav {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .user-info {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+
+            .products-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        Loading...
+    </div>
+
+    <div id="dashboard" style="display: none;">
+        <nav class="dashboard-nav">
+            <div class="nav-brand">
+                <a href="/">Lexaya</a>
+            </div>
+            <div class="user-info">
+                <span class="user-email" id="userEmail"></span>
+                <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+            </div>
+        </nav>
+
+        <div class="dashboard-content">
+            <div class="welcome-section">
+                <h1>Hey there!</h1>
+                <p>Ready to create some amazing content?</p>
+            </div>
+
+            <h2 class="section-title">Services</h2>
+            <div class="products-grid">
+                <div class="product-card">
+                    <h3>UGC Package</h3>
+                    <div class="price">$299</div>
+                    <p>Authentic user-generated content for your brand. Includes 3 videos optimized for social.</p>
+                    <button class="buy-btn" onclick="checkout('ugcPackage')">Get Started</button>
+                </div>
+                <div class="product-card">
+                    <h3>Marketing Video</h3>
+                    <div class="price">$499</div>
+                    <p>Professional marketing video with script, filming, and editing. Perfect for ads.</p>
+                    <button class="buy-btn" onclick="checkout('marketingVideo')">Get Started</button>
+                </div>
+                <div class="product-card">
+                    <h3>Social Ads Bundle</h3>
+                    <div class="price">$799</div>
+                    <p>5 scroll-stopping short-form videos for TikTok, Reels, and Shorts.</p>
+                    <button class="buy-btn" onclick="checkout('socialAds')">Get Started</button>
+                </div>
+            </div>
+
+            <div class="purchases-section">
+                <h2 class="section-title">Your Purchases</h2>
+                <div id="purchasesList" class="purchases-list">
+                    <div class="no-purchases">No purchases yet. Let's create something amazing!</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/supabase.js"></script>
+    <script>
+        let currentUser = null;
+
+        // Check auth on load
+        (async () => {
+            const user = await auth.getUser();
+
+            if (!user) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            currentUser = user;
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+
+            // Load purchases
+            loadPurchases();
+        })();
+
+        async function loadPurchases() {
+            if (!currentUser) return;
+
+            const { data, error } = await db.getUserPurchases(currentUser.id);
+
+            if (data && data.length > 0) {
+                const purchasesList = document.getElementById('purchasesList');
+                purchasesList.innerHTML = data.map(purchase => `
+                    <div class="purchase-item">
+                        <span class="product-name">${purchase.product_id}</span>
+                        <span class="purchase-date">${new Date(purchase.created_at).toLocaleDateString()}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        async function checkout(productKey) {
+            const priceId = CONFIG.PRODUCTS[productKey];
+
+            if (!priceId || priceId.startsWith('price_XXXXX')) {
+                alert('Please configure your Stripe Price IDs in js/config.js');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/create-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        priceId: priceId,
+                        userEmail: currentUser.email,
+                        userId: currentUser.id
+                    })
+                });
+
+                const { url, error } = await response.json();
+
+                if (error) {
+                    alert('Error: ' + error);
+                    return;
+                }
+
+                window.location.href = url;
+            } catch (err) {
+                alert('Error creating checkout session');
+                console.error(err);
+            }
+        }
+
+        async function handleLogout() {
+            await auth.signOut();
+        }
+    </script>
+</body>
+</html>
