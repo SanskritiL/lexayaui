@@ -170,6 +170,17 @@
             border: 2px solid #92400e;
         }
 
+        .badge-sale {
+            background: #fce7f3;
+            color: #be185d;
+            border: 2px solid #be185d;
+        }
+
+        .badge-sale s {
+            opacity: 0.6;
+            margin-right: 0.3rem;
+        }
+
         /* Footer */
         footer {
             background: var(--bg);
@@ -262,7 +273,7 @@
         <section class="courses">
             <div class="container">
                 <div class="courses-grid">
-                    <a href="#" class="course-card">
+                    <a href="/pdfs/sans_lamsal_resume.pdf" class="course-card" target="_blank">
                         <div class="course-info">
                             <h3>Resume That Got Me Internship at FAANG</h3>
                             <p>The exact resume template and tips that landed me interviews</p>
@@ -270,12 +281,12 @@
                         <span class="course-badge badge-free">Free</span>
                     </a>
 
-                    <a href="#" class="course-card">
+                    <a href="#" class="course-card" onclick="checkout('regularDigital'); return false;">
                         <div class="course-info">
                             <h3>AI Roadmap - Become Fluent in AI</h3>
                             <p>Step-by-step guide to understanding and building with AI</p>
                         </div>
-                        <span class="course-badge badge-free">Free</span>
+                        <span class="course-badge badge-sale"><s>$49</s> $25</span>
                     </a>
 
                     <a href="/cs/ai-projects.html" class="course-card">
@@ -286,12 +297,12 @@
                         <span class="course-badge badge-free">Free</span>
                     </a>
 
-                    <a href="#" class="course-card">
+                    <a href="#" class="course-card" onclick="checkout('regularDigital'); return false;">
                         <div class="course-info">
                             <h3>AI Project Ideas: Premium</h3>
                             <p>Advanced projects with full code, tutorials, and guidance</p>
                         </div>
-                        <span class="course-badge badge-paid">Premium</span>
+                        <span class="course-badge badge-sale"><s>$49</s> $25</span>
                     </a>
                 </div>
             </div>
@@ -322,5 +333,38 @@
             </div>
         </div>
     </footer>
+
+    <script src="/js/config.js"></script>
+    <script>
+        async function checkout(productKey) {
+            const priceId = CONFIG.PRODUCTS[productKey];
+
+            if (!priceId) {
+                alert('Product not found');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/create-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        priceId: priceId,
+                        userEmail: null,
+                        userId: null
+                    })
+                });
+
+                const { url, error } = await response.json();
+                if (error) {
+                    alert('Error: ' + error);
+                    return;
+                }
+                window.location.href = url;
+            } catch (err) {
+                alert('Email hello@lexaya.io to purchase');
+            }
+        }
+    </script>
 </body>
 </html>
