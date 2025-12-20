@@ -395,6 +395,13 @@
     <script>
         let currentUser = null;
 
+        // Check for auth errors in URL hash
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        if (hashParams.get('error')) {
+            const errorDesc = hashParams.get('error_description') || 'Link expired';
+            window.location.href = '/login.html?error=' + encodeURIComponent(errorDesc);
+        }
+
         // Check auth on load
         (async () => {
             const user = await auth.getUser();

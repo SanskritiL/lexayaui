@@ -175,6 +175,15 @@
         const submitBtn = document.getElementById('submitBtn');
         const messageEl = document.getElementById('message');
 
+        // Check for error message in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorMsg = urlParams.get('error');
+        if (errorMsg) {
+            messageEl.className = 'message error';
+            messageEl.textContent = decodeURIComponent(errorMsg).replace(/\+/g, ' ');
+            messageEl.style.display = 'block';
+        }
+
         // Check if already logged in
         (async () => {
             const user = await auth.getUser();
