@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PublishToAll - Multi-Platform Publishing</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <a href="/" class="logo">← lexaya.io</a>
+            <h1>PublishToAll</h1>
+            <p class="tagline">Post to TikTok, Instagram & LinkedIn in one click</p>
+        </header>
+
+        <!-- Auth Check -->
+        <div id="auth-required" class="auth-required" style="display: none;">
+            <div class="card">
+                <h2>Login Required</h2>
+                <p>Please login to access PublishToAll</p>
+                <a href="/login.html?redirect=/publishtoall/" class="btn btn-primary">Login with Email</a>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <main id="dashboard" style="display: none;">
+            <!-- Connected Accounts Section -->
+            <section class="section">
+                <div class="section-header">
+                    <h2>Connected Accounts</h2>
+                    <a href="connect.html" class="btn btn-secondary">+ Connect Account</a>
+                </div>
+
+                <div id="accounts-grid" class="accounts-grid">
+                    <!-- Populated by JS -->
+                    <div class="loading">Loading accounts...</div>
+                </div>
+            </section>
+
+            <!-- Quick Actions -->
+            <section class="section">
+                <h2>Quick Actions</h2>
+                <div class="actions-grid">
+                    <a href="upload.html" class="action-card">
+                        <div class="action-icon">📤</div>
+                        <h3>New Post</h3>
+                        <p>Upload and publish to multiple platforms</p>
+                    </a>
+                    <a href="scheduled.html" class="action-card">
+                        <div class="action-icon">📅</div>
+                        <h3>Scheduled</h3>
+                        <p>View and manage scheduled posts</p>
+                    </a>
+                    <a href="history.html" class="action-card">
+                        <div class="action-icon">📊</div>
+                        <h3>History</h3>
+                        <p>See all published posts</p>
+                    </a>
+                </div>
+            </section>
+
+            <!-- Recent Posts -->
+            <section class="section">
+                <h2>Recent Posts</h2>
+                <div id="recent-posts" class="posts-list">
+                    <div class="loading">Loading recent posts...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

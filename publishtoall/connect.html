@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Accounts - PublishToAll</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <a href="./" class="logo">← Back to Dashboard</a>
+            <h1>Connect Accounts</h1>
+            <p class="tagline">Link your social media accounts to start publishing</p>
+        </header>
+
+        <!-- Auth Check -->
+        <div id="auth-required" class="auth-required" style="display: none;">
+            <div class="card">
+                <h2>Login Required</h2>
+                <p>Please login to connect accounts</p>
+                <a href="/login.html?redirect=/publishtoall/connect.html" class="btn btn-primary">Login with Email</a>
+            </div>
+        </div>
+
+        <!-- Connect Options -->
+        <main id="connect-main" style="display: none;">
+            <div class="connect-grid">
+                <!-- LinkedIn -->
+                <div class="connect-card" id="linkedin-card">
+                    <div class="icon">💼</div>
+                    <div class="info">
+                        <h3>LinkedIn</h3>
+                        <p>Share videos and updates to your professional network</p>
+                    </div>
+                    <div class="status">
+                        <span id="linkedin-status" class="account-status disconnected">Not connected</span>
+                        <button id="linkedin-btn" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
+                            Connect
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TikTok -->
+                <div class="connect-card" id="tiktok-card">
+                    <div class="icon">🎵</div>
+                    <div class="info">
+                        <h3>TikTok</h3>
+                        <p>Post short-form videos directly or to drafts</p>
+                    </div>
+                    <div class="status">
+                        <span id="tiktok-status" class="account-status disconnected">Not connected</span>
+                        <button id="tiktok-btn" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
+                            Connect
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Instagram -->
+                <div class="connect-card" id="instagram-card">
+                    <div class="icon">📸</div>
+                    <div class="info">
+                        <h3>Instagram</h3>
+                        <p>Publish Reels to your Instagram business account</p>
+                        <p style="font-size: 0.8rem; color: var(--warning); margin-top: 0.25rem;">
+                            Requires Business or Creator account
+                        </p>
+                    </div>
+                    <div class="status">
+                        <span id="instagram-status" class="account-status disconnected">Not connected</span>
+                        <button id="instagram-btn" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
+                            Connect
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Section -->
+            <section class="section" style="margin-top: 3rem;">
+                <h2>How it works</h2>
+                <div class="info-grid" style="display: grid; gap: 1rem; margin-top: 1rem;">
+                    <div class="info-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
+                        <strong>1. Connect your accounts</strong>
+                        <p style="color: var(--text-light); margin-top: 0.25rem;">
+                            Authorize PublishToAll to post on your behalf. We only request posting permissions.
+                        </p>
+                    </div>
+                    <div class="info-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
+                        <strong>2. Upload your content</strong>
+                        <p style="color: var(--text-light); margin-top: 0.25rem;">
+                            Upload a video once and write a single caption for all platforms.
+                        </p>
+                    </div>
+                    <div class="info-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
+                        <strong>3. Publish or schedule</strong>
+                        <p style="color: var(--text-light); margin-top: 0.25rem;">
+                            Post immediately or schedule for the perfect time. We handle the rest.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Security Note -->
+            <section class="section" style="margin-top: 2rem; padding: 1.5rem; border: 2px dashed var(--border); border-radius: 12px;">
+                <h3 style="font-size: 1rem;">🔒 Your data is secure</h3>
+                <p style="color: var(--text-light); margin-top: 0.5rem; font-size: 0.9rem;">
+                    We use official OAuth APIs and never store your passwords. You can disconnect at any time.
+                    Access tokens are encrypted and stored securely.
+                </p>
+            </section>
+        </main>
+    </div>
+
+    <script type="module">
+        import { supabase, checkAuth } from './app.js';
+
+        let connectedAccounts = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await checkAuth();
+            if (!user) return;
+
+            document.getElementById('auth-required').style.display = 'none';
+            document.getElementById('connect-main').style.display = 'block';
+
+            await loadConnectedAccounts();
+            setupButtons();
+            checkOAuthCallback();
+        });
+
+        async function loadConnectedAccounts() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: accounts } = await supabase
+                .from('connected_accounts')
+                .select('*')
+                .eq('user_id', user.id);
+
+            connectedAccounts = accounts || [];
+            updateUI();
+        }
+
+        function updateUI() {
+            const platforms = ['linkedin', 'tiktok', 'instagram'];
+
+            platforms.forEach(platform => {
+                const account = connectedAccounts.find(a => a.platform === platform);
+                const statusEl = document.getElementById(`${platform}-status`);
+                const btnEl = document.getElementById(`${platform}-btn`);
+                const cardEl = document.getElementById(`${platform}-card`);
+
+                if (account) {
+                    statusEl.textContent = account.account_name || 'Connected';
+                    statusEl.className = 'account-status connected';
+                    btnEl.textContent = 'Disconnect';
+                    btnEl.className = 'btn btn-secondary btn-small';
+                    cardEl.classList.add('connected');
+                } else {
+                    statusEl.textContent = 'Not connected';
+                    statusEl.className = 'account-status disconnected';
+                    btnEl.textContent = 'Connect';
+                    btnEl.className = 'btn btn-primary btn-small';
+                    cardEl.classList.remove('connected');
+                }
+            });
+        }
+
+        function setupButtons() {
+            // LinkedIn
+            document.getElementById('linkedin-btn').addEventListener('click', () => {
+                const account = connectedAccounts.find(a => a.platform === 'linkedin');
+                if (account) {
+                    disconnectAccount('linkedin');
+                } else {
+                    connectLinkedIn();
+                }
+            });
+
+            // TikTok
+            document.getElementById('tiktok-btn').addEventListener('click', () => {
+                const account = connectedAccounts.find(a => a.platform === 'tiktok');
+                if (account) {
+                    disconnectAccount('tiktok');
+                } else {
+                    connectTikTok();
+                }
+            });
+
+            // Instagram
+            document.getElementById('instagram-btn').addEventListener('click', () => {
+                const account = connectedAccounts.find(a => a.platform === 'instagram');
+                if (account) {
+                    disconnectAccount('instagram');
+                } else {
+                    connectInstagram();
+                }
+            });
+        }
+
+        async function connectLinkedIn() {
+            // Redirect to LinkedIn OAuth
+            const { data: { session } } = await supabase.auth.getSession();
+            const state = session.access_token; // Use as state for security
+
+            // LinkedIn OAuth URL - will be handled by our API
+            window.location.href = `/api/publishtoall/auth/linkedin?state=${encodeURIComponent(state)}`;
+        }
+
+        async function connectTikTok() {
+            const { data: { session } } = await supabase.auth.getSession();
+            const state = session.access_token;
+
+            window.location.href = `/api/publishtoall/auth/tiktok?state=${encodeURIComponent(state)}`;
+        }
+
+        async function connectInstagram() {
+            const { data: { session } } = await supabase.auth.getSession();
+            const state = session.access_token;
+
+            window.location.href = `/api/publishtoall/auth/instagram?state=${encodeURIComponent(state)}`;
+        }
+
+        async function disconnectAccount(platform) {
+            if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
+
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { error } = await supabase
+                .from('connected_accounts')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('platform', platform);
+
+            if (error) {
+                alert('Error disconnecting account');
+                return;
+            }
+
+            await loadConnectedAccounts();
+        }
+
+        // Check for OAuth callback
+        function checkOAuthCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const success = params.get('success');
+            const platform = params.get('platform');
+            const error = params.get('error');
+
+            if (success === 'true' && platform) {
+                alert(`Successfully connected ${platform}!`);
+                window.history.replaceState({}, '', window.location.pathname);
+                loadConnectedAccounts();
+            } else if (error) {
+                alert(`Error connecting: ${error}`);
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+        }
+    </script>
+
+    <style>
+        .connect-card.connected {
+            border-color: var(--success);
+        }
+    </style>
+</body>
+</html>

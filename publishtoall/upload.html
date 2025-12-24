@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Post - PublishToAll</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <a href="./" class="logo">← Back to Dashboard</a>
+            <h1>Create New Post</h1>
+            <p class="tagline">Upload once, publish everywhere</p>
+        </header>
+
+        <!-- Auth Check -->
+        <div id="auth-required" class="auth-required" style="display: none;">
+            <div class="card">
+                <h2>Login Required</h2>
+                <p>Please login to create posts</p>
+                <a href="/login.html?redirect=/publishtoall/upload.html" class="btn btn-primary">Login with Email</a>
+            </div>
+        </div>
+
+        <!-- Upload Form -->
+        <main id="upload-form" style="display: none;">
+            <form id="post-form">
+                <!-- Step 1: Video Upload -->
+                <section class="section">
+                    <h2>1. Upload Video</h2>
+                    <div class="upload-zone" id="upload-zone">
+                        <div class="upload-icon">🎬</div>
+                        <h3>Drop your video here</h3>
+                        <p>or click to browse (MP4, MOV - max 500MB)</p>
+                        <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/mov" hidden>
+                    </div>
+                    <div id="video-preview-container" style="display: none; margin-top: 1rem;">
+                        <video id="video-preview" class="video-preview" controls></video>
+                        <p id="video-info" style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.9rem;"></p>
+                    </div>
+                </section>
+
+                <!-- Step 2: Caption -->
+                <section class="section">
+                    <h2>2. Add Caption</h2>
+                    <div class="form-group">
+                        <label for="caption">Caption (will be used across all platforms)</label>
+                        <textarea id="caption" name="caption" placeholder="Write your caption here... Include hashtags at the end!"></textarea>
+                        <p style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.85rem;">
+                            <span id="char-count">0</span>/2200 characters
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Step 3: Select Platforms -->
+                <section class="section">
+                    <h2>3. Select Platforms</h2>
+                    <div class="platforms-select" id="platforms-select">
+                        <label class="platform-checkbox disabled" data-platform="tiktok">
+                            <input type="checkbox" name="platforms" value="tiktok" disabled>
+                            <span class="icon">🎵</span>
+                            <span class="name">TikTok</span>
+                            <span class="status">(Connect first)</span>
+                        </label>
+                        <label class="platform-checkbox disabled" data-platform="instagram">
+                            <input type="checkbox" name="platforms" value="instagram" disabled>
+                            <span class="icon">📸</span>
+                            <span class="name">Instagram</span>
+                            <span class="status">(Connect first)</span>
+                        </label>
+                        <label class="platform-checkbox disabled" data-platform="linkedin">
+                            <input type="checkbox" name="platforms" value="linkedin" disabled>
+                            <span class="icon">💼</span>
+                            <span class="name">LinkedIn</span>
+                            <span class="status">(Connect first)</span>
+                        </label>
+                    </div>
+                    <p id="no-accounts-warning" style="margin-top: 1rem; color: var(--warning);">
+                        No accounts connected. <a href="connect.html">Connect an account</a> to start posting.
+                    </p>
+                </section>
+
+                <!-- Step 4: Schedule (Optional) -->
+                <section class="section">
+                    <h2>4. Schedule (Optional)</h2>
+                    <div class="form-group">
+                        <label for="schedule-toggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="checkbox" id="schedule-toggle" style="width: auto;">
+                            <span>Schedule for later</span>
+                        </label>
+                    </div>
+                    <div id="schedule-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="schedule-date">Date & Time</label>
+                            <input type="datetime-local" id="schedule-date" name="schedule_date">
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Submit -->
+                <section class="section">
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button type="button" class="btn btn-secondary" id="save-draft">Save as Draft</button>
+                        <button type="submit" class="btn btn-primary" id="publish-btn" disabled>
+                            Publish Now
+                        </button>
+                    </div>
+                </section>
+            </form>
+        </main>
+
+        <!-- Publishing Progress -->
+        <div id="publishing-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>Publishing...</h2>
+                <div id="publish-progress">
+                    <!-- Progress items will be added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase, checkAuth, PLATFORM_ICONS, PLATFORM_NAMES } from './app.js';
+
+        let selectedFile = null;
+        let connectedAccounts = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            const user = await checkAuth();
+            if (!user) return;
+
+            document.getElementById('auth-required').style.display = 'none';
+            document.getElementById('upload-form').style.display = 'block';
+
+            await loadConnectedAccounts();
+            setupEventListeners();
+        });
+
+        // Load connected accounts and update platform checkboxes
+        async function loadConnectedAccounts() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data: accounts } = await supabase
+                .from('connected_accounts')
+                .select('*')
+                .eq('user_id', user.id);
+
+            connectedAccounts = accounts || [];
+            updatePlatformCheckboxes();
+        }
+
+        function updatePlatformCheckboxes() {
+            const platforms = ['tiktok', 'instagram', 'linkedin'];
+            const warning = document.getElementById('no-accounts-warning');
+
+            let hasAnyConnected = false;
+
+            platforms.forEach(platform => {
+                const label = document.querySelector(`[data-platform="${platform}"]`);
+                const input = label.querySelector('input');
+                const status = label.querySelector('.status');
+                const account = connectedAccounts.find(a => a.platform === platform);
+
+                if (account) {
+                    hasAnyConnected = true;
+                    label.classList.remove('disabled');
+                    input.disabled = false;
+                    status.textContent = account.account_name ? `@${account.account_name}` : '(Connected)';
+                    status.style.color = 'var(--success)';
+                }
+            });
+
+            if (hasAnyConnected) {
+                warning.style.display = 'none';
+            }
+
+            updatePublishButton();
+        }
+
+        function setupEventListeners() {
+            // Upload zone
+            const uploadZone = document.getElementById('upload-zone');
+            const videoInput = document.getElementById('video-input');
+
+            uploadZone.addEventListener('click', () => videoInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('video/')) {
+                    handleFileSelect(file);
+                }
+            });
+
+            videoInput.addEventListener('change', (e) => {
+                if (e.target.files[0]) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+
+            // Caption counter
+            const caption = document.getElementById('caption');
+            const charCount = document.getElementById('char-count');
+            caption.addEventListener('input', () => {
+                charCount.textContent = caption.value.length;
+                updatePublishButton();
+            });
+
+            // Platform selection
+            document.querySelectorAll('.platform-checkbox').forEach(label => {
+                label.addEventListener('click', (e) => {
+                    if (label.classList.contains('disabled')) {
+                        e.preventDefault();
+                        return;
+                    }
+                    const input = label.querySelector('input');
+                    if (e.target !== input) {
+                        input.checked = !input.checked;
+                    }
+                    label.classList.toggle('selected', input.checked);
+                    updatePublishButton();
+                });
+            });
+
+            // Schedule toggle
+            const scheduleToggle = document.getElementById('schedule-toggle');
+            const scheduleFields = document.getElementById('schedule-fields');
+            scheduleToggle.addEventListener('change', () => {
+                scheduleFields.style.display = scheduleToggle.checked ? 'block' : 'none';
+                updatePublishButton();
+            });
+
+            // Form submit
+            document.getElementById('post-form').addEventListener('submit', handleSubmit);
+
+            // Save draft
+            document.getElementById('save-draft').addEventListener('click', () => {
+                handleSubmit(null, true);
+            });
+        }
+
+        function handleFileSelect(file) {
+            selectedFile = file;
+
+            const uploadZone = document.getElementById('upload-zone');
+            const previewContainer = document.getElementById('video-preview-container');
+            const preview = document.getElementById('video-preview');
+            const videoInfo = document.getElementById('video-info');
+
+            uploadZone.classList.add('has-file');
+            uploadZone.innerHTML = `
+                <div class="upload-icon">✅</div>
+                <h3>${file.name}</h3>
+                <p>Click to change video</p>
+            `;
+
+            preview.src = URL.createObjectURL(file);
+            previewContainer.style.display = 'block';
+
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            videoInfo.textContent = `Size: ${sizeMB} MB`;
+
+            updatePublishButton();
+        }
+
+        function updatePublishButton() {
+            const btn = document.getElementById('publish-btn');
+            const selectedPlatforms = document.querySelectorAll('input[name="platforms"]:checked');
+            const scheduleToggle = document.getElementById('schedule-toggle');
+
+            const isValid = selectedFile && selectedPlatforms.length > 0;
+            btn.disabled = !isValid;
+
+            if (scheduleToggle.checked) {
+                btn.textContent = 'Schedule Post';
+            } else {
+                btn.textContent = 'Publish Now';
+            }
+        }
+
+        async function handleSubmit(e, isDraft = false) {
+            if (e) e.preventDefault();
+
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                alert('Please login first');
+                return;
+            }
+
+            const caption = document.getElementById('caption').value;
+            const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked'))
+                .map(input => input.value);
+            const scheduleToggle = document.getElementById('schedule-toggle');
+            const scheduleDate = document.getElementById('schedule-date').value;
+
+            if (!isDraft && selectedPlatforms.length === 0) {
+                alert('Please select at least one platform');
+                return;
+            }
+
+            if (!selectedFile && !isDraft) {
+                alert('Please upload a video');
+                return;
+            }
+
+            const publishBtn = document.getElementById('publish-btn');
+            publishBtn.disabled = true;
+            publishBtn.textContent = 'Uploading...';
+
+            try {
+                // 1. Upload video to Supabase Storage
+                let videoUrl = null;
+                if (selectedFile) {
+                    const fileName = `${user.id}/${Date.now()}_${selectedFile.name}`;
+                    const { data: uploadData, error: uploadError } = await supabase.storage
+                        .from('videos')
+                        .upload(fileName, selectedFile);
+
+                    if (uploadError) throw uploadError;
+
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('videos')
+                        .getPublicUrl(fileName);
+
+                    videoUrl = publicUrl;
+                }
+
+                // 2. Create post record
+                const postData = {
+                    user_id: user.id,
+                    video_url: videoUrl,
+                    caption: caption,
+                    platforms: selectedPlatforms,
+                    status: isDraft ? 'draft' : (scheduleToggle.checked ? 'scheduled' : 'publishing'),
+                    scheduled_at: scheduleToggle.checked ? scheduleDate : null,
+                    platform_results: {}
+                };
+
+                const { data: post, error: postError } = await supabase
+                    .from('posts')
+                    .insert(postData)
+                    .select()
+                    .single();
+
+                if (postError) throw postError;
+
+                // 3. If publishing now, trigger the publish API
+                if (!isDraft && !scheduleToggle.checked) {
+                    await publishToAllPlatforms(post.id, selectedPlatforms);
+                }
+
+                // Redirect to dashboard
+                alert(isDraft ? 'Draft saved!' : (scheduleToggle.checked ? 'Post scheduled!' : 'Post published!'));
+                window.location.href = './';
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+                publishBtn.disabled = false;
+                publishBtn.textContent = 'Publish Now';
+            }
+        }
+
+        async function publishToAllPlatforms(postId, platforms) {
+            // Call the publish API
+            const response = await fetch('/api/publishtoall/publish', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+                },
+                body: JSON.stringify({ postId, platforms })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Failed to publish');
+            }
+
+            return response.json();
+        }
+    </script>
+
+    <style>
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+        }
+    </style>
+</body>
+</html>

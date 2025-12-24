@@ -27,7 +27,7 @@ lexayaui/
 ├── members.html            # Protected content area
 ├── style.css               # Main styles
 ├── script.js               # Animations, mobile menu
-├── vercel.json             # Vercel config (just version: 2)
+├── vercel.json             # Vercel config + crons
 ├── package.json            # Dependencies
 ├── js/
 │   ├── config.js           # Supabase & Stripe keys
@@ -36,7 +36,24 @@ lexayaui/
 │   ├── create-checkout.js  # Stripe checkout session
 │   ├── webhook.js          # Stripe webhook (saves purchases)
 │   ├── download.js         # Paid content signed URLs
-│   └── free-download.js    # Free content signed URLs (requires login)
+│   ├── free-download.js    # Free content signed URLs (requires login)
+│   └── publishtoall/       # Multi-platform publishing APIs
+│       ├── auth/
+│       │   ├── linkedin.js     # LinkedIn OAuth
+│       │   ├── tiktok.js       # TikTok OAuth
+│       │   └── instagram.js    # Instagram/Meta OAuth
+│       ├── publish.js          # Publish to all platforms
+│       └── cron/
+│           └── process-scheduled.js  # Scheduled posts cron
+├── publishtoall/           # Multi-platform publishing app
+│   ├── index.html          # Dashboard
+│   ├── upload.html         # Upload & create posts
+│   ├── connect.html        # Connect social accounts
+│   ├── scheduled.html      # View scheduled posts
+│   ├── history.html        # Post history
+│   ├── style.css           # PublishToAll styles
+│   ├── app.js              # Main JavaScript
+│   └── database.sql        # Supabase schema
 └── cs/
     ├── index.html          # CS courses page
     ├── download.html       # Paid download page
@@ -87,6 +104,60 @@ Cal.com integration for $50/30min calls on CS page.
 - `STRIPE_WEBHOOK_SECRET`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_KEY`
+- `LINKEDIN_CLIENT_ID` - LinkedIn app client ID
+- `LINKEDIN_CLIENT_SECRET` - LinkedIn app secret
+- `TIKTOK_CLIENT_KEY` - TikTok app client key
+- `TIKTOK_CLIENT_SECRET` - TikTok app secret
+- `FACEBOOK_APP_ID` - Meta/Facebook app ID (for Instagram)
+- `FACEBOOK_APP_SECRET` - Meta/Facebook app secret
+- `CRON_SECRET` - Secret for cron job authentication
+
+---
+
+## PublishToAll Feature
+
+### Overview
+Multi-platform publishing tool at `/publishtoall`. Upload once, publish to TikTok, Instagram, and LinkedIn.
+
+### Database Tables (run `publishtoall/database.sql` in Supabase)
+
+**connected_accounts**
+- Stores OAuth tokens for each platform
+- `user_id`, `platform`, `access_token`, `refresh_token`, `token_expires_at`
+
+**posts**
+- Stores all posts (draft, scheduled, published)
+- `user_id`, `video_url`, `caption`, `platforms[]`, `status`, `scheduled_at`, `platform_results`
+
+### Supabase Storage
+Create bucket: `videos` (public, 500MB limit, video/* MIME types)
+
+### Platform Setup Required
+
+**LinkedIn** (easiest)
+1. Create app at https://developer.linkedin.com/
+2. Add "Share on LinkedIn" product
+3. Get `w_member_social` scope
+4. Add OAuth redirect: `https://lexaya.io/api/publishtoall/auth/linkedin`
+
+**TikTok**
+1. Create app at https://developers.tiktok.com/
+2. Add "Content Posting API"
+3. Request `video.upload` scope
+4. Note: Unaudited apps post to DRAFTS only (user must publish in TikTok app)
+
+**Instagram**
+1. Create Meta app at https://developers.facebook.com/
+2. Add Instagram Graph API
+3. Request `instagram_content_publish` scope
+4. Requires: Business/Creator account linked to Facebook Page
+
+### Post Flow
+1. User uploads video → stored in Supabase `videos` bucket
+2. User writes caption, selects platforms
+3. Immediate publish OR schedule for later
+4. Cron job runs every minute to process scheduled posts
+5. Results stored in `platform_results` JSONB field
 
 ## Supabase Storage Structure
 ```
