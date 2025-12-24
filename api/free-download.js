@@ -1,4 +1,4 @@
-// Free Download API - requires login, generates signed URLs
+// Free Download API - requires login, generates signed URLs, tracks in database
 // Environment variables needed: SUPABASE_URL, SUPABASE_SERVICE_KEY
 
 const { createClient } = require('@supabase/supabase-js');
@@ -9,9 +9,11 @@ const supabase = createClient(
 );
 
 // Map resource keys to their file paths in Supabase Storage
-const FREE_FILES = {
-    'resume': 'free/sans_lamsal_resume.pdf',
-    'colleges': 'free/college_with_sch.pdf'
+// 'page' type resources redirect to a URL instead of generating signed URL
+const FREE_RESOURCES = {
+    'resume': { type: 'file', path: 'free/sans_lamsal_resume.pdf', name: 'FAANG Resume Template' },
+    'colleges': { type: 'file', path: 'free/college_with_sch.pdf', name: 'Colleges with Scholarships' },
+    'ai-projects': { type: 'page', path: '/cs/ai-projects.html', name: 'AI Project Ideas' }
 };
 
 module.exports = async (req, res) => {
@@ -32,7 +34,7 @@ module.exports = async (req, res) => {
         const authHeader = req.headers.authorization;
 
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Please log in to download this resource.' });
+            return res.status(401).json({ error: 'Please log in to access this resource.' });
         }
 
         const token = authHeader.split(' ')[1];
@@ -41,24 +43,45 @@ module.exports = async (req, res) => {
         const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
         if (authError || !user) {
-            return res.status(401).json({ error: 'Please log in to download this resource.' });
+            return res.status(401).json({ error: 'Please log in to access this resource.' });
         }
 
         if (!resource) {
             return res.status(400).json({ error: 'Resource key required' });
         }
 
-        const filePath = FREE_FILES[resource];
+        const resourceInfo = FREE_RESOURCES[resource];
 
-        if (!filePath) {
+        if (!resourceInfo) {
             return res.status(404).json({ error: 'Resource not found' });
         }
 
-        // Generate signed URL (expires in 1 hour)
+        // Track the download/access in database
+        await supabase
+            .from('purchases')
+            .insert([{
+                user_id: user.id,
+                product_id: resource,
+                customer_email: user.email,
+                amount: 0,
+                status: 'free_access',
+                created_at: new Date().toISOString()
+            }]);
+
+        // Handle page-type resources (redirect to URL)
+        if (resourceInfo.type === 'page') {
+            return res.status(200).json({
+                type: 'redirect',
+                downloadUrl: resourceInfo.path,
+                resourceName: resourceInfo.name
+            });
+        }
+
+        // Handle file-type resources (generate signed URL)
         const { data: signedUrl, error: urlError } = await supabase
             .storage
             .from('resources')
-            .createSignedUrl(filePath, 3600); // 1 hour expiry
+            .createSignedUrl(resourceInfo.path, 3600); // 1 hour expiry
 
         if (urlError) {
             console.error('Signed URL error:', urlError);
@@ -68,7 +91,9 @@ module.exports = async (req, res) => {
         }
 
         res.status(200).json({
+            type: 'download',
             downloadUrl: signedUrl.signedUrl,
+            resourceName: resourceInfo.name,
             expiresIn: '1 hour'
         });
 

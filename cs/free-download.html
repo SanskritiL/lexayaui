@@ -184,11 +184,6 @@
 
     <script src="/js/config.js"></script>
     <script>
-        const RESOURCE_NAMES = {
-            'resume': 'Resume That Got Me Interviews at FAANG',
-            'colleges': 'Colleges That Give Scholarships to International Students'
-        };
-
         const supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
         async function checkAccessAndDownload() {
@@ -220,7 +215,13 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    showError(data.error || 'Could not get download link.');
+                    showError(data.error || 'Could not get access.');
+                    return;
+                }
+
+                // Handle redirect type (page resources)
+                if (data.type === 'redirect') {
+                    window.location.href = data.downloadUrl;
                     return;
                 }
 
@@ -228,7 +229,7 @@
                 document.getElementById('loading-state').style.display = 'none';
                 document.getElementById('success-state').style.display = 'block';
                 document.getElementById('download-link').href = data.downloadUrl;
-                document.getElementById('resource-name').textContent = RESOURCE_NAMES[resource] || 'Your resource';
+                document.getElementById('resource-name').textContent = data.resourceName || 'Your resource';
 
             } catch (err) {
                 showError('Network error. Please refresh and try again.');
