@@ -3,14 +3,12 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
-const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
 module.exports = async function handler(req, res) {
+    const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
+    const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
     const { code, state, error: oauthError } = req.query;
 
     // Get the base URL for redirects
@@ -82,6 +80,9 @@ module.exports = async function handler(req, res) {
         if (!state) {
             return res.redirect('/broadcast/connect.html?error=Invalid state');
         }
+
+        // Create Supabase client
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
         // Get user from Supabase using the JWT
         const { data: { user }, error: userError } = await supabase.auth.getUser(state);

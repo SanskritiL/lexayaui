@@ -3,14 +3,12 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
-const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
 module.exports = async function handler(req, res) {
+    const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
+    const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
     const { code, state, error: oauthError, error_description } = req.query;
 
     const baseUrl = `https://${req.headers.host}`;
@@ -101,6 +99,7 @@ module.exports = async function handler(req, res) {
             return res.redirect('/broadcast/connect.html?error=Invalid state');
         }
 
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         const { data: { user }, error: userError } = await supabase.auth.getUser(state);
 
         if (userError || !user) {
