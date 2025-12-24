@@ -37,7 +37,7 @@ lexayaui/
 │   ├── webhook.js          # Stripe webhook (saves purchases)
 │   ├── download.js         # Paid content signed URLs
 │   ├── free-download.js    # Free content signed URLs (requires login)
-│   └── publishtoall/       # Multi-platform publishing APIs
+│   └── broadcast/          # Multi-platform publishing APIs
 │       ├── auth/
 │       │   ├── linkedin.js     # LinkedIn OAuth
 │       │   ├── tiktok.js       # TikTok OAuth
@@ -45,14 +45,13 @@ lexayaui/
 │       ├── publish.js          # Publish to all platforms
 │       └── cron/
 │           └── process-scheduled.js  # Scheduled posts cron
-├── publishtoall/           # Multi-platform publishing app
+├── broadcast/              # Multi-platform publishing app
 │   ├── index.html          # Dashboard
 │   ├── upload.html         # Upload & create posts
 │   ├── connect.html        # Connect social accounts
 │   ├── scheduled.html      # View scheduled posts
 │   ├── history.html        # Post history
-│   ├── style.css           # PublishToAll styles
-│   ├── app.js              # Main JavaScript
+│   ├── style.css           # Broadcast styles
 │   └── database.sql        # Supabase schema
 └── cs/
     ├── index.html          # CS courses page
@@ -87,6 +86,7 @@ Cal.com integration for $50/30min calls on CS page.
 - Hero: "engineer figuring out marketing"
 - Brands carousel (Claude, Replit, Lovable, etc.)
 - UGC Resources grid (4 free resources, require login)
+- Navbar shows user email when logged in, "login" when not
 
 ### CS Courses (cs/index.html)
 - Free: Resume, Colleges list, AI Project Ideas
@@ -114,12 +114,12 @@ Cal.com integration for $50/30min calls on CS page.
 
 ---
 
-## PublishToAll Feature
+## Broadcast Feature
 
 ### Overview
-Multi-platform publishing tool at `/publishtoall`. Upload once, publish to TikTok, Instagram, and LinkedIn.
+Multi-platform publishing tool at `/broadcast`. Upload once, publish to TikTok, Instagram, and LinkedIn.
 
-### Database Tables (run `publishtoall/database.sql` in Supabase)
+### Database Tables (run `broadcast/database.sql` in Supabase)
 
 **connected_accounts**
 - Stores OAuth tokens for each platform
@@ -138,7 +138,7 @@ Create bucket: `videos` (public, 500MB limit, video/* MIME types)
 1. Create app at https://developer.linkedin.com/
 2. Add "Share on LinkedIn" product
 3. Get `w_member_social` scope
-4. Add OAuth redirect: `https://lexaya.io/api/publishtoall/auth/linkedin`
+4. Add OAuth redirect: `https://lexaya.io/api/broadcast/auth/linkedin`
 
 **TikTok**
 1. Create app at https://developers.tiktok.com/

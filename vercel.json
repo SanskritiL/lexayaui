@@ -2,7 +2,7 @@
   "version": 2,
   "crons": [
     {
-      "path": "/api/publishtoall/cron/process-scheduled",
+      "path": "/api/broadcast/cron/process-scheduled",
       "schedule": "* * * * *"
     }
   ]

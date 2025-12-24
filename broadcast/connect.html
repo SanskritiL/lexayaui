@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Accounts - PublishToAll</title>
+    <title>Connect Accounts - Broadcast</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -24,7 +24,7 @@
             <div class="card">
                 <h2>Login Required</h2>
                 <p>Please login to connect accounts</p>
-                <a href="/login.html?redirect=/publishtoall/connect.html" class="btn btn-primary">Login with Email</a>
+                <a href="/login.html?redirect=/broadcast/connect.html" class="btn btn-primary">Login with Email</a>
             </div>
         </div>
 
@@ -87,7 +87,7 @@
                     <div class="info-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
                         <strong>1. Connect your accounts</strong>
                         <p style="color: var(--text-light); margin-top: 0.25rem;">
-                            Authorize PublishToAll to post on your behalf. We only request posting permissions.
+                            Authorize Broadcast to post on your behalf. We only request posting permissions.
                         </p>
                     </div>
                     <div class="info-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
@@ -211,19 +211,19 @@
         async function connectLinkedIn() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             const state = session.access_token;
-            window.location.href = `/api/publishtoall/auth/linkedin?state=${encodeURIComponent(state)}`;
+            window.location.href = `/api/broadcast/auth/linkedin?state=${encodeURIComponent(state)}`;
         }
 
         async function connectTikTok() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             const state = session.access_token;
-            window.location.href = `/api/publishtoall/auth/tiktok?state=${encodeURIComponent(state)}`;
+            window.location.href = `/api/broadcast/auth/tiktok?state=${encodeURIComponent(state)}`;
         }
 
         async function connectInstagram() {
             const { data: { session } } = await supabaseClient.auth.getSession();
             const state = session.access_token;
-            window.location.href = `/api/publishtoall/auth/instagram?state=${encodeURIComponent(state)}`;
+            window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
         }
 
         async function disconnectAccount(platform) {

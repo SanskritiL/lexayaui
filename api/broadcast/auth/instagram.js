@@ -1,7 +1,7 @@
 // Instagram OAuth Handler
 // Uses Facebook/Meta Graph API for Instagram Business accounts
 
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
@@ -10,16 +10,16 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     const { code, state, error: oauthError, error_description } = req.query;
 
     const baseUrl = `https://${req.headers.host}`;
-    const redirectUri = `${baseUrl}/api/publishtoall/auth/instagram`;
+    const redirectUri = `${baseUrl}/api/broadcast/auth/instagram`;
 
     // If no code, redirect to Facebook OAuth
     if (!code) {
         if (!FACEBOOK_APP_ID) {
-            return res.redirect('/publishtoall/connect.html?error=Instagram/Facebook not configured');
+            return res.redirect('/broadcast/connect.html?error=Instagram/Facebook not configured');
         }
 
         // Facebook OAuth with Instagram permissions
@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     // Handle OAuth error
     if (oauthError) {
         const errorMsg = error_description || oauthError;
-        return res.redirect(`/publishtoall/connect.html?error=${encodeURIComponent(errorMsg)}`);
+        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(errorMsg)}`);
     }
 
     try {
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
         if (!tokenResponse.ok) {
             const errorData = await tokenResponse.json();
             console.error('Facebook token error:', errorData);
-            return res.redirect('/publishtoall/connect.html?error=Failed to get access token');
+            return res.redirect('/broadcast/connect.html?error=Failed to get access token');
         }
 
         const tokenData = await tokenResponse.json();
@@ -85,7 +85,7 @@ export default async function handler(req, res) {
         const pagesData = await pagesResponse.json();
 
         if (!pagesData.data || pagesData.data.length === 0) {
-            return res.redirect('/publishtoall/connect.html?error=No Facebook Pages found. You need a Facebook Page connected to an Instagram Business account.');
+            return res.redirect('/broadcast/connect.html?error=No Facebook Pages found. You need a Facebook Page connected to an Instagram Business account.');
         }
 
         // Get the Instagram Business Account for each page
@@ -106,19 +106,19 @@ export default async function handler(req, res) {
         }
 
         if (!instagramAccount) {
-            return res.redirect('/publishtoall/connect.html?error=No Instagram Business account found. Please connect a Business or Creator account to your Facebook Page.');
+            return res.redirect('/broadcast/connect.html?error=No Instagram Business account found. Please connect a Business or Creator account to your Facebook Page.');
         }
 
         // Verify user from state
         if (!state) {
-            return res.redirect('/publishtoall/connect.html?error=Invalid state');
+            return res.redirect('/broadcast/connect.html?error=Invalid state');
         }
 
         const { data: { user }, error: userError } = await supabase.auth.getUser(state);
 
         if (userError || !user) {
             console.error('User verification error:', userError);
-            return res.redirect('/publishtoall/connect.html?error=Session expired, please login again');
+            return res.redirect('/broadcast/connect.html?error=Session expired, please login again');
         }
 
         // Calculate expiry
@@ -146,13 +146,13 @@ export default async function handler(req, res) {
 
         if (saveError) {
             console.error('Save error:', saveError);
-            return res.redirect('/publishtoall/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/connect.html?error=Failed to save account');
         }
 
-        return res.redirect('/publishtoall/connect.html?success=true&platform=instagram');
+        return res.redirect('/broadcast/connect.html?success=true&platform=instagram');
 
     } catch (error) {
         console.error('Instagram OAuth error:', error);
-        return res.redirect(`/publishtoall/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
     }
 }

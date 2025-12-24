@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script defer data-domain="lexaya.io" src="https://plausible.io/js/script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <header>
@@ -17,7 +18,8 @@
                 <a href="#">Lexaya</a>
             </div>
             <div class="nav-links">
-                <a href="/login.html" class="nav-cta">login</a>
+                <a href="/broadcast/">Broadcast</a>
+                <a href="/login.html" class="nav-cta" id="auth-link">login</a>
             </div>
             <button class="mobile-menu-btn" aria-label="Toggle menu">
                 <i class="fas fa-bars"></i>
@@ -184,5 +186,22 @@
     </footer>
 
     <script src="script.js"></script>
+    <script>
+        // Check auth state and update navbar
+        (async function() {
+            const supabase = window.supabase.createClient(
+                'https://bcyhcsphmqizzvzmdqxc.supabase.co',
+                'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenZ6bWRxeGMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc0NzM1MjM3MCwiZXhwIjoyMDYyOTI4MzcwfQ.aCLTjPVDJMmOgXZ4R7k-xKFKoS4VZnz-2K87lPQvNdE'
+            );
+
+            const { data: { user } } = await supabase.auth.getUser();
+            const authLink = document.getElementById('auth-link');
+
+            if (user && authLink) {
+                authLink.textContent = user.email;
+                authLink.href = '/members.html';
+            }
+        })();
+    </script>
 </body>
 </html>
