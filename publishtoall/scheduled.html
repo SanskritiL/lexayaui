@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
@@ -35,12 +36,22 @@
         </main>
     </div>
 
-    <script type="module">
-        import { supabase, checkAuth, PLATFORM_ICONS } from './app.js';
+    <script>
+        // Config
+        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const PLATFORM_ICONS = { tiktok: '🎵', instagram: '📸', linkedin: '💼' };
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const user = await checkAuth();
-            if (!user) return;
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            if (!user) {
+                document.getElementById('auth-required').style.display = 'flex';
+                document.getElementById('main-content').style.display = 'none';
+                return;
+            }
 
             document.getElementById('auth-required').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
@@ -50,10 +61,10 @@
 
         async function loadScheduledPosts() {
             const container = document.getElementById('scheduled-posts');
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) return;
 
-            const { data: posts, error } = await supabase
+            const { data: posts, error } = await supabaseClient
                 .from('posts')
                 .select('*')
                 .eq('user_id', user.id)
@@ -120,16 +131,14 @@
             return `${date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} (${relative})`;
         }
 
-        // Make functions global
         window.editPost = async function(postId) {
-            // For MVP, just redirect to upload with edit mode
             alert('Edit functionality coming soon. You can delete and recreate the post for now.');
         };
 
         window.deletePost = async function(postId) {
             if (!confirm('Are you sure you want to delete this scheduled post?')) return;
 
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('posts')
                 .delete()
                 .eq('id', postId);

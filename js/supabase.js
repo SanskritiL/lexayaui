@@ -13,11 +13,11 @@ function initSupabase() {
 // Auth functions
 const auth = {
     // Send magic link to email
-    async sendMagicLink(email) {
+    async sendMagicLink(email, redirectTo = '/members.html') {
         const { data, error } = await initSupabase().auth.signInWithOtp({
             email: email,
             options: {
-                emailRedirectTo: window.location.origin + '/members.html'
+                emailRedirectTo: window.location.origin + redirectTo
             }
         });
         return { data, error };

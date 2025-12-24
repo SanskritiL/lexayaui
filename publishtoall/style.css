@@ -83,7 +83,7 @@ body {
 .btn {
     display: inline-block;
     padding: 0.75rem 1.5rem;
-    border-radius: 45% 55% 50% 50% / 60% 60% 40% 40%;
+    border-radius: 8px;
     text-decoration: none;
     font-weight: 500;
     cursor: pointer;
@@ -120,7 +120,7 @@ body {
 .card {
     background: white;
     border: 2px solid var(--border);
-    border-radius: 48% 52% 50% 50% / 50% 50% 50% 50%;
+    border-radius: 12px;
     padding: 2rem;
     text-align: center;
 }
@@ -138,7 +138,7 @@ body {
     gap: 1rem;
     padding: 1rem 1.5rem;
     border: 2px solid var(--border);
-    border-radius: 45% 55% 52% 48% / 55% 50% 50% 45%;
+    border-radius: 12px;
     background: white;
 }
 
@@ -192,7 +192,7 @@ body {
     display: block;
     padding: 1.5rem;
     border: 2px solid var(--border);
-    border-radius: 52% 48% 48% 52% / 48% 52% 48% 52%;
+    border-radius: 12px;
     text-decoration: none;
     color: var(--text);
     transition: all 0.2s;

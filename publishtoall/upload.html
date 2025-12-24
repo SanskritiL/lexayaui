@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
@@ -125,16 +126,24 @@
         </div>
     </div>
 
-    <script type="module">
-        import { supabase, checkAuth, PLATFORM_ICONS, PLATFORM_NAMES } from './app.js';
+    <script>
+        // Config
+        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let selectedFile = null;
         let connectedAccounts = [];
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            const user = await checkAuth();
-            if (!user) return;
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            if (!user) {
+                document.getElementById('auth-required').style.display = 'flex';
+                document.getElementById('upload-form').style.display = 'none';
+                return;
+            }
 
             document.getElementById('auth-required').style.display = 'none';
             document.getElementById('upload-form').style.display = 'block';
@@ -145,10 +154,10 @@
 
         // Load connected accounts and update platform checkboxes
         async function loadConnectedAccounts() {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) return;
 
-            const { data: accounts } = await supabase
+            const { data: accounts } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
                 .eq('user_id', user.id);
@@ -299,7 +308,7 @@
         async function handleSubmit(e, isDraft = false) {
             if (e) e.preventDefault();
 
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await supabaseClient.auth.getUser();
             if (!user) {
                 alert('Please login first');
                 return;
@@ -330,13 +339,13 @@
                 let videoUrl = null;
                 if (selectedFile) {
                     const fileName = `${user.id}/${Date.now()}_${selectedFile.name}`;
-                    const { data: uploadData, error: uploadError } = await supabase.storage
+                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
                         .from('videos')
                         .upload(fileName, selectedFile);
 
                     if (uploadError) throw uploadError;
 
-                    const { data: { publicUrl } } = supabase.storage
+                    const { data: { publicUrl } } = supabaseClient.storage
                         .from('videos')
                         .getPublicUrl(fileName);
 
@@ -354,7 +363,7 @@
                     platform_results: {}
                 };
 
-                const { data: post, error: postError } = await supabase
+                const { data: post, error: postError } = await supabaseClient
                     .from('posts')
                     .insert(postData)
                     .select()
@@ -380,12 +389,12 @@
         }
 
         async function publishToAllPlatforms(postId, platforms) {
-            // Call the publish API
+            const { data: { session } } = await supabaseClient.auth.getSession();
             const response = await fetch('/api/publishtoall/publish', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session.access_token}`
+                    'Authorization': `Bearer ${session.access_token}`
                 },
                 body: JSON.stringify({ postId, platforms })
             });

@@ -175,9 +175,11 @@
         const submitBtn = document.getElementById('submitBtn');
         const messageEl = document.getElementById('message');
 
-        // Check for error message in URL
+        // Check for error and redirect in URL
         const urlParams = new URLSearchParams(window.location.search);
         const errorMsg = urlParams.get('error');
+        const redirectTo = urlParams.get('redirect') || '/members.html';
+
         if (errorMsg) {
             messageEl.className = 'message error';
             messageEl.textContent = decodeURIComponent(errorMsg).replace(/\+/g, ' ');
@@ -188,7 +190,7 @@
         (async () => {
             const user = await auth.getUser();
             if (user) {
-                window.location.href = '/members.html';
+                window.location.href = redirectTo;
             }
         })();
 
@@ -199,7 +201,7 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Sending...';
 
-            const { data, error } = await auth.sendMagicLink(email);
+            const { data, error } = await auth.sendMagicLink(email, redirectTo);
 
             if (error) {
                 messageEl.className = 'message error';

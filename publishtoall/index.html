@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div class="container">
@@ -74,6 +75,134 @@
         </main>
     </div>
 
-    <script type="module" src="app.js"></script>
+    <script>
+        // Config
+        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        const PLATFORM_ICONS = { tiktok: '🎵', instagram: '📸', linkedin: '💼' };
+        const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn' };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+
+            const authRequired = document.getElementById('auth-required');
+            const dashboard = document.getElementById('dashboard');
+
+            if (!user) {
+                if (authRequired) authRequired.style.display = 'flex';
+                if (dashboard) dashboard.style.display = 'none';
+                return;
+            }
+
+            if (authRequired) authRequired.style.display = 'none';
+            if (dashboard) dashboard.style.display = 'block';
+
+            await loadConnectedAccounts();
+            await loadRecentPosts();
+        });
+
+        async function loadConnectedAccounts() {
+            const grid = document.getElementById('accounts-grid');
+            if (!grid) return;
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return;
+
+            const { data: accounts, error } = await supabaseClient
+                .from('connected_accounts')
+                .select('*')
+                .eq('user_id', user.id);
+
+            if (error) {
+                console.error('Error loading accounts:', error);
+                grid.innerHTML = '<div class="empty-state"><h3>Error loading accounts</h3></div>';
+                return;
+            }
+
+            const platforms = ['tiktok', 'instagram', 'linkedin'];
+            const html = platforms.map(platform => {
+                const account = accounts?.find(a => a.platform === platform);
+                const isConnected = !!account;
+
+                return `
+                    <div class="account-card ${isConnected ? 'connected' : ''}">
+                        <div class="account-icon">${PLATFORM_ICONS[platform]}</div>
+                        <div class="account-info">
+                            <h3>${PLATFORM_NAMES[platform]}</h3>
+                            <p>${isConnected ? account.account_name || 'Connected' : 'Not connected'}</p>
+                        </div>
+                        <span class="account-status ${isConnected ? 'connected' : 'disconnected'}">
+                            ${isConnected ? 'Connected' : 'Connect'}
+                        </span>
+                    </div>
+                `;
+            }).join('');
+
+            grid.innerHTML = html;
+        }
+
+        async function loadRecentPosts() {
+            const container = document.getElementById('recent-posts');
+            if (!container) return;
+
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return;
+
+            const { data: posts, error } = await supabaseClient
+                .from('posts')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            if (error) {
+                console.error('Error loading posts:', error);
+                container.innerHTML = '<div class="empty-state"><h3>Error loading posts</h3></div>';
+                return;
+            }
+
+            if (!posts || posts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No posts yet</h3>
+                        <p>Create your first post to get started!</p>
+                        <a href="upload.html" class="btn btn-primary" style="margin-top: 1rem;">Create Post</a>
+                    </div>
+                `;
+                return;
+            }
+
+            const html = posts.map(post => `
+                <div class="post-item">
+                    <div class="post-thumbnail">
+                        <video src="${post.video_url}" muted></video>
+                    </div>
+                    <div class="post-info">
+                        <h3>${post.caption || 'No caption'}</h3>
+                        <div class="post-meta">
+                            <span>${formatDate(post.created_at)}</span>
+                            <div class="post-platforms">
+                                ${(post.platforms || []).map(p => `<span class="platform-badge">${PLATFORM_ICONS[p]}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    <span class="post-status ${post.status}">${capitalizeFirst(post.status)}</span>
+                </div>
+            `).join('');
+
+            container.innerHTML = html;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function capitalizeFirst(str) {
+            return str.charAt(0).toUpperCase() + str.slice(1);
+        }
+    </script>
 </body>
 </html>
