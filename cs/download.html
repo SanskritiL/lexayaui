@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Your Resource - Lexaya</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #ffffff;
+            --text-primary: #1e40af;
+            --text-secondary: #3b82f6;
+            --text-muted: #93c5fd;
+            --border: #1e40af;
+            --border-light: #93c5fd;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background-color: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .download-card {
+            max-width: 500px;
+            width: 100%;
+            background: var(--bg);
+            padding: 3rem;
+            border: 3px solid var(--border);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            text-align: center;
+        }
+
+        .icon {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .icon.success { color: #059669; }
+        .icon.loading { color: var(--text-secondary); }
+        .icon.error { color: #dc2626; }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            font-size: 1.05rem;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: var(--text-primary);
+            color: white;
+            text-decoration: none;
+            border: 3px solid var(--text-primary);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .download-btn:hover {
+            background: transparent;
+            color: var(--text-primary);
+        }
+
+        .support-text {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px dashed var(--border-light);
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .support-text a {
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 2px solid #dc2626;
+            padding: 1rem;
+            border-radius: 10px;
+            color: #dc2626;
+            margin-bottom: 1.5rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 1.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="download-card">
+        <div id="loading-state">
+            <div class="icon loading">
+                <i class="fas fa-circle-notch spinner"></i>
+            </div>
+            <h1>Preparing your download...</h1>
+            <p>Please wait while we verify your purchase.</p>
+        </div>
+
+        <div id="success-state" style="display: none;">
+            <div class="icon success">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h1>Thank you for your purchase!</h1>
+            <p>Your download is ready. Click the button below to get your resource.</p>
+            <a id="download-link" href="#" class="download-btn">
+                <i class="fas fa-download"></i> Download Now
+            </a>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 1rem;">
+                Link expires in 2 hours. Save the file to your device.
+            </p>
+        </div>
+
+        <div id="error-state" style="display: none;">
+            <div class="icon error">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h1>Oops, something went wrong</h1>
+            <div id="error-message" class="error-message"></div>
+            <p>If you just completed payment, please wait a moment and refresh the page.</p>
+            <a href="/cs/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Courses</a>
+        </div>
+
+        <div class="support-text">
+            Need help? Email <a href="mailto:sans@lexaya.io">sans@lexaya.io</a>
+        </div>
+    </div>
+
+    <script>
+        async function verifyAndDownload() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('session_id');
+
+            if (!sessionId) {
+                showError('No session ID found. Please complete your purchase first.');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/download?session_id=${sessionId}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'Could not verify purchase.');
+                    return;
+                }
+
+                // Show success and set download link
+                document.getElementById('loading-state').style.display = 'none';
+                document.getElementById('success-state').style.display = 'block';
+                document.getElementById('download-link').href = data.downloadUrl;
+
+            } catch (err) {
+                showError('Network error. Please refresh and try again.');
+            }
+        }
+
+        function showError(message) {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('error-state').style.display = 'block';
+            document.getElementById('error-message').textContent = message;
+        }
+
+        // Run on page load
+        verifyAndDownload();
+    </script>
+</body>
+</html>
