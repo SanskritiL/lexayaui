@@ -1,15 +1,10 @@
 {
   "version": 2,
   "cleanUrls": true,
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
   "crons": [
     {
       "path": "/api/broadcast/cron/process-scheduled",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
