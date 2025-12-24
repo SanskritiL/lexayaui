@@ -11,9 +11,15 @@ const supabase = createClient(
 // Map resource keys to their file paths in Supabase Storage
 // 'page' type resources redirect to a URL instead of generating signed URL
 const FREE_RESOURCES = {
+    // CS Resources
     'resume': { type: 'file', path: 'free/sans_lamsal_resume.pdf', name: 'FAANG Resume Template' },
     'colleges': { type: 'file', path: 'free/college_with_sch.pdf', name: 'Colleges with Scholarships' },
-    'ai-projects': { type: 'page', path: '/cs/ai-projects.html', name: 'AI Project Ideas' }
+    'ai-projects': { type: 'page', path: '/cs/ai-projects.html', name: 'AI Project Ideas' },
+    // UGC Resources
+    'portfolio': { type: 'file', path: 'free/ugc_portfolio_template.pdf', name: 'UGC Portfolio Template' },
+    'pitch': { type: 'file', path: 'free/brand_pitch_emails.pdf', name: 'Brand Pitch Email Scripts' },
+    'ratecard': { type: 'file', path: 'free/rate_card_template.pdf', name: 'Rate Card Template' },
+    'calendar': { type: 'file', path: 'free/content_calendar.pdf', name: 'Content Calendar' }
 };
 
 module.exports = async (req, res) => {

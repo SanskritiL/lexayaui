@@ -979,3 +979,106 @@ footer {
         max-width: 80px;
     }
 }
+
+/* Resources Section */
+.resources {
+    padding: 4rem 0;
+    border-top: 2px dashed var(--border-light);
+}
+
+.section-subtitle {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+}
+
+.resources-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.resource-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: var(--bg);
+    border: 3px solid var(--border);
+    border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.resource-card:nth-child(2) {
+    border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
+}
+
+.resource-card:nth-child(3) {
+    border-radius: 225px 15px 255px 15px/15px 255px 15px 225px;
+}
+
+.resource-card:nth-child(4) {
+    border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
+}
+
+.resource-card:hover {
+    transform: translateX(5px);
+    box-shadow: -5px 5px 0 var(--border-light);
+}
+
+.resource-icon {
+    font-size: 1.5rem;
+    color: var(--text-primary);
+    background: #dbeafe;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.resource-info {
+    flex: 1;
+}
+
+.resource-info h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.resource-info p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.resource-badge {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #d1fae5;
+    color: #065f46;
+    border: 2px solid #065f46;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .resources-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .resource-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .resource-icon {
+        margin: 0 auto;
+    }
+}
