@@ -9,15 +9,30 @@ module.exports = async function handler(req, res) {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-    const { code, state, error: oauthError, error_description } = req.query;
+    const { code, state, error: oauthError, error_description, error_reason } = req.query;
 
     const baseUrl = `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/api/broadcast/auth/instagram`;
 
+    // Debug: Show what we're working with
+    console.log('Instagram OAuth Request:', {
+        hasCode: !!code,
+        hasState: !!state,
+        error: oauthError,
+        error_description,
+        error_reason,
+        host: req.headers.host,
+        redirectUri,
+        appId: FACEBOOK_APP_ID ? FACEBOOK_APP_ID.substring(0, 5) + '...' : 'NOT SET'
+    });
+
     // If no code, redirect to Facebook OAuth
     if (!code) {
         if (!FACEBOOK_APP_ID) {
-            return res.redirect('/broadcast/connect.html?error=Instagram/Facebook not configured');
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('FACEBOOK_APP_ID not configured in Vercel env vars'));
+        }
+        if (!FACEBOOK_APP_SECRET) {
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('FACEBOOK_APP_SECRET not configured in Vercel env vars'));
         }
 
         // Facebook OAuth with Instagram permissions
@@ -35,17 +50,20 @@ module.exports = async function handler(req, res) {
         authUrl.searchParams.set('state', state || '');
         authUrl.searchParams.set('response_type', 'code');
 
+        console.log('Redirecting to Facebook OAuth:', authUrl.toString());
         return res.redirect(authUrl.toString());
     }
 
-    // Handle OAuth error
+    // Handle OAuth error from Facebook
     if (oauthError) {
-        const errorMsg = error_description || oauthError;
+        const errorMsg = `Facebook OAuth Error: ${oauthError}. ${error_description || ''} ${error_reason || ''}`.trim();
+        console.error('OAuth error from Facebook:', errorMsg);
         return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(errorMsg)}`);
     }
 
     try {
         // Exchange code for access token
+        console.log('Exchanging code for token...');
         const tokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
         tokenUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
         tokenUrl.searchParams.set('client_secret', FACEBOOK_APP_SECRET);
@@ -53,17 +71,19 @@ module.exports = async function handler(req, res) {
         tokenUrl.searchParams.set('code', code);
 
         const tokenResponse = await fetch(tokenUrl.toString());
+        const tokenData = await tokenResponse.json();
 
-        if (!tokenResponse.ok) {
-            const errorData = await tokenResponse.json();
-            console.error('Facebook token error:', errorData);
-            return res.redirect('/broadcast/connect.html?error=Failed to get access token');
+        if (!tokenResponse.ok || tokenData.error) {
+            const errorMsg = tokenData.error?.message || JSON.stringify(tokenData);
+            console.error('Facebook token error:', tokenData);
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + errorMsg));
         }
 
-        const tokenData = await tokenResponse.json();
         const shortLivedToken = tokenData.access_token;
+        console.log('Got short-lived token');
 
         // Exchange for long-lived token
+        console.log('Exchanging for long-lived token...');
         const longTokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
         longTokenUrl.searchParams.set('grant_type', 'fb_exchange_token');
         longTokenUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
@@ -75,36 +95,51 @@ module.exports = async function handler(req, res) {
 
         const accessToken = longTokenData.access_token || shortLivedToken;
         const expiresIn = longTokenData.expires_in || 3600;
+        console.log('Got long-lived token');
 
         // Get Facebook pages connected to this user
+        console.log('Fetching Facebook pages...');
         const pagesResponse = await fetch(
             `https://graph.facebook.com/v18.0/me/accounts?access_token=${accessToken}`
         );
         const pagesData = await pagesResponse.json();
 
-        if (!pagesData.data || pagesData.data.length === 0) {
-            return res.redirect('/broadcast/connect.html?error=No Facebook Pages found. You need a Facebook Page connected to an Instagram Business account.');
+        if (pagesData.error) {
+            console.error('Pages fetch error:', pagesData.error);
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Failed to get pages: ' + pagesData.error.message));
         }
+
+        if (!pagesData.data || pagesData.data.length === 0) {
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('No Facebook Pages found. You need a Facebook Page connected to an Instagram Business account. Go to Facebook and create a Page first.'));
+        }
+
+        console.log(`Found ${pagesData.data.length} Facebook pages`);
 
         // Get the Instagram Business Account for each page
         let instagramAccount = null;
         let pageAccessToken = null;
+        const pagesChecked = [];
 
         for (const page of pagesData.data) {
+            console.log(`Checking page: ${page.name} (${page.id})`);
             const igResponse = await fetch(
                 `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username,profile_picture_url}&access_token=${page.access_token}`
             );
             const igData = await igResponse.json();
 
+            pagesChecked.push({ name: page.name, hasInstagram: !!igData.instagram_business_account });
+
             if (igData.instagram_business_account) {
                 instagramAccount = igData.instagram_business_account;
                 pageAccessToken = page.access_token;
+                console.log(`Found Instagram account: ${instagramAccount.username}`);
                 break;
             }
         }
 
         if (!instagramAccount) {
-            return res.redirect('/broadcast/connect.html?error=No Instagram Business account found. Please connect a Business or Creator account to your Facebook Page.');
+            const checkedNames = pagesChecked.map(p => p.name).join(', ');
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent(`No Instagram Business account found on your pages (${checkedNames}). Make sure your Instagram is a Business/Creator account and connected to a Facebook Page.`));
         }
 
         // Verify user from state
