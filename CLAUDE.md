@@ -183,4 +183,64 @@ resources/
 ```bash
 vercel dev          # Local development
 git push            # Deploy (auto-deploys on Vercel)
+npx vercel --prod   # Deploy directly via CLI
 ```
+
+---
+
+## Current State (Dec 24, 2025)
+
+### Broadcast Feature - IN PROGRESS
+
+**What's Done:**
+- All Broadcast pages created (`/broadcast/`)
+- OAuth API handlers created for LinkedIn, Instagram, TikTok
+- Detailed error handling added to Instagram OAuth
+- DNS configured: lexaya.io → Vercel (Cloudflare proxy OFF)
+- API functions deployed and working on lexaya.io
+
+**What's NOT Working:**
+
+1. **LinkedIn OAuth** - Getting "Bummer, something went wrong" error
+   - Redirect URL added: `https://lexaya.io/api/broadcast/auth/linkedin`
+   - Client ID might have newline issue - CHECK `LINKEDIN_CLIENT_ID` env var in Vercel
+   - Make sure no trailing `%0A` in the value
+
+2. **Instagram OAuth** - Was showing "Invalid App ID" error
+   - Correct App ID: `1391901732240133`
+   - Verify `FACEBOOK_APP_ID` in Vercel matches this
+   - Add redirect URL in Meta Developer Console: `https://lexaya.io/api/broadcast/auth/instagram`
+   - App must be in LIVE mode (not Development)
+   - Need Facebook Page connected to Instagram Business account
+
+**Vercel Environment Variables to Check:**
+- `LINKEDIN_CLIENT_ID` - NO trailing newlines/spaces
+- `LINKEDIN_CLIENT_SECRET` - NO trailing newlines/spaces
+- `FACEBOOK_APP_ID` - Should be `1391901732240133`
+- `FACEBOOK_APP_SECRET` - Get from Meta Developer Console
+
+**OAuth Redirect URLs to Configure:**
+
+LinkedIn Developer Console → Auth → Authorized redirect URLs:
+```
+https://lexaya.io/api/broadcast/auth/linkedin
+```
+
+Meta Developer Console → Facebook Login → Settings → Valid OAuth Redirect URIs:
+```
+https://lexaya.io/api/broadcast/auth/instagram
+```
+
+**DNS Setup (Cloudflare):**
+```
+Type: CNAME, Name: @, Target: cname.vercel-dns.com, Proxy: OFF
+Type: CNAME, Name: www, Target: cname.vercel-dns.com, Proxy: OFF
+```
+
+### Database Tables (NOT YET CREATED)
+Run `broadcast/database.sql` in Supabase SQL Editor to create:
+- `connected_accounts` table
+- `posts` table
+
+### Supabase Storage (NOT YET CREATED)
+Create bucket `videos` for video uploads

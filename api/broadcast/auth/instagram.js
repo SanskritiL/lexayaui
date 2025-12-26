@@ -9,7 +9,7 @@ module.exports = async function handler(req, res) {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-    const { code, state, error: oauthError, error_description, error_reason } = req.query;
+    const { code, state, error: oauthError, error_description, error_reason, debug } = req.query;
 
     const baseUrl = `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/api/broadcast/auth/instagram`;
@@ -100,9 +100,11 @@ module.exports = async function handler(req, res) {
         // Get Facebook pages connected to this user
         console.log('Fetching Facebook pages...');
         const pagesResponse = await fetch(
-            `https://graph.facebook.com/v18.0/me/accounts?access_token=${accessToken}`
+            `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`
         );
         const pagesData = await pagesResponse.json();
+
+        console.log('Pages API response:', JSON.stringify(pagesData, null, 2));
 
         if (pagesData.error) {
             console.error('Pages fetch error:', pagesData.error);
@@ -110,7 +112,29 @@ module.exports = async function handler(req, res) {
         }
 
         if (!pagesData.data || pagesData.data.length === 0) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('No Facebook Pages found. You need a Facebook Page connected to an Instagram Business account. Go to Facebook and create a Page first.'));
+            // Try to get more info about what's happening
+            const meResponse = await fetch(`https://graph.facebook.com/v18.0/me?fields=id,name&access_token=${accessToken}`);
+            const meData = await meResponse.json();
+            console.log('User info:', meData);
+
+            // Get permissions to see what was granted
+            const permResponse = await fetch(`https://graph.facebook.com/v18.0/me/permissions?access_token=${accessToken}`);
+            const permData = await permResponse.json();
+            console.log('Permissions:', permData);
+
+            // Debug mode - return JSON
+            if (debug === 'true') {
+                res.setHeader('Content-Type', 'application/json');
+                return res.json({
+                    error: 'No Facebook Pages found',
+                    user: meData,
+                    permissions: permData,
+                    pages: pagesData,
+                    hint: 'Check if pages_show_list permission was granted and you have admin access to a Page'
+                });
+            }
+
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent(`No Facebook Pages found for user ${meData.name || 'unknown'}. Make sure you granted Page permissions and have admin access to a Page connected to Instagram.`));
         }
 
         console.log(`Found ${pagesData.data.length} Facebook pages`);
@@ -121,25 +145,32 @@ module.exports = async function handler(req, res) {
         const pagesChecked = [];
 
         for (const page of pagesData.data) {
-            console.log(`Checking page: ${page.name} (${page.id})`);
-            const igResponse = await fetch(
-                `https://graph.facebook.com/v18.0/${page.id}?fields=instagram_business_account{id,username,profile_picture_url}&access_token=${page.access_token}`
-            );
-            const igData = await igResponse.json();
+            console.log(`Checking page: ${page.name} (${page.id})`, page);
 
-            pagesChecked.push({ name: page.name, hasInstagram: !!igData.instagram_business_account });
+            // Check if instagram_business_account is already in the response
+            if (page.instagram_business_account) {
+                // Need to get full details
+                const igResponse = await fetch(
+                    `https://graph.facebook.com/v18.0/${page.instagram_business_account.id}?fields=id,username,profile_picture_url&access_token=${page.access_token}`
+                );
+                const igData = await igResponse.json();
+                console.log('Instagram account data:', igData);
 
-            if (igData.instagram_business_account) {
-                instagramAccount = igData.instagram_business_account;
-                pageAccessToken = page.access_token;
-                console.log(`Found Instagram account: ${instagramAccount.username}`);
-                break;
+                if (igData.id) {
+                    instagramAccount = igData;
+                    pageAccessToken = page.access_token;
+                    console.log(`Found Instagram account: ${instagramAccount.username}`);
+                    pagesChecked.push({ name: page.name, hasInstagram: true, igUsername: igData.username });
+                    break;
+                }
             }
+
+            pagesChecked.push({ name: page.name, hasInstagram: false });
         }
 
         if (!instagramAccount) {
-            const checkedNames = pagesChecked.map(p => p.name).join(', ');
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent(`No Instagram Business account found on your pages (${checkedNames}). Make sure your Instagram is a Business/Creator account and connected to a Facebook Page.`));
+            const checkedNames = pagesChecked.map(p => `${p.name} (IG: ${p.hasInstagram ? p.igUsername : 'none'})`).join(', ');
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent(`No Instagram Business account found. Pages checked: ${checkedNames}. Make sure your Instagram is a Business/Creator account and connected to a Facebook Page.`));
         }
 
         // Verify user from state
