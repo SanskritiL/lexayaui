@@ -44,6 +44,8 @@ module.exports = async function handler(req, res) {
             'instagram_content_publish',
             'pages_show_list',
             'pages_read_engagement',
+            'pages_manage_metadata',
+            'business_management',
         ].join(',');
 
         const authUrl = new URL('https://www.facebook.com/v18.0/dialog/oauth');
@@ -86,6 +88,14 @@ module.exports = async function handler(req, res) {
         const shortLivedToken = tokenData.access_token;
         console.log('Got short-lived token');
 
+        // Try getting pages with SHORT-LIVED token first (before exchange)
+        console.log('Fetching Facebook pages with short-lived token...');
+        let pagesResponse = await fetch(
+            `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${shortLivedToken}`
+        );
+        let pagesData = await pagesResponse.json();
+        console.log('Pages with short token:', JSON.stringify(pagesData, null, 2));
+
         // Exchange for long-lived token
         console.log('Exchanging for long-lived token...');
         const longTokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
@@ -101,12 +111,15 @@ module.exports = async function handler(req, res) {
         const expiresIn = longTokenData.expires_in || 3600;
         console.log('Got long-lived token');
 
-        // Get Facebook pages connected to this user
-        console.log('Fetching Facebook pages...');
-        const pagesResponse = await fetch(
-            `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`
-        );
-        const pagesData = await pagesResponse.json();
+        // If no pages with short token, try with long token
+        if (!pagesData.data || pagesData.data.length === 0) {
+            console.log('No pages with short token, trying long token...');
+            pagesResponse = await fetch(
+                `https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`
+            );
+            pagesData = await pagesResponse.json();
+            console.log('Pages with long token:', JSON.stringify(pagesData, null, 2));
+        }
 
         console.log('Pages API response:', JSON.stringify(pagesData, null, 2));
 
