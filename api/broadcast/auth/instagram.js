@@ -14,6 +14,9 @@ module.exports = async function handler(req, res) {
     const baseUrl = `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/api/broadcast/auth/instagram`;
 
+    // Check if debug mode (can be in query or encoded in state)
+    const isDebug = debug === 'true' || (state && state.startsWith('DEBUG:'));
+
     // Debug: Show what we're working with
     console.log('Instagram OAuth Request:', {
         hasCode: !!code,
@@ -47,7 +50,8 @@ module.exports = async function handler(req, res) {
         authUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
         authUrl.searchParams.set('scope', scopes);
-        authUrl.searchParams.set('state', state || '');
+        // Pass debug flag through state if requested
+        authUrl.searchParams.set('state', debug === 'true' ? `DEBUG:${state || ''}` : (state || ''));
         authUrl.searchParams.set('response_type', 'code');
 
         console.log('Redirecting to Facebook OAuth:', authUrl.toString());
@@ -123,7 +127,7 @@ module.exports = async function handler(req, res) {
             console.log('Permissions:', permData);
 
             // Debug mode - return JSON
-            if (debug === 'true') {
+            if (isDebug) {
                 res.setHeader('Content-Type', 'application/json');
                 return res.json({
                     error: 'No Facebook Pages found',
