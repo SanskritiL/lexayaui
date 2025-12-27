@@ -17,7 +17,8 @@ module.exports = async function handler(req, res) {
 
     const { code, state, error: oauthError, error_description, error_reason, debug } = req.query;
 
-    const baseUrl = `https://${req.headers.host}`;
+    const isLocalhost = req.headers.host?.includes('localhost');
+    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/api/broadcast/auth/instagram`;
 
     // Check if debug mode (can be in query or encoded in state)

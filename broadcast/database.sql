@@ -82,6 +82,38 @@ CREATE POLICY "Users can delete own posts" ON posts
 -- File size limit: 500MB
 -- Allowed MIME types: video/mp4, video/quicktime, video/webm
 
+-- IMPORTANT: Storage bucket RLS policies (run in SQL Editor)
+-- These allow authenticated users to upload/read their own videos
+
+-- Allow users to upload videos to their own folder
+CREATE POLICY "Users can upload videos to own folder"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+    bucket_id = 'videos' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow users to read their own videos
+CREATE POLICY "Users can read own videos"
+ON storage.objects FOR SELECT TO authenticated
+USING (
+    bucket_id = 'videos' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow public read access (for Instagram to fetch the video)
+CREATE POLICY "Public can read videos"
+ON storage.objects FOR SELECT TO public
+USING (bucket_id = 'videos');
+
+-- Allow users to delete their own videos
+CREATE POLICY "Users can delete own videos"
+ON storage.objects FOR DELETE TO authenticated
+USING (
+    bucket_id = 'videos' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+);
+
 -- 6. Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$

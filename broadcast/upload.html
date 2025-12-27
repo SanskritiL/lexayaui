@@ -31,18 +31,24 @@
         <!-- Upload Form -->
         <main id="upload-form" style="display: none;">
             <form id="post-form">
-                <!-- Step 1: Video Upload -->
+                <!-- Step 1: Video Upload (Optional for LinkedIn) -->
                 <section class="section">
-                    <h2>1. Upload Video</h2>
+                    <h2>1. Upload Video <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn)</span></h2>
                     <div class="upload-zone" id="upload-zone">
                         <div class="upload-icon">🎬</div>
                         <h3>Drop your video here</h3>
                         <p>or click to browse (MP4, MOV - max 500MB)</p>
+                        <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
+                            📝 No video? You can still post text to LinkedIn
+                        </p>
                         <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/mov" hidden>
                     </div>
                     <div id="video-preview-container" style="display: none; margin-top: 1rem;">
                         <video id="video-preview" class="video-preview" controls></video>
-                        <p id="video-info" style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.9rem;"></p>
+                        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
+                            <p id="video-info" style="color: var(--text-light); font-size: 0.9rem; margin: 0;"></p>
+                            <button type="button" id="remove-video" class="btn btn-secondary btn-small">Remove</button>
+                        </div>
                     </div>
                 </section>
 
@@ -61,25 +67,31 @@
                 <!-- Step 3: Select Platforms -->
                 <section class="section">
                     <h2>3. Select Platforms</h2>
-                    <div class="platforms-select" id="platforms-select">
-                        <label class="platform-checkbox disabled" data-platform="tiktok">
-                            <input type="checkbox" name="platforms" value="tiktok" disabled>
-                            <span class="icon">🎵</span>
-                            <span class="name">TikTok</span>
-                            <span class="status">(Connect first)</span>
-                        </label>
-                        <label class="platform-checkbox disabled" data-platform="instagram">
-                            <input type="checkbox" name="platforms" value="instagram" disabled>
-                            <span class="icon">📸</span>
-                            <span class="name">Instagram</span>
-                            <span class="status">(Connect first)</span>
-                        </label>
-                        <label class="platform-checkbox disabled" data-platform="linkedin">
-                            <input type="checkbox" name="platforms" value="linkedin" disabled>
-                            <span class="icon">💼</span>
-                            <span class="name">LinkedIn</span>
-                            <span class="status">(Connect first)</span>
-                        </label>
+                    <div class="platforms-select" id="platforms-select" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div data-platform="tiktok" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
+                            <input type="checkbox" id="platform-tiktok" name="platforms" value="tiktok" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <label for="platform-tiktok" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
+                                <span style="font-size: 1.5rem;">🎵</span>
+                                <span style="font-weight: 500;">TikTok</span>
+                            </label>
+                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
+                        </div>
+                        <div data-platform="instagram" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
+                            <input type="checkbox" id="platform-instagram" name="platforms" value="instagram" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <label for="platform-instagram" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
+                                <span style="font-size: 1.5rem;">📸</span>
+                                <span style="font-weight: 500;">Instagram</span>
+                            </label>
+                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
+                        </div>
+                        <div data-platform="linkedin" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
+                            <input type="checkbox" id="platform-linkedin" name="platforms" value="linkedin" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <label for="platform-linkedin" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
+                                <span style="font-size: 1.5rem;">💼</span>
+                                <span style="font-weight: 500;">LinkedIn</span>
+                            </label>
+                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
+                        </div>
                     </div>
                     <p id="no-accounts-warning" style="margin-top: 1rem; color: var(--warning);">
                         No accounts connected. <a href="connect.html">Connect an account</a> to start posting.
@@ -134,12 +146,16 @@
 
         let selectedFile = null;
         let connectedAccounts = [];
+        let currentUser = null; // Cache user to avoid repeated auth calls
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Page loaded, initializing...');
             const { data: { user } } = await supabaseClient.auth.getUser();
+            currentUser = user;
+            console.log('User:', currentUser ? currentUser.email : 'not logged in');
 
-            if (!user) {
+            if (!currentUser) {
                 document.getElementById('auth-required').style.display = 'flex';
                 document.getElementById('upload-form').style.display = 'none';
                 return;
@@ -150,17 +166,22 @@
 
             await loadConnectedAccounts();
             setupEventListeners();
+            console.log('Setup complete, ready to post!');
         });
 
         // Load connected accounts and update platform checkboxes
         async function loadConnectedAccounts() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return;
+            if (!currentUser) return;
 
-            const { data: accounts } = await supabaseClient
+            console.log('Loading connected accounts for user:', currentUser.id);
+
+            const { data: accounts, error } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
-                .eq('user_id', user.id);
+                .eq('user_id', currentUser.id);
+
+            console.log('Connected accounts:', accounts);
+            console.log('Error:', error);
 
             connectedAccounts = accounts || [];
             updatePlatformCheckboxes();
@@ -169,21 +190,41 @@
         function updatePlatformCheckboxes() {
             const platforms = ['tiktok', 'instagram', 'linkedin'];
             const warning = document.getElementById('no-accounts-warning');
+            const hasVideo = !!selectedFile;
 
             let hasAnyConnected = false;
 
             platforms.forEach(platform => {
-                const label = document.querySelector(`[data-platform="${platform}"]`);
-                const input = label.querySelector('input');
-                const status = label.querySelector('.status');
+                const container = document.querySelector(`[data-platform="${platform}"]`);
+                const input = container.querySelector('input');
+                const status = container.querySelector('.status');
                 const account = connectedAccounts.find(a => a.platform === platform);
+
+                console.log(`Platform ${platform}:`, { account: !!account, hasVideo });
 
                 if (account) {
                     hasAnyConnected = true;
-                    label.classList.remove('disabled');
-                    input.disabled = false;
-                    status.textContent = account.account_name ? `@${account.account_name}` : '(Connected)';
-                    status.style.color = 'var(--success)';
+
+                    // TikTok and Instagram require video
+                    const requiresVideo = platform === 'tiktok' || platform === 'instagram';
+
+                    if (requiresVideo && !hasVideo) {
+                        input.disabled = true;
+                        input.checked = false;
+                        status.textContent = '(Requires video)';
+                        status.style.color = '#f59e0b';
+                        container.style.opacity = '0.6';
+                    } else {
+                        input.disabled = false;
+                        status.textContent = account.account_name ? `@${account.account_name}` : '✓ Connected';
+                        status.style.color = '#10b981';
+                        container.style.opacity = '1';
+                    }
+                } else {
+                    input.disabled = true;
+                    status.textContent = '(Connect first)';
+                    status.style.color = '#9ca3af';
+                    container.style.opacity = '0.6';
                 }
             });
 
@@ -225,6 +266,34 @@
                 }
             });
 
+            // Remove video button
+            document.getElementById('remove-video').addEventListener('click', () => {
+                selectedFile = null;
+                const uploadZone = document.getElementById('upload-zone');
+                const previewContainer = document.getElementById('video-preview-container');
+                const preview = document.getElementById('video-preview');
+
+                uploadZone.classList.remove('has-file');
+                uploadZone.innerHTML = `
+                    <div class="upload-icon">🎬</div>
+                    <h3>Drop your video here</h3>
+                    <p>or click to browse (MP4, MOV - max 500MB)</p>
+                    <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
+                        📝 No video? You can still post text to LinkedIn
+                    </p>
+                    <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/mov" hidden>
+                `;
+                previewContainer.style.display = 'none';
+                preview.src = '';
+
+                // Re-attach file input listener
+                document.getElementById('video-input').addEventListener('change', (e) => {
+                    if (e.target.files[0]) handleFileSelect(e.target.files[0]);
+                });
+
+                updatePlatformCheckboxes();
+            });
+
             // Caption counter
             const caption = document.getElementById('caption');
             const charCount = document.getElementById('char-count');
@@ -233,18 +302,10 @@
                 updatePublishButton();
             });
 
-            // Platform selection
-            document.querySelectorAll('.platform-checkbox').forEach(label => {
-                label.addEventListener('click', (e) => {
-                    if (label.classList.contains('disabled')) {
-                        e.preventDefault();
-                        return;
-                    }
-                    const input = label.querySelector('input');
-                    if (e.target !== input) {
-                        input.checked = !input.checked;
-                    }
-                    label.classList.toggle('selected', input.checked);
+            // Platform selection - listen on checkboxes directly
+            document.querySelectorAll('input[name="platforms"]').forEach(checkbox => {
+                checkbox.addEventListener('change', () => {
+                    console.log('Platform checkbox changed:', checkbox.value, checkbox.checked);
                     updatePublishButton();
                 });
             });
@@ -260,8 +321,22 @@
             // Form submit
             document.getElementById('post-form').addEventListener('submit', handleSubmit);
 
+            // Publish button click (in case form submit doesn't work)
+            const publishBtn = document.getElementById('publish-btn');
+            console.log('Publish button found:', publishBtn);
+            console.log('Publish button disabled:', publishBtn?.disabled);
+
+            if (publishBtn) {
+                publishBtn.addEventListener('click', (e) => {
+                    console.log('Publish button clicked!');
+                    e.preventDefault();
+                    handleSubmit(e, false);
+                });
+            }
+
             // Save draft
             document.getElementById('save-draft').addEventListener('click', () => {
+                console.log('Save draft clicked!');
                 handleSubmit(null, true);
             });
         }
@@ -287,74 +362,129 @@
             const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
             videoInfo.textContent = `Size: ${sizeMB} MB`;
 
-            updatePublishButton();
+            updatePlatformCheckboxes(); // Enable TikTok/Instagram now that we have video
         }
 
         function updatePublishButton() {
             const btn = document.getElementById('publish-btn');
-            const selectedPlatforms = document.querySelectorAll('input[name="platforms"]:checked');
+            const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked'));
             const scheduleToggle = document.getElementById('schedule-toggle');
+            const caption = document.getElementById('caption').value.trim();
 
-            const isValid = selectedFile && selectedPlatforms.length > 0;
+            // Check if only LinkedIn is selected (which allows text-only)
+            const onlyLinkedIn = selectedPlatforms.length === 1 && selectedPlatforms[0].value === 'linkedin';
+            const hasVideoRequired = selectedPlatforms.some(p => p.value === 'tiktok' || p.value === 'instagram');
+
+            // Valid if: has platforms AND (has video OR only LinkedIn with caption)
+            const isValid = selectedPlatforms.length > 0 &&
+                           (selectedFile || (onlyLinkedIn && caption.length > 0));
+
+            console.log('updatePublishButton:', {
+                selectedPlatforms: selectedPlatforms.map(p => p.value),
+                caption: caption,
+                captionLength: caption.length,
+                selectedFile: !!selectedFile,
+                onlyLinkedIn,
+                isValid
+            });
+
             btn.disabled = !isValid;
 
             if (scheduleToggle.checked) {
                 btn.textContent = 'Schedule Post';
             } else {
-                btn.textContent = 'Publish Now';
+                btn.textContent = selectedFile ? 'Publish Now' : 'Post to LinkedIn';
             }
         }
 
         async function handleSubmit(e, isDraft = false) {
+            console.log('========== UPLOAD SUBMIT START ==========');
+            console.log('handleSubmit called, isDraft:', isDraft);
             if (e) e.preventDefault();
 
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) {
+            if (!currentUser) {
+                console.log('[ERROR] No user!');
                 alert('Please login first');
                 return;
             }
+            console.log('[USER] ID:', currentUser.id);
+            console.log('[USER] Email:', currentUser.email);
 
             const caption = document.getElementById('caption').value;
+            console.log('[INPUT] Caption length:', caption.length);
+            console.log('[INPUT] Selected file:', selectedFile ? `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)` : 'none');
             const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked'))
                 .map(input => input.value);
+            console.log('[INPUT] Selected platforms:', selectedPlatforms);
+
             const scheduleToggle = document.getElementById('schedule-toggle');
             const scheduleDate = document.getElementById('schedule-date').value;
 
             if (!isDraft && selectedPlatforms.length === 0) {
+                console.log('[VALIDATION] No platforms selected');
                 alert('Please select at least one platform');
                 return;
             }
 
-            if (!selectedFile && !isDraft) {
-                alert('Please upload a video');
+            // Check if video is required (TikTok/Instagram need it, LinkedIn doesn't)
+            const needsVideo = selectedPlatforms.some(p => p === 'tiktok' || p === 'instagram');
+            if (!selectedFile && needsVideo && !isDraft) {
+                console.log('[VALIDATION] Video required but not provided');
+                alert('Please upload a video for TikTok/Instagram');
                 return;
             }
 
+            if (!selectedFile && !caption && !isDraft) {
+                console.log('[VALIDATION] No video and no caption');
+                alert('Please add a caption or upload a video');
+                return;
+            }
+
+            console.log('[VALIDATION] All checks passed, proceeding...');
             const publishBtn = document.getElementById('publish-btn');
             publishBtn.disabled = true;
-            publishBtn.textContent = 'Uploading...';
+            publishBtn.textContent = 'Posting...';
 
             try {
                 // 1. Upload video to Supabase Storage
                 let videoUrl = null;
                 if (selectedFile) {
-                    const fileName = `${user.id}/${Date.now()}_${selectedFile.name}`;
+                    console.log('[STORAGE] Starting video upload...');
+                    console.log('[STORAGE] File name:', selectedFile.name);
+                    console.log('[STORAGE] File size:', (selectedFile.size / 1024 / 1024).toFixed(2), 'MB');
+                    console.log('[STORAGE] File type:', selectedFile.type);
+
+                    const fileName = `${currentUser.id}/${Date.now()}_${selectedFile.name}`;
+                    console.log('[STORAGE] Target path:', fileName);
+
                     const { data: uploadData, error: uploadError } = await supabaseClient.storage
                         .from('videos')
                         .upload(fileName, selectedFile);
 
-                    if (uploadError) throw uploadError;
+                    if (uploadError) {
+                        console.error('[STORAGE] ❌ Upload failed!');
+                        console.error('[STORAGE] Error message:', uploadError.message);
+                        console.error('[STORAGE] Error details:', JSON.stringify(uploadError, null, 2));
+                        throw uploadError;
+                    }
+
+                    console.log('[STORAGE] ✅ Upload successful!');
+                    console.log('[STORAGE] Upload data:', JSON.stringify(uploadData, null, 2));
 
                     const { data: { publicUrl } } = supabaseClient.storage
                         .from('videos')
                         .getPublicUrl(fileName);
 
                     videoUrl = publicUrl;
+                    console.log('[STORAGE] Public URL:', videoUrl);
+                } else {
+                    console.log('[STORAGE] No video to upload (text-only post)');
                 }
 
                 // 2. Create post record
+                console.log('[DB] Creating post record...');
                 const postData = {
-                    user_id: user.id,
+                    user_id: currentUser.id,
                     video_url: videoUrl,
                     caption: caption,
                     platforms: selectedPlatforms,
@@ -362,6 +492,7 @@
                     scheduled_at: scheduleToggle.checked ? scheduleDate : null,
                     platform_results: {}
                 };
+                console.log('[DB] Post data:', JSON.stringify(postData, null, 2));
 
                 const { data: post, error: postError } = await supabaseClient
                     .from('posts')
@@ -369,11 +500,42 @@
                     .select()
                     .single();
 
-                if (postError) throw postError;
+                if (postError) {
+                    console.error('[DB] ❌ Post insert failed!');
+                    console.error('[DB] Error message:', postError.message);
+                    console.error('[DB] Error code:', postError.code);
+                    console.error('[DB] Error details:', postError.details);
+                    console.error('[DB] Error hint:', postError.hint);
+                    console.error('[DB] Full error:', JSON.stringify(postError, null, 2));
+                    throw postError;
+                }
+
+                console.log('[DB] ✅ Post created successfully!');
+                console.log('[DB] Post ID:', post.id);
 
                 // 3. If publishing now, trigger the publish API
                 if (!isDraft && !scheduleToggle.checked) {
-                    await publishToAllPlatforms(post.id, selectedPlatforms);
+                    console.log('Publishing to platforms:', selectedPlatforms);
+                    const publishResult = await publishToAllPlatforms(post.id, selectedPlatforms);
+                    console.log('Publish result:', publishResult);
+
+                    // Show detailed results
+                    let message = '';
+                    if (publishResult.status === 'published') {
+                        message = '✅ Post published successfully!\n\n' + formatPublishResults(publishResult.results);
+                    } else if (publishResult.status === 'partial') {
+                        message = '⚠️ Partially published:\n\n' + formatPublishResults(publishResult.results);
+                    } else {
+                        message = '❌ Publish failed:\n\n' + formatPublishResults(publishResult.results);
+                    }
+
+                    // Log before alert so it's visible in console
+                    console.log('PUBLISH COMPLETE:', publishResult);
+                    console.log('Message:', message);
+
+                    alert(message);
+                    window.location.href = './';
+                    return;
                 }
 
                 // Redirect to dashboard
@@ -381,15 +543,45 @@
                 window.location.href = './';
 
             } catch (error) {
-                console.error('Error:', error);
-                alert('Error: ' + error.message);
+                console.error('========== UPLOAD ERROR ==========');
+                console.error('[ERROR] Name:', error.name);
+                console.error('[ERROR] Message:', error.message);
+                console.error('[ERROR] Code:', error.code);
+                console.error('[ERROR] Details:', error.details);
+                console.error('[ERROR] Hint:', error.hint);
+                console.error('[ERROR] Full error:', JSON.stringify(error, null, 2));
+                console.error('[ERROR] Stack:', error.stack);
+
+                // More descriptive error message
+                let errorMsg = error.message || 'Unknown error';
+                if (error.message?.includes('row-level security')) {
+                    errorMsg = 'Permission denied: ' + error.message + '\n\nThis is a database policy issue. Check the browser console for details.';
+                }
+
+                alert('Error: ' + errorMsg);
                 publishBtn.disabled = false;
                 publishBtn.textContent = 'Publish Now';
             }
         }
 
+        function formatPublishResults(results) {
+            return Object.entries(results).map(([platform, result]) => {
+                const icon = result.status === 'success' ? '✓' : '✗';
+                const msg = result.error || result.note || result.url || 'OK';
+                return `${icon} ${platform.toUpperCase()}: ${msg}`;
+            }).join('\n');
+        }
+
         async function publishToAllPlatforms(postId, platforms) {
-            const { data: { session } } = await supabaseClient.auth.getSession();
+            console.log('Getting session for publish...');
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+
+            if (sessionError || !session) {
+                console.error('Session error:', sessionError);
+                throw new Error('No valid session. Please login again.');
+            }
+
+            console.log('Calling publish API...');
             const response = await fetch('/api/broadcast/publish', {
                 method: 'POST',
                 headers: {
@@ -399,9 +591,12 @@
                 body: JSON.stringify({ postId, platforms })
             });
 
+            console.log('Publish API response status:', response.status);
+
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.message || 'Failed to publish');
+                console.error('Publish API error:', error);
+                throw new Error(error.error || error.message || 'Failed to publish');
             }
 
             return response.json();

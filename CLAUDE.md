@@ -39,15 +39,15 @@ lexayaui/
 │   ├── free-download.js    # Free content signed URLs (requires login)
 │   └── broadcast/          # Multi-platform publishing APIs
 │       ├── auth/
-│       │   ├── linkedin.js     # LinkedIn OAuth
+│       │   ├── linkedin.js     # LinkedIn OAuth (WORKING)
 │       │   ├── tiktok.js       # TikTok OAuth
-│       │   └── instagram.js    # Instagram/Meta OAuth
-│       ├── publish.js          # Publish to all platforms
+│       │   └── instagram.js    # Instagram/Meta OAuth (WORKING)
+│       ├── publish.js          # Publish to all platforms (WORKING for LinkedIn)
 │       └── cron/
 │           └── process-scheduled.js  # Scheduled posts cron
 ├── broadcast/              # Multi-platform publishing app
-│   ├── index.html          # Dashboard
-│   ├── upload.html         # Upload & create posts
+│   ├── index.html          # Dashboard - shows recent posts
+│   ├── upload.html         # Upload & create posts (supports text-only for LinkedIn)
 │   ├── connect.html        # Connect social accounts
 │   ├── scheduled.html      # View scheduled posts
 │   ├── history.html        # Post history
@@ -104,60 +104,122 @@ Cal.com integration for $50/30min calls on CS page.
 - `STRIPE_WEBHOOK_SECRET`
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_KEY`
-- `LINKEDIN_CLIENT_ID` - LinkedIn app client ID
+- `LINKEDIN_CLIENT_ID` - LinkedIn app client ID (NO trailing newlines!)
 - `LINKEDIN_CLIENT_SECRET` - LinkedIn app secret
 - `TIKTOK_CLIENT_KEY` - TikTok app client key
 - `TIKTOK_CLIENT_SECRET` - TikTok app secret
-- `FACEBOOK_APP_ID` - Meta/Facebook app ID (for Instagram)
+- `FACEBOOK_APP_ID` - Meta/Facebook app ID: `1391901732240133`
 - `FACEBOOK_APP_SECRET` - Meta/Facebook app secret
 - `CRON_SECRET` - Secret for cron job authentication
 
 ---
 
-## Broadcast Feature
+## Broadcast Feature - WORKING (Dec 26, 2025)
 
 ### Overview
 Multi-platform publishing tool at `/broadcast`. Upload once, publish to TikTok, Instagram, and LinkedIn.
 
-### Database Tables (run `broadcast/database.sql` in Supabase)
+### Current Status
+- **LinkedIn**: ✅ WORKING - Text posts publish successfully
+- **Instagram**: ✅ OAuth WORKING - Connects to `sansmi_boutique` account
+- **TikTok**: ⏳ Not tested yet
+
+### Key Technical Details
+
+#### LinkedIn API Version
+**CRITICAL**: LinkedIn API versions expire after 1 year. Current working version: `202411`
+- If you get `NONEXISTENT_VERSION` error, update the version in `/api/broadcast/publish.js`
+- Check active versions at: https://learn.microsoft.com/en-us/linkedin/marketing/versioning
+- Version format: `YYYYMM` (e.g., `202411` = November 2024)
+
+#### Text-Only Posts
+- LinkedIn supports text-only posts (no video required)
+- TikTok and Instagram require video
+- Upload form (`/broadcast/upload.html`) handles this automatically
+
+### Database Tables (IN SUPABASE)
 
 **connected_accounts**
-- Stores OAuth tokens for each platform
-- `user_id`, `platform`, `access_token`, `refresh_token`, `token_expires_at`
+```sql
+- user_id (uuid, references auth.users)
+- platform (text: 'linkedin', 'instagram', 'tiktok')
+- platform_user_id (text)
+- account_name (text)
+- access_token (text)
+- refresh_token (text)
+- token_expires_at (timestamptz)
+- scopes (text[])
+- metadata (jsonb)
+- Unique constraint on (user_id, platform)
+```
 
 **posts**
-- Stores all posts (draft, scheduled, published)
-- `user_id`, `video_url`, `caption`, `platforms[]`, `status`, `scheduled_at`, `platform_results`
+```sql
+- id (uuid)
+- user_id (uuid)
+- video_url (text, nullable for text-only posts)
+- caption (text)
+- platforms (text[])
+- status (text: 'draft', 'scheduled', 'publishing', 'published', 'partial', 'failed')
+- scheduled_at (timestamptz)
+- published_at (timestamptz)
+- platform_results (jsonb - stores success/error per platform)
+- created_at (timestamptz)
+```
 
 ### Supabase Storage
-Create bucket: `videos` (public, 500MB limit, video/* MIME types)
+- Bucket: `videos` (public, 500MB limit, video/* MIME types)
 
-### Platform Setup Required
+### OAuth Redirect URLs
 
-**LinkedIn** (easiest)
-1. Create app at https://developer.linkedin.com/
-2. Add "Share on LinkedIn" product
-3. Get `w_member_social` scope
-4. Add OAuth redirect: `https://lexaya.io/api/broadcast/auth/linkedin`
+**LinkedIn Developer Console** → Auth → Authorized redirect URLs:
+```
+https://lexaya.io/api/broadcast/auth/linkedin
+http://localhost:3000/api/broadcast/auth/linkedin  (for local testing)
+```
 
-**TikTok**
-1. Create app at https://developers.tiktok.com/
-2. Add "Content Posting API"
-3. Request `video.upload` scope
-4. Note: Unaudited apps post to DRAFTS only (user must publish in TikTok app)
+**Meta Developer Console** → Facebook Login → Settings → Valid OAuth Redirect URIs:
+```
+https://lexaya.io/api/broadcast/auth/instagram
+```
 
-**Instagram**
-1. Create Meta app at https://developers.facebook.com/
-2. Add Instagram Graph API
-3. Request `instagram_content_publish` scope
-4. Requires: Business/Creator account linked to Facebook Page
+### Instagram OAuth Notes
+- Uses Facebook Graph API (not direct Instagram API)
+- Requires: Instagram Business/Creator account linked to Facebook Page
+- During OAuth, user MUST select BOTH the Instagram account AND the Facebook Page
+- App must have user added as "Tester" in Roles section (for development mode)
+- Connected account: `sansmi_boutique`
 
 ### Post Flow
-1. User uploads video → stored in Supabase `videos` bucket
-2. User writes caption, selects platforms
-3. Immediate publish OR schedule for later
-4. Cron job runs every minute to process scheduled posts
-5. Results stored in `platform_results` JSONB field
+1. User goes to `/broadcast/upload.html`
+2. Optionally uploads video (required for TikTok/Instagram, optional for LinkedIn)
+3. Writes caption
+4. Selects platforms via checkboxes (only connected accounts are enabled)
+5. Clicks "Publish Now" or "Post to LinkedIn" (for text-only)
+6. Post saved to `posts` table with status `publishing`
+7. `/api/broadcast/publish` called with post ID and platforms
+8. Each platform publish attempt logged with detailed console output
+9. Results stored in `platform_results` JSONB field
+10. Alert shows success/failure per platform
+
+### Debugging
+
+**Vercel Logs**: `vercel logs` or check Vercel dashboard
+**Local Testing**: `vercel dev` (runs on localhost:3000 or 3001)
+
+**Publish API Logging**: The `/api/broadcast/publish.js` has extensive `console.log` statements:
+- `[AUTH]` - Authentication steps
+- `[DB]` - Database operations
+- `[PUBLISH]` - Platform publishing
+- `[LINKEDIN]` - LinkedIn-specific operations
+
+### DNS Setup (Cloudflare)
+```
+Type: CNAME, Name: @, Target: cname.vercel-dns.com, Proxy: OFF
+Type: CNAME, Name: www, Target: cname.vercel-dns.com, Proxy: OFF
+```
+
+---
 
 ## Supabase Storage Structure
 ```
@@ -171,6 +233,10 @@ resources/
 │   └── content_calendar.pdf
 └── paid/
     └── ai_engineer_resources_guide.pdf
+
+videos/
+└── {user_id}/
+    └── {timestamp}_{filename}.mp4
 ```
 
 ## Social Links
@@ -181,66 +247,23 @@ resources/
 
 ## Commands
 ```bash
-vercel dev          # Local development
+vercel dev          # Local development (port 3000 or 3001)
 git push            # Deploy (auto-deploys on Vercel)
 npx vercel --prod   # Deploy directly via CLI
+vercel logs         # View production logs
 ```
 
 ---
 
-## Current State (Dec 24, 2025)
+## Next Steps / TODO
 
-### Broadcast Feature - IN PROGRESS
+1. **TikTok Publishing** - Test TikTok OAuth and video upload flow
+2. **Instagram Publishing** - Test video upload to Instagram Reels
+3. **Scheduled Posts** - Test the cron job for scheduled posts
+4. **Token Refresh** - LinkedIn tokens expire; may need refresh logic
+5. **Video Upload to LinkedIn** - Currently falls back to text; full video upload is complex
 
-**What's Done:**
-- All Broadcast pages created (`/broadcast/`)
-- OAuth API handlers created for LinkedIn, Instagram, TikTok
-- Detailed error handling added to Instagram OAuth
-- DNS configured: lexaya.io → Vercel (Cloudflare proxy OFF)
-- API functions deployed and working on lexaya.io
+## Known Issues
 
-**What's NOT Working:**
-
-1. **LinkedIn OAuth** - Getting "Bummer, something went wrong" error
-   - Redirect URL added: `https://lexaya.io/api/broadcast/auth/linkedin`
-   - Client ID might have newline issue - CHECK `LINKEDIN_CLIENT_ID` env var in Vercel
-   - Make sure no trailing `%0A` in the value
-
-2. **Instagram OAuth** - Was showing "Invalid App ID" error
-   - Correct App ID: `1391901732240133`
-   - Verify `FACEBOOK_APP_ID` in Vercel matches this
-   - Add redirect URL in Meta Developer Console: `https://lexaya.io/api/broadcast/auth/instagram`
-   - App must be in LIVE mode (not Development)
-   - Need Facebook Page connected to Instagram Business account
-
-**Vercel Environment Variables to Check:**
-- `LINKEDIN_CLIENT_ID` - NO trailing newlines/spaces
-- `LINKEDIN_CLIENT_SECRET` - NO trailing newlines/spaces
-- `FACEBOOK_APP_ID` - Should be `1391901732240133`
-- `FACEBOOK_APP_SECRET` - Get from Meta Developer Console
-
-**OAuth Redirect URLs to Configure:**
-
-LinkedIn Developer Console → Auth → Authorized redirect URLs:
-```
-https://lexaya.io/api/broadcast/auth/linkedin
-```
-
-Meta Developer Console → Facebook Login → Settings → Valid OAuth Redirect URIs:
-```
-https://lexaya.io/api/broadcast/auth/instagram
-```
-
-**DNS Setup (Cloudflare):**
-```
-Type: CNAME, Name: @, Target: cname.vercel-dns.com, Proxy: OFF
-Type: CNAME, Name: www, Target: cname.vercel-dns.com, Proxy: OFF
-```
-
-### Database Tables (NOT YET CREATED)
-Run `broadcast/database.sql` in Supabase SQL Editor to create:
-- `connected_accounts` table
-- `posts` table
-
-### Supabase Storage (NOT YET CREATED)
-Create bucket `videos` for video uploads
+1. **LinkedIn API Version Expiry** - Version `202411` works now, but will expire ~Nov 2025. Update to newer version when needed.
+2. **Instagram requires Facebook Page** - User must select both Instagram account AND Facebook Page during OAuth for it to work.
