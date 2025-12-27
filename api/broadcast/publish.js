@@ -117,6 +117,11 @@ module.exports = async function handler(req, res) {
                         result = await publishToInstagram(post, account);
                         console.log('[PUBLISH] Instagram result:', result);
                         break;
+                    case 'twitter':
+                        console.log('[PUBLISH] Calling publishToTwitter...');
+                        result = await publishToTwitter(post, account);
+                        console.log('[PUBLISH] Twitter result:', result);
+                        break;
                     default:
                         result = { status: 'error', error: 'Unknown platform' };
                 }
@@ -157,6 +162,43 @@ module.exports = async function handler(req, res) {
             })
             .eq('id', postId);
 
+        // CLEANUP: Delete video from Supabase storage after successful publish
+        if (hasSuccess && post.video_url) {
+            console.log('[CLEANUP] Deleting video from Supabase storage...');
+            try {
+                // Extract path from URL: https://xxx.supabase.co/storage/v1/object/public/videos/user_id/timestamp_filename.mp4
+                const videoUrl = post.video_url;
+                const match = videoUrl.match(/\/videos\/(.+)$/);
+
+                if (match) {
+                    const filePath = match[1];
+                    console.log('[CLEANUP] Deleting file:', filePath);
+
+                    const { error: deleteError } = await supabase.storage
+                        .from('videos')
+                        .remove([filePath]);
+
+                    if (deleteError) {
+                        console.error('[CLEANUP] Failed to delete video:', deleteError.message);
+                    } else {
+                        console.log('[CLEANUP] Video deleted successfully');
+
+                        // Clear video_url from post (keep thumbnail_url)
+                        await supabase
+                            .from('posts')
+                            .update({ video_url: null })
+                            .eq('id', postId);
+                        console.log('[CLEANUP] Cleared video_url from post');
+                    }
+                } else {
+                    console.log('[CLEANUP] Could not parse video path from URL:', videoUrl);
+                }
+            } catch (cleanupError) {
+                console.error('[CLEANUP] Error during cleanup:', cleanupError.message);
+                // Don't fail the whole request if cleanup fails
+            }
+        }
+
         console.log('========== PUBLISH API COMPLETE ==========');
         console.log('Final status:', overallStatus);
         console.log('Results:', JSON.stringify(results, null, 2));
@@ -179,13 +221,10 @@ module.exports = async function handler(req, res) {
 async function publishToLinkedIn(post, account) {
     console.log('[LINKEDIN] Starting publish...');
     console.log('[LINKEDIN] Post:', { id: post.id, caption: post.caption?.substring(0, 30), video_url: !!post.video_url });
+    console.log('[LINKEDIN] Metadata:', post.metadata);
     console.log('[LINKEDIN] Account:', { platform_user_id: account.platform_user_id, has_token: !!account.access_token });
 
-    const { access_token, platform_user_id } = account;
-
-    // For video posts, we need to use the video upload API
-    // For now, we'll create a text post with a link to the video
-    // Full video upload requires multiple steps
+    const { access_token } = account;
 
     const headers = {
         'Authorization': `Bearer ${access_token}`,
@@ -212,44 +251,65 @@ async function publishToLinkedIn(post, account) {
     console.log('[LINKEDIN] Profile:', { sub: profile.sub, name: profile.name });
     const authorUrn = `urn:li:person:${profile.sub}`;
 
-    // If there's a video, we need to register and upload it
-    if (post.video_url) {
-        // Step 1: Register the video upload
-        const registerResponse = await fetch('https://api.linkedin.com/rest/videos?action=initializeUpload', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                initializeUploadRequest: {
-                    owner: authorUrn,
-                    fileSizeBytes: 50000000, // Approximate, LinkedIn will handle it
-                    uploadCaptions: false,
-                    uploadThumbnail: false,
-                },
-            }),
-        });
+    // Check if video was uploaded directly from browser (videoUrn in metadata)
+    const linkedinVideoUrn = post.metadata?.linkedin_video_urn;
 
-        if (!registerResponse.ok) {
-            const errorText = await registerResponse.text();
-            console.error('LinkedIn video register error:', errorText);
-            // Fall back to text-only post
-            return await createLinkedInTextPost(headers, authorUrn, post);
-        }
-
-        const registerData = await registerResponse.json();
-        const { uploadUrl, video: videoUrn } = registerData.value;
-
-        // Step 2: Upload the video
-        // Note: This requires fetching the video and uploading - complex for serverless
-        // For MVP, we'll fall back to a text post with link
-        console.log('Video upload URL:', uploadUrl);
-        console.log('Video URN:', videoUrn);
-
-        // For now, create text post (video upload is complex for MVP)
-        return await createLinkedInTextPost(headers, authorUrn, post);
+    if (linkedinVideoUrn) {
+        console.log('[LINKEDIN] Video already uploaded, creating post with videoUrn:', linkedinVideoUrn);
+        return await createLinkedInVideoPost(headers, authorUrn, post, linkedinVideoUrn);
     }
 
     // Text-only post
+    console.log('[LINKEDIN] No video, creating text post...');
     return await createLinkedInTextPost(headers, authorUrn, post);
+}
+
+// Create LinkedIn post with video
+async function createLinkedInVideoPost(headers, authorUrn, post, videoUrn) {
+    console.log('[LINKEDIN] Creating video post...');
+    console.log('[LINKEDIN] Video URN:', videoUrn);
+
+    const postBody = {
+        author: authorUrn,
+        commentary: post.caption || '',
+        visibility: 'PUBLIC',
+        distribution: {
+            feedDistribution: 'MAIN_FEED',
+            targetEntities: [],
+            thirdPartyDistributionChannels: [],
+        },
+        content: {
+            media: {
+                id: videoUrn,
+            },
+        },
+        lifecycleState: 'PUBLISHED',
+    };
+
+    console.log('[LINKEDIN] Video post body:', JSON.stringify(postBody, null, 2));
+
+    const postResponse = await fetch('https://api.linkedin.com/rest/posts', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(postBody),
+    });
+
+    console.log('[LINKEDIN] Response status:', postResponse.status);
+
+    if (!postResponse.ok) {
+        const errorText = await postResponse.text();
+        console.error('[LINKEDIN] Video post error:', errorText);
+        throw new Error('Failed to create LinkedIn video post: ' + errorText);
+    }
+
+    const postId = postResponse.headers.get('x-restli-id');
+    console.log('[LINKEDIN] Created video post ID:', postId);
+
+    return {
+        status: 'success',
+        post_id: postId,
+        url: `https://www.linkedin.com/feed/update/${postId}`,
+    };
 }
 
 async function createLinkedInTextPost(headers, authorUrn, post) {
@@ -459,4 +519,230 @@ async function publishToInstagram(post, account) {
         post_id: publishData.id,
         url: `https://www.instagram.com/reel/${publishData.id}/`,
     };
+}
+
+// Twitter/X Publishing
+async function publishToTwitter(post, account) {
+    console.log('[TWITTER] Starting publish...');
+    console.log('[TWITTER] Post:', { id: post.id, caption: post.caption?.substring(0, 30), video_url: !!post.video_url });
+    console.log('[TWITTER] Metadata:', post.metadata);
+
+    const { access_token } = account;
+
+    // Check if video was uploaded from browser (twitter_media_id in metadata)
+    const mediaId = post.metadata?.twitter_media_id;
+
+    if (mediaId) {
+        console.log('[TWITTER] Media already uploaded, creating tweet with media_id:', mediaId);
+        return await createTwitterTweet(access_token, post.caption, mediaId);
+    }
+
+    // If there's a video URL but no media_id, we need to upload it
+    // This is for Instagram/TikTok flow where video is in Supabase
+    if (post.video_url) {
+        console.log('[TWITTER] Video URL present, uploading to Twitter...');
+        try {
+            const uploadedMediaId = await uploadVideoToTwitter(access_token, post.video_url);
+            return await createTwitterTweet(access_token, post.caption, uploadedMediaId);
+        } catch (uploadError) {
+            console.error('[TWITTER] Video upload failed:', uploadError.message);
+            // Fall back to text-only
+            console.log('[TWITTER] Falling back to text-only tweet');
+            return await createTwitterTweet(access_token, post.caption, null);
+        }
+    }
+
+    // Text-only tweet
+    console.log('[TWITTER] Creating text-only tweet...');
+    return await createTwitterTweet(access_token, post.caption, null);
+}
+
+async function createTwitterTweet(accessToken, text, mediaId) {
+    console.log('[TWITTER] Creating tweet...');
+
+    const tweetData = {
+        text: text || '',
+    };
+
+    if (mediaId) {
+        tweetData.media = {
+            media_ids: [mediaId],
+        };
+    }
+
+    console.log('[TWITTER] Tweet data:', JSON.stringify(tweetData, null, 2));
+
+    const response = await fetch('https://api.twitter.com/2/tweets', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(tweetData),
+    });
+
+    console.log('[TWITTER] Response status:', response.status);
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[TWITTER] Tweet error:', errorText);
+        throw new Error('Failed to create tweet: ' + errorText);
+    }
+
+    const result = await response.json();
+    console.log('[TWITTER] Tweet created:', result.data?.id);
+
+    return {
+        status: 'success',
+        post_id: result.data?.id,
+        url: `https://twitter.com/i/status/${result.data?.id}`,
+    };
+}
+
+async function uploadVideoToTwitter(accessToken, videoUrl) {
+    console.log('[TWITTER] Uploading video from URL:', videoUrl);
+
+    // Fetch video from URL
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) {
+        throw new Error('Failed to fetch video');
+    }
+
+    const videoBuffer = await videoResponse.arrayBuffer();
+    const videoBytes = new Uint8Array(videoBuffer);
+    const totalBytes = videoBytes.length;
+
+    console.log('[TWITTER] Video size:', (totalBytes / 1024 / 1024).toFixed(2), 'MB');
+
+    // Twitter media upload uses v1.1 API with OAuth 1.0a typically
+    // But with OAuth 2.0 user context, we can use the v1.1 endpoints
+    // For chunked upload: INIT -> APPEND -> FINALIZE
+
+    // Step 1: INIT
+    console.log('[TWITTER] Step 1: INIT...');
+    const initParams = new URLSearchParams({
+        command: 'INIT',
+        total_bytes: totalBytes.toString(),
+        media_type: 'video/mp4',
+        media_category: 'tweet_video',
+    });
+
+    const initResponse = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: initParams,
+    });
+
+    if (!initResponse.ok) {
+        const errorText = await initResponse.text();
+        console.error('[TWITTER] INIT failed:', errorText);
+        throw new Error('Failed to init Twitter upload: ' + errorText);
+    }
+
+    const initData = await initResponse.json();
+    const mediaId = initData.media_id_string;
+    console.log('[TWITTER] Media ID:', mediaId);
+
+    // Step 2: APPEND (chunked upload)
+    console.log('[TWITTER] Step 2: APPEND...');
+    const chunkSize = 5 * 1024 * 1024; // 5MB chunks
+    let segmentIndex = 0;
+
+    for (let offset = 0; offset < totalBytes; offset += chunkSize) {
+        const chunk = videoBytes.slice(offset, Math.min(offset + chunkSize, totalBytes));
+        const chunkBase64 = Buffer.from(chunk).toString('base64');
+
+        console.log(`[TWITTER] Uploading chunk ${segmentIndex} (${chunk.length} bytes)...`);
+
+        const appendParams = new URLSearchParams({
+            command: 'APPEND',
+            media_id: mediaId,
+            segment_index: segmentIndex.toString(),
+            media_data: chunkBase64,
+        });
+
+        const appendResponse = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: appendParams,
+        });
+
+        if (!appendResponse.ok) {
+            const errorText = await appendResponse.text();
+            console.error('[TWITTER] APPEND failed:', errorText);
+            throw new Error('Failed to append chunk: ' + errorText);
+        }
+
+        segmentIndex++;
+    }
+
+    // Step 3: FINALIZE
+    console.log('[TWITTER] Step 3: FINALIZE...');
+    const finalizeParams = new URLSearchParams({
+        command: 'FINALIZE',
+        media_id: mediaId,
+    });
+
+    const finalizeResponse = await fetch('https://upload.twitter.com/1.1/media/upload.json', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: finalizeParams,
+    });
+
+    if (!finalizeResponse.ok) {
+        const errorText = await finalizeResponse.text();
+        console.error('[TWITTER] FINALIZE failed:', errorText);
+        throw new Error('Failed to finalize upload: ' + errorText);
+    }
+
+    const finalizeData = await finalizeResponse.json();
+    console.log('[TWITTER] Finalize response:', JSON.stringify(finalizeData, null, 2));
+
+    // Step 4: Check processing status (for videos)
+    if (finalizeData.processing_info) {
+        console.log('[TWITTER] Video processing...');
+        let processingInfo = finalizeData.processing_info;
+
+        while (processingInfo.state === 'pending' || processingInfo.state === 'in_progress') {
+            const checkAfterSecs = processingInfo.check_after_secs || 5;
+            console.log(`[TWITTER] Waiting ${checkAfterSecs}s for processing...`);
+            await new Promise(resolve => setTimeout(resolve, checkAfterSecs * 1000));
+
+            const statusParams = new URLSearchParams({
+                command: 'STATUS',
+                media_id: mediaId,
+            });
+
+            const statusResponse = await fetch(`https://upload.twitter.com/1.1/media/upload.json?${statusParams}`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            });
+
+            if (!statusResponse.ok) {
+                throw new Error('Failed to check processing status');
+            }
+
+            const statusData = await statusResponse.json();
+            processingInfo = statusData.processing_info;
+            console.log('[TWITTER] Processing state:', processingInfo?.state);
+
+            if (processingInfo?.state === 'failed') {
+                throw new Error('Video processing failed: ' + (processingInfo.error?.message || 'Unknown error'));
+            }
+        }
+
+        console.log('[TWITTER] Video processing complete!');
+    }
+
+    return mediaId;
 }

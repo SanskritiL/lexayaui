@@ -78,6 +78,21 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- Twitter/X -->
+                <div class="connect-card" id="twitter-card">
+                    <div class="icon">𝕏</div>
+                    <div class="info">
+                        <h3>Twitter/X</h3>
+                        <p>Share tweets and videos to your followers</p>
+                    </div>
+                    <div class="status">
+                        <span id="twitter-status" class="account-status disconnected">Not connected</span>
+                        <button id="twitter-btn" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
+                            Connect
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- Info Section -->
@@ -155,7 +170,7 @@
         }
 
         function updateUI() {
-            const platforms = ['linkedin', 'tiktok', 'instagram'];
+            const platforms = ['linkedin', 'tiktok', 'instagram', 'twitter'];
 
             platforms.forEach(platform => {
                 const account = connectedAccounts.find(a => a.platform === platform);
@@ -206,6 +221,15 @@
                     connectInstagram();
                 }
             });
+
+            document.getElementById('twitter-btn').addEventListener('click', () => {
+                const account = connectedAccounts.find(a => a.platform === 'twitter');
+                if (account) {
+                    disconnectAccount('twitter');
+                } else {
+                    connectTwitter();
+                }
+            });
         }
 
         async function connectLinkedIn() {
@@ -224,6 +248,12 @@
             const { data: { session } } = await supabaseClient.auth.getSession();
             const state = session.access_token;
             window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
+        }
+
+        async function connectTwitter() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const state = session.access_token;
+            window.location.href = `/api/broadcast/auth/twitter?state=${encodeURIComponent(state)}`;
         }
 
         async function disconnectAccount(platform) {

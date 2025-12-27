@@ -92,6 +92,14 @@
                             </label>
                             <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
                         </div>
+                        <div data-platform="twitter" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
+                            <input type="checkbox" id="platform-twitter" name="platforms" value="twitter" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <label for="platform-twitter" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
+                                <span style="font-size: 1.5rem;">𝕏</span>
+                                <span style="font-weight: 500;">Twitter/X</span>
+                            </label>
+                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
+                        </div>
                     </div>
                     <p id="no-accounts-warning" style="margin-top: 1rem; color: var(--warning);">
                         No accounts connected. <a href="connect.html">Connect an account</a> to start posting.
@@ -147,6 +155,7 @@
         let selectedFile = null;
         let connectedAccounts = [];
         let currentUser = null; // Cache user to avoid repeated auth calls
+        let videoThumbnailBlob = null; // Generated thumbnail
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -193,7 +202,7 @@
         }
 
         function updatePlatformCheckboxes() {
-            const platforms = ['tiktok', 'instagram', 'linkedin'];
+            const platforms = ['tiktok', 'instagram', 'linkedin', 'twitter'];
             const warning = document.getElementById('no-accounts-warning');
             const hasVideo = !!selectedFile;
 
@@ -274,6 +283,7 @@
             // Remove video button
             document.getElementById('remove-video').addEventListener('click', () => {
                 selectedFile = null;
+                videoThumbnailBlob = null;
                 const uploadZone = document.getElementById('upload-zone');
                 const previewContainer = document.getElementById('video-preview-container');
                 const preview = document.getElementById('video-preview');
@@ -367,7 +377,34 @@
             const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
             videoInfo.textContent = `Size: ${sizeMB} MB`;
 
+            // Generate thumbnail when video loads
+            preview.onloadeddata = () => generateThumbnail(preview);
+
             updatePlatformCheckboxes(); // Enable TikTok/Instagram now that we have video
+        }
+
+        // Generate thumbnail from video using canvas
+        async function generateThumbnail(videoElement) {
+            return new Promise((resolve) => {
+                // Seek to 1 second or 10% of video, whichever is smaller
+                const seekTime = Math.min(1, videoElement.duration * 0.1);
+                videoElement.currentTime = seekTime;
+
+                videoElement.onseeked = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = videoElement.videoWidth;
+                    canvas.height = videoElement.videoHeight;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob((blob) => {
+                        videoThumbnailBlob = blob;
+                        console.log('[THUMBNAIL] Generated:', (blob.size / 1024).toFixed(2), 'KB');
+                        resolve(blob);
+                    }, 'image/jpeg', 0.8);
+                };
+            });
         }
 
         function updatePublishButton() {
@@ -376,13 +413,14 @@
             const scheduleToggle = document.getElementById('schedule-toggle');
             const caption = document.getElementById('caption').value.trim();
 
-            // Check if only LinkedIn is selected (which allows text-only)
-            const onlyLinkedIn = selectedPlatforms.length === 1 && selectedPlatforms[0].value === 'linkedin';
+            // Check if only text-friendly platforms are selected (LinkedIn, Twitter)
+            const textFriendlyPlatforms = ['linkedin', 'twitter'];
+            const onlyTextFriendly = selectedPlatforms.every(p => textFriendlyPlatforms.includes(p.value));
             const hasVideoRequired = selectedPlatforms.some(p => p.value === 'tiktok' || p.value === 'instagram');
 
-            // Valid if: has platforms AND (has video OR only LinkedIn with caption)
+            // Valid if: has platforms AND (has video OR only text-friendly platforms with caption)
             const isValid = selectedPlatforms.length > 0 &&
-                           (selectedFile || (onlyLinkedIn && caption.length > 0));
+                           (selectedFile || (onlyTextFriendly && caption.length > 0));
 
             console.log('updatePublishButton:', {
                 selectedPlatforms: selectedPlatforms.map(p => p.value),
@@ -398,7 +436,7 @@
             if (scheduleToggle.checked) {
                 btn.textContent = 'Schedule Post';
             } else {
-                btn.textContent = selectedFile ? 'Publish Now' : 'Post to LinkedIn';
+                btn.textContent = selectedFile ? 'Publish Now' : 'Post Text';
             }
         }
 
@@ -461,51 +499,116 @@
             publishBtn.textContent = 'Posting...';
 
             try {
-                // 1. Upload video to Supabase Storage
                 let videoUrl = null;
-                if (selectedFile) {
-                    console.log('[STORAGE] Starting video upload...');
-                    console.log('[STORAGE] File name:', selectedFile.name);
-                    console.log('[STORAGE] File size:', (selectedFile.size / 1024 / 1024).toFixed(2), 'MB');
-                    console.log('[STORAGE] File type:', selectedFile.type);
+                let thumbnailUrl = null;
+                let metadata = {};
+
+                const needsSupabaseVideo = selectedPlatforms.some(p => p === 'tiktok' || p === 'instagram');
+                const needsLinkedInVideo = selectedPlatforms.includes('linkedin') && selectedFile;
+
+                // 1. Upload thumbnail (always, if we have video)
+                if (selectedFile && videoThumbnailBlob) {
+                    console.log('[THUMBNAIL] Uploading thumbnail...');
+                    const thumbFileName = `${currentUser.id}/${Date.now()}_thumb.jpg`;
+
+                    const { error: thumbError } = await supabaseClient.storage
+                        .from('videos')
+                        .upload(thumbFileName, videoThumbnailBlob, { contentType: 'image/jpeg' });
+
+                    if (thumbError) {
+                        console.error('[THUMBNAIL] Upload failed:', thumbError.message);
+                    } else {
+                        const { data: { publicUrl } } = supabaseClient.storage
+                            .from('videos')
+                            .getPublicUrl(thumbFileName);
+                        thumbnailUrl = publicUrl;
+                        console.log('[THUMBNAIL] Uploaded:', thumbnailUrl);
+                    }
+                }
+
+                // 2. Upload video to LinkedIn directly (if LinkedIn selected with video)
+                if (needsLinkedInVideo) {
+                    console.log('[LINKEDIN] Uploading video directly to LinkedIn...');
+                    publishBtn.textContent = 'Uploading to LinkedIn...';
+
+                    try {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+
+                        // Init upload
+                        const initRes = await fetch('/api/broadcast/linkedin/init-video', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session.access_token}`
+                            },
+                            body: JSON.stringify({ fileSizeBytes: selectedFile.size })
+                        });
+
+                        if (!initRes.ok) {
+                            const err = await initRes.json();
+                            throw new Error(err.error || 'Failed to init LinkedIn upload');
+                        }
+
+                        const { uploadUrl, videoUrn } = await initRes.json();
+                        console.log('[LINKEDIN] Got upload URL, uploading video...');
+
+                        // Upload video directly to LinkedIn
+                        const uploadRes = await fetch(uploadUrl, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/octet-stream' },
+                            body: selectedFile
+                        });
+
+                        if (!uploadRes.ok) {
+                            throw new Error('Failed to upload video to LinkedIn');
+                        }
+
+                        console.log('[LINKEDIN] Video uploaded! URN:', videoUrn);
+                        metadata.linkedin_video_urn = videoUrn;
+
+                    } catch (linkedinError) {
+                        console.error('[LINKEDIN] Video upload failed:', linkedinError.message);
+                        // Continue anyway - will fall back to text post
+                    }
+                }
+
+                // 3. Upload video to Supabase (only if Instagram/TikTok needs it)
+                if (selectedFile && needsSupabaseVideo) {
+                    console.log('[STORAGE] Uploading video for Instagram/TikTok...');
+                    publishBtn.textContent = 'Uploading video...';
 
                     const fileName = `${currentUser.id}/${Date.now()}_${selectedFile.name}`;
-                    console.log('[STORAGE] Target path:', fileName);
 
-                    const { data: uploadData, error: uploadError } = await supabaseClient.storage
+                    const { error: uploadError } = await supabaseClient.storage
                         .from('videos')
                         .upload(fileName, selectedFile);
 
                     if (uploadError) {
-                        console.error('[STORAGE] ❌ Upload failed!');
-                        console.error('[STORAGE] Error message:', uploadError.message);
-                        console.error('[STORAGE] Error details:', JSON.stringify(uploadError, null, 2));
+                        console.error('[STORAGE] Upload failed:', uploadError.message);
                         throw uploadError;
                     }
-
-                    console.log('[STORAGE] ✅ Upload successful!');
-                    console.log('[STORAGE] Upload data:', JSON.stringify(uploadData, null, 2));
 
                     const { data: { publicUrl } } = supabaseClient.storage
                         .from('videos')
                         .getPublicUrl(fileName);
 
                     videoUrl = publicUrl;
-                    console.log('[STORAGE] Public URL:', videoUrl);
-                } else {
-                    console.log('[STORAGE] No video to upload (text-only post)');
+                    console.log('[STORAGE] Video URL:', videoUrl);
                 }
 
-                // 2. Create post record
+                // 4. Create post record
+                publishBtn.textContent = 'Creating post...';
                 console.log('[DB] Creating post record...');
                 const postData = {
                     user_id: currentUser.id,
                     video_url: videoUrl,
+                    thumbnail_url: thumbnailUrl,
                     caption: caption,
                     platforms: selectedPlatforms,
                     status: isDraft ? 'draft' : (scheduleToggle.checked ? 'scheduled' : 'publishing'),
                     scheduled_at: scheduleToggle.checked ? scheduleDate : null,
-                    platform_results: {}
+                    platform_results: {},
+                    metadata: metadata
                 };
                 console.log('[DB] Post data:', JSON.stringify(postData, null, 2));
 
@@ -516,20 +619,15 @@
                     .single();
 
                 if (postError) {
-                    console.error('[DB] ❌ Post insert failed!');
-                    console.error('[DB] Error message:', postError.message);
-                    console.error('[DB] Error code:', postError.code);
-                    console.error('[DB] Error details:', postError.details);
-                    console.error('[DB] Error hint:', postError.hint);
-                    console.error('[DB] Full error:', JSON.stringify(postError, null, 2));
+                    console.error('[DB] Post insert failed:', postError.message);
                     throw postError;
                 }
 
-                console.log('[DB] ✅ Post created successfully!');
-                console.log('[DB] Post ID:', post.id);
+                console.log('[DB] Post created:', post.id);
 
-                // 3. If publishing now, trigger the publish API
+                // 5. If publishing now, trigger the publish API
                 if (!isDraft && !scheduleToggle.checked) {
+                    publishBtn.textContent = 'Publishing...';
                     console.log('Publishing to platforms:', selectedPlatforms);
                     const publishResult = await publishToAllPlatforms(post.id, selectedPlatforms);
                     console.log('Publish result:', publishResult);
