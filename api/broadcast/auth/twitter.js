@@ -48,6 +48,7 @@ module.exports = async function handler(req, res) {
 
         // Get user token from query
         const userToken = req.query.state || '';
+        console.log('[STEP 1] User token from query:', userToken ? `${userToken.substring(0, 20)}... (${userToken.length} chars)` : 'EMPTY');
 
         // Store code_verifier temporarily (will retrieve on callback)
         // We encode both user token and code_verifier in state
@@ -67,6 +68,9 @@ module.exports = async function handler(req, res) {
         authUrl.searchParams.set('code_challenge_method', 'S256');
 
         console.log('[STEP 1] Redirecting to Twitter...');
+        console.log('[STEP 1] Full auth URL:', authUrl.toString());
+        console.log('[STEP 1] Client ID:', TWITTER_CLIENT_ID);
+        console.log('[STEP 1] Redirect URI:', redirectUri);
         return res.redirect(authUrl.toString());
     }
 
@@ -92,6 +96,12 @@ module.exports = async function handler(req, res) {
         }
 
         const { userToken, codeVerifier } = stateData;
+
+        console.log('[STATE] Parsed state data:', {
+            hasUserToken: !!userToken,
+            userTokenLength: userToken?.length || 0,
+            hasCodeVerifier: !!codeVerifier,
+        });
 
         console.log('[STEP 2] Exchanging code for token...');
 

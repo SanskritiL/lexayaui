@@ -173,9 +173,11 @@
             const html = posts.map(post => `
                 <div class="post-item">
                     <div class="post-thumbnail">
-                        ${post.video_url
-                            ? `<video src="${post.video_url}" muted></video>`
-                            : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #6b7280; font-size: 1.5rem;">📝</div>`
+                        ${post.thumbnail_url
+                            ? `<img src="${post.thumbnail_url}" alt="thumbnail" loading="lazy">`
+                            : post.video_url
+                                ? `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #1e40af; color: white; font-size: 1.5rem;">🎬</div>`
+                                : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #6b7280; font-size: 1.5rem;">📝</div>`
                         }
                     </div>
                     <div class="post-info">
