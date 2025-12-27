@@ -138,11 +138,19 @@
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let connectedAccounts = [];
+        let currentUser = null;
+        let currentSession = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
+            // Cache both user and session once on load
+            const [userRes, sessionRes] = await Promise.all([
+                supabaseClient.auth.getUser(),
+                supabaseClient.auth.getSession()
+            ]);
+            currentUser = userRes.data.user;
+            currentSession = sessionRes.data.session;
 
-            if (!user) {
+            if (!currentUser) {
                 document.getElementById('auth-required').style.display = 'flex';
                 document.getElementById('connect-main').style.display = 'none';
                 return;
@@ -157,13 +165,12 @@
         });
 
         async function loadConnectedAccounts() {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return;
+            if (!currentUser) return;
 
             const { data: accounts } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
-                .eq('user_id', user.id);
+                .eq('user_id', currentUser.id);
 
             connectedAccounts = accounts || [];
             updateUI();
@@ -232,40 +239,34 @@
             });
         }
 
-        async function connectLinkedIn() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            const state = session.access_token;
+        function connectLinkedIn() {
+            const state = currentSession.access_token;
             window.location.href = `/api/broadcast/auth/linkedin?state=${encodeURIComponent(state)}`;
         }
 
-        async function connectTikTok() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            const state = session.access_token;
+        function connectTikTok() {
+            const state = currentSession.access_token;
             window.location.href = `/api/broadcast/auth/tiktok?state=${encodeURIComponent(state)}`;
         }
 
-        async function connectInstagram() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            const state = session.access_token;
+        function connectInstagram() {
+            const state = currentSession.access_token;
             window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
         }
 
-        async function connectTwitter() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            const state = session.access_token;
+        function connectTwitter() {
+            const state = currentSession.access_token;
             window.location.href = `/api/broadcast/auth/twitter?state=${encodeURIComponent(state)}`;
         }
 
         async function disconnectAccount(platform) {
             if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
-
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return;
+            if (!currentUser) return;
 
             const { error } = await supabaseClient
                 .from('connected_accounts')
                 .delete()
-                .eq('user_id', user.id)
+                .eq('user_id', currentUser.id)
                 .eq('platform', platform);
 
             if (error) {

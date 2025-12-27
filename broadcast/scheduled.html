@@ -43,11 +43,13 @@
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const PLATFORM_ICONS = { tiktok: '🎵', instagram: '📸', linkedin: '💼' };
+        let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
+            currentUser = user;
 
-            if (!user) {
+            if (!currentUser) {
                 document.getElementById('auth-required').style.display = 'flex';
                 document.getElementById('main-content').style.display = 'none';
                 return;
@@ -61,13 +63,12 @@
 
         async function loadScheduledPosts() {
             const container = document.getElementById('scheduled-posts');
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (!user) return;
+            if (!currentUser) return;
 
             const { data: posts, error } = await supabaseClient
                 .from('posts')
                 .select('*')
-                .eq('user_id', user.id)
+                .eq('user_id', currentUser.id)
                 .eq('status', 'scheduled')
                 .order('scheduled_at', { ascending: true });
 

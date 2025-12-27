@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Broadcast - Multi-Platform Publishing</title>
+    <title>Try Lexaya - Post Once, Publish Everywhere</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -15,15 +15,15 @@
         <!-- Header -->
         <header class="header">
             <a href="/" class="logo">← lexaya.io</a>
-            <h1>Broadcast</h1>
-            <p class="tagline">Post to TikTok, Instagram & LinkedIn in one click</p>
+            <h1>try lexaya</h1>
+            <p class="tagline">Post once, publish to multiple platforms</p>
         </header>
 
         <!-- Auth Check -->
         <div id="auth-required" class="auth-required" style="display: none;">
             <div class="card">
                 <h2>Login Required</h2>
-                <p>Please login to access Broadcast</p>
+                <p>Please login to start posting</p>
                 <a href="/login.html?redirect=/broadcast/" class="btn btn-primary">Login with Email</a>
             </div>
         </div>
@@ -81,8 +81,8 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const PLATFORM_ICONS = { tiktok: '🎵', instagram: '📸', linkedin: '💼' };
-        const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn' };
+        const PLATFORM_ICONS = { twitter: '𝕏', tiktok: '🎵', instagram: '📸', linkedin: '💼' };
+        const PLATFORM_NAMES = { twitter: 'Twitter/X', tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn' };
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -120,7 +120,7 @@
                 return;
             }
 
-            const platforms = ['tiktok', 'instagram', 'linkedin'];
+            const platforms = ['twitter', 'tiktok', 'instagram', 'linkedin'];
             const html = platforms.map(platform => {
                 const account = accounts?.find(a => a.platform === platform);
                 const isConnected = !!account;
