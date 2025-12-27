@@ -30,7 +30,7 @@
 
         <!-- Upload Form -->
         <main id="upload-form" style="display: none;">
-            <form id="post-form">
+            <form id="post-form" autocomplete="off">
                 <!-- Step 1: Video Upload (Optional for LinkedIn) -->
                 <section class="section">
                     <h2>1. Upload Video <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn)</span></h2>
@@ -163,6 +163,11 @@
 
             document.getElementById('auth-required').style.display = 'none';
             document.getElementById('upload-form').style.display = 'block';
+
+            // Reset all checkboxes on page load (prevent browser form restore)
+            document.querySelectorAll('input[name="platforms"]').forEach(cb => {
+                cb.checked = false;
+            });
 
             await loadConnectedAccounts();
             setupEventListeners();
@@ -424,6 +429,16 @@
                 console.log('[VALIDATION] No platforms selected');
                 alert('Please select at least one platform');
                 return;
+            }
+
+            // Confirm platforms before publishing
+            if (!isDraft) {
+                const platformNames = selectedPlatforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ');
+                const confirmed = confirm(`Post to: ${platformNames}\n\nAre you sure?`);
+                if (!confirmed) {
+                    console.log('[VALIDATION] User cancelled publish');
+                    return;
+                }
             }
 
             // Check if video is required (TikTok/Instagram need it, LinkedIn doesn't)
