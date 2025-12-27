@@ -503,8 +503,9 @@
                 let thumbnailUrl = null;
                 let metadata = {};
 
-                const needsSupabaseVideo = selectedPlatforms.some(p => p === 'tiktok' || p === 'instagram');
+                const needsSupabaseVideo = selectedPlatforms.includes('instagram'); // Only Instagram needs Supabase now
                 const needsLinkedInVideo = selectedPlatforms.includes('linkedin') && selectedFile;
+                const needsTikTokVideo = selectedPlatforms.includes('tiktok') && selectedFile;
 
                 // 1. Upload thumbnail (always, if we have video)
                 if (selectedFile && videoThumbnailBlob) {
@@ -572,9 +573,61 @@
                     }
                 }
 
-                // 3. Upload video to Supabase (only if Instagram/TikTok needs it)
+                // 2b. Upload video directly to TikTok (if TikTok selected with video)
+                if (needsTikTokVideo) {
+                    console.log('[TIKTOK] Uploading video directly to TikTok...');
+                    publishBtn.textContent = 'Uploading to TikTok...';
+
+                    try {
+                        const { data: { session } } = await supabaseClient.auth.getSession();
+
+                        // Init upload
+                        const initRes = await fetch('/api/broadcast/tiktok/init-video', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${session.access_token}`
+                            },
+                            body: JSON.stringify({ fileSizeBytes: selectedFile.size })
+                        });
+
+                        if (!initRes.ok) {
+                            const err = await initRes.json();
+                            throw new Error(err.error || 'Failed to init TikTok upload');
+                        }
+
+                        const { uploadUrl, publishId } = await initRes.json();
+                        console.log('[TIKTOK] Got upload URL, uploading video...');
+
+                        // Upload video directly to TikTok
+                        const uploadRes = await fetch(uploadUrl, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'video/mp4',
+                                'Content-Range': `bytes 0-${selectedFile.size - 1}/${selectedFile.size}`,
+                            },
+                            body: selectedFile
+                        });
+
+                        if (!uploadRes.ok) {
+                            const errText = await uploadRes.text();
+                            console.error('[TIKTOK] Upload failed:', errText);
+                            throw new Error('Failed to upload video to TikTok');
+                        }
+
+                        console.log('[TIKTOK] Video uploaded! Publish ID:', publishId);
+                        metadata.tiktok_publish_id = publishId;
+
+                    } catch (tiktokError) {
+                        console.error('[TIKTOK] Video upload failed:', tiktokError.message);
+                        // Store error so publish.js knows upload failed
+                        metadata.tiktok_upload_error = tiktokError.message;
+                    }
+                }
+
+                // 3. Upload video to Supabase (only if Instagram needs it)
                 if (selectedFile && needsSupabaseVideo) {
-                    console.log('[STORAGE] Uploading video for Instagram/TikTok...');
+                    console.log('[STORAGE] Uploading video for Instagram...');
                     publishBtn.textContent = 'Uploading video...';
 
                     const fileName = `${currentUser.id}/${Date.now()}_${selectedFile.name}`;

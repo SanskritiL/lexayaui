@@ -358,51 +358,35 @@ async function createLinkedInTextPost(headers, authorUrn, post) {
     };
 }
 
-// TikTok Publishing (Upload to Drafts)
+// TikTok Publishing (Direct Upload to Drafts)
 async function publishToTikTok(post, account) {
-    const { access_token } = account;
+    console.log('[TIKTOK] Starting publish...');
+    console.log('[TIKTOK] Post metadata:', post.metadata);
 
-    if (!post.video_url) {
-        throw new Error('Video is required for TikTok');
+    // Check if video was already uploaded directly from browser
+    const tiktokPublishId = post.metadata?.tiktok_publish_id;
+    const tiktokUploadError = post.metadata?.tiktok_upload_error;
+
+    // If there was an upload error, report it
+    if (tiktokUploadError) {
+        console.error('[TIKTOK] Upload error from browser:', tiktokUploadError);
+        throw new Error(tiktokUploadError);
     }
 
-    // For TikTok, we'll use the "Upload" API which sends to drafts
-    // Direct posting requires passing an app audit
-
-    // Step 1: Initialize the upload
-    const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: JSON.stringify({
-            source_info: {
-                source: 'PULL_FROM_URL',
-                video_url: post.video_url,
-            },
-        }),
-    });
-
-    if (!initResponse.ok) {
-        const errorData = await initResponse.json();
-        console.error('TikTok init error:', errorData);
-        throw new Error(errorData.error?.message || 'Failed to initialize TikTok upload');
+    // If video was uploaded directly, it's already in the user's inbox
+    if (tiktokPublishId) {
+        console.log('[TIKTOK] Video already uploaded! Publish ID:', tiktokPublishId);
+        return {
+            status: 'success',
+            publish_id: tiktokPublishId,
+            note: 'Video sent to TikTok inbox. Open TikTok app to add caption and post.',
+        };
     }
 
-    const initData = await initResponse.json();
-
-    if (initData.error && initData.error.code !== 'ok') {
-        throw new Error(initData.error.message || 'TikTok upload failed');
-    }
-
-    const publishId = initData.data?.publish_id;
-
-    return {
-        status: 'success',
-        publish_id: publishId,
-        note: 'Video sent to TikTok drafts. Open TikTok app to add caption and post.',
-    };
+    // No direct upload - this shouldn't happen with the new flow
+    // but keep as fallback
+    console.log('[TIKTOK] No direct upload found, video required');
+    throw new Error('Video upload to TikTok failed. Please try again.');
 }
 
 // Instagram Publishing
