@@ -41,8 +41,10 @@ lexayaui/
 │       ├── auth/
 │       │   ├── linkedin.js     # LinkedIn OAuth (WORKING)
 │       │   ├── tiktok.js       # TikTok OAuth
-│       │   └── instagram.js    # Instagram/Meta OAuth (WORKING)
+│       │   ├── instagram.js    # Instagram/Meta OAuth (WORKING)
+│       │   └── twitter.js      # Twitter/X OAuth
 │       ├── publish.js          # Publish to all platforms (WORKING for LinkedIn)
+│       ├── refresh-accounts.js # Refresh follower counts from platform APIs
 │       └── cron/
 │           └── process-scheduled.js  # Scheduled posts cron
 ├── broadcast/              # Multi-platform publishing app
@@ -110,19 +112,37 @@ Cal.com integration for $50/30min calls on CS page.
 - `TIKTOK_CLIENT_SECRET` - TikTok app secret
 - `FACEBOOK_APP_ID` - Meta/Facebook app ID: `1391901732240133`
 - `FACEBOOK_APP_SECRET` - Meta/Facebook app secret
+- `TWITTER_CLIENT_ID` - Twitter OAuth 2.0 Client ID
+- `TWITTER_CLIENT_SECRET` - Twitter OAuth 2.0 Client Secret
 - `CRON_SECRET` - Secret for cron job authentication
 
 ---
 
-## Broadcast Feature - WORKING (Dec 26, 2025)
+## Broadcast Feature - WORKING (Dec 28, 2025)
 
 ### Overview
-Multi-platform publishing tool at `/broadcast`. Upload once, publish to TikTok, Instagram, and LinkedIn.
+Multi-platform publishing tool at `/broadcast`. Upload once, publish to TikTok, Instagram, LinkedIn, and Twitter.
 
 ### Current Status
 - **LinkedIn**: ✅ WORKING - Text posts publish successfully
 - **Instagram**: ✅ OAuth WORKING - Connects to `sansmi_boutique` account
+- **Twitter/X**: ⏳ OAuth configured, testing in progress
 - **TikTok**: ⏳ Not tested yet
+
+### Admin Access
+Admin emails bypass subscription check:
+```javascript
+const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
+```
+Admins see PRO MEMBER badge and have full access without payment.
+
+### UI Features (Dec 28, 2025)
+- **PRO MEMBER Badge**: Animated gradient banner showing member status
+- **Connect from Dashboard**: Click platform cards to connect/disconnect directly
+- **localStorage Caching**: 5-minute cache for accounts and posts (faster loading)
+- **Success Banners**: Green animated banners after connecting accounts
+- **Publishing Modal**: Real-time status for each platform during publish
+- **Follower Counts**: Profile pictures and follower counts displayed on cards
 
 ### Key Technical Details
 
@@ -181,7 +201,16 @@ http://localhost:3000/api/broadcast/auth/linkedin  (for local testing)
 **Meta Developer Console** → Facebook Login → Settings → Valid OAuth Redirect URIs:
 ```
 https://lexaya.io/api/broadcast/auth/instagram
+http://localhost:3000/api/broadcast/auth/instagram  (for local testing)
 ```
+
+**Twitter Developer Portal** → User authentication settings → Callback URI:
+```
+https://lexaya.io/api/broadcast/auth/twitter
+http://localhost:3000/api/broadcast/auth/twitter  (for local testing)
+```
+- App type must be: "Web App, Automated App or Bot"
+- Permissions: Read and write
 
 ### Instagram OAuth Notes
 - Uses Facebook Graph API (not direct Instagram API)
@@ -191,16 +220,27 @@ https://lexaya.io/api/broadcast/auth/instagram
 - Connected account: `sansmi_boutique`
 
 ### Post Flow
-1. User goes to `/broadcast/upload.html`
-2. Optionally uploads video (required for TikTok/Instagram, optional for LinkedIn)
-3. Writes caption
-4. Selects platforms via checkboxes (only connected accounts are enabled)
-5. Clicks "Publish Now" or "Post to LinkedIn" (for text-only)
-6. Post saved to `posts` table with status `publishing`
-7. `/api/broadcast/publish` called with post ID and platforms
-8. Each platform publish attempt logged with detailed console output
-9. Results stored in `platform_results` JSONB field
-10. Alert shows success/failure per platform
+1. User goes to `/broadcast/` dashboard
+2. Clicks platform card to connect (OAuth redirects back to `/broadcast/`)
+3. Goes to `/broadcast/upload.html`
+4. Optionally uploads video (required for TikTok/Instagram, optional for LinkedIn)
+5. Writes caption
+6. Selects platforms via checkboxes (only connected accounts are enabled)
+7. Clicks "Publish Now" - publishing modal shows real-time status
+8. Post saved to `posts` table with status `publishing`
+9. `/api/broadcast/publish` called with post ID and platforms
+10. Each platform publish attempt logged with detailed console output
+11. Results stored in `platform_results` JSONB field
+12. Modal shows success/failure per platform with checkmarks/X icons
+
+### OAuth Metadata Stored
+All OAuth handlers save these fields in `metadata` JSONB:
+- `profile_picture` - User avatar URL
+- `display_name` - User's display name
+- `username` - Handle/username
+- `followers_count` - Follower count (where available)
+- `following_count` - Following count
+- `account_type` - Business/Personal/Creator
 
 ### Debugging
 
@@ -257,13 +297,16 @@ vercel logs         # View production logs
 
 ## Next Steps / TODO
 
-1. **TikTok Publishing** - Test TikTok OAuth and video upload flow
-2. **Instagram Publishing** - Test video upload to Instagram Reels
-3. **Scheduled Posts** - Test the cron job for scheduled posts
-4. **Token Refresh** - LinkedIn tokens expire; may need refresh logic
-5. **Video Upload to LinkedIn** - Currently falls back to text; full video upload is complex
+1. **Twitter Publishing** - Complete Twitter OAuth testing and video upload
+2. **TikTok Publishing** - Test TikTok OAuth and video upload flow
+3. **Instagram Publishing** - Test video upload to Instagram Reels
+4. **Scheduled Posts** - Test the cron job for scheduled posts
+5. **Token Refresh** - LinkedIn tokens expire; may need refresh logic
+6. **Video Upload to LinkedIn** - Currently falls back to text; full video upload is complex
 
 ## Known Issues
 
 1. **LinkedIn API Version Expiry** - Version `202411` works now, but will expire ~Nov 2025. Update to newer version when needed.
 2. **Instagram requires Facebook Page** - User must select both Instagram account AND Facebook Page during OAuth for it to work.
+3. **LinkedIn no follower count** - LinkedIn basic API doesn't expose follower counts for personal profiles (requires Marketing API).
+4. **Twitter callback URL strict** - Must match exactly in Developer Portal (no trailing slashes, correct http/https).
