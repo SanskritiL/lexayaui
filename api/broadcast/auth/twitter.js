@@ -6,6 +6,9 @@ const crypto = require('crypto');
 
 module.exports = async function handler(req, res) {
     console.log('========== TWITTER OAUTH START ==========');
+    console.log('[RAW] Full URL:', req.url);
+    console.log('[RAW] Query params:', JSON.stringify(req.query));
+    console.log('[RAW] State param:', req.query.state ? `${req.query.state.substring(0, 50)}...` : 'NONE');
 
     const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID;
     const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET;
@@ -28,6 +31,12 @@ module.exports = async function handler(req, res) {
         error: oauthError,
         redirectUri,
     });
+
+    // Handle OAuth error FIRST (before checking for code)
+    if (oauthError) {
+        console.log('[ERROR] OAuth error from Twitter:', oauthError, error_description);
+        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(oauthError + ': ' + (error_description || 'Authorization denied'))}`);
+    }
 
     // Create Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -74,12 +83,6 @@ module.exports = async function handler(req, res) {
         return res.redirect(authUrl.toString());
     }
 
-    // Handle OAuth error
-    if (oauthError) {
-        console.log('[ERROR] OAuth error from Twitter:', oauthError, error_description);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(oauthError + ': ' + (error_description || ''))}`);
-    }
-
     // Exchange code for access token
     try {
         // Decode state to get code_verifier and user token
@@ -104,23 +107,48 @@ module.exports = async function handler(req, res) {
         });
 
         console.log('[STEP 2] Exchanging code for token...');
+        console.log('[STEP 2] Client ID:', TWITTER_CLIENT_ID ? `${TWITTER_CLIENT_ID.substring(0, 10)}...` : 'NOT SET');
+        console.log('[STEP 2] Client Secret:', TWITTER_CLIENT_SECRET ? 'SET' : 'NOT SET');
 
-        // Twitter requires Basic auth with client_id:client_secret
+        if (!TWITTER_CLIENT_ID || !TWITTER_CLIENT_SECRET) {
+            console.error('[STEP 2] Missing Twitter credentials!');
+            return res.redirect('/broadcast/connect.html?error=Twitter credentials not configured');
+        }
+
+        // Try with Basic auth first (for confidential clients / Web App)
+        // If that fails, try without (for public clients / Native/SPA)
         const basicAuth = Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString('base64');
 
-        const tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
+        const tokenBody = new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: redirectUri,
+            code_verifier: codeVerifier,
+            client_id: TWITTER_CLIENT_ID,
+            client_secret: TWITTER_CLIENT_SECRET,
+        });
+
+        // First try with Basic auth (Web App / Confidential Client)
+        let tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Authorization': `Basic ${basicAuth}`,
             },
-            body: new URLSearchParams({
-                grant_type: 'authorization_code',
-                code,
-                redirect_uri: redirectUri,
-                code_verifier: codeVerifier,
-            }),
+            body: tokenBody,
         });
+
+        // If unauthorized, try without Basic auth (Native/SPA / Public Client)
+        if (tokenResponse.status === 401) {
+            console.log('[STEP 2] Basic auth failed, trying without auth header (public client mode)...');
+            tokenResponse = await fetch('https://api.twitter.com/2/oauth2/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: tokenBody,
+            });
+        }
 
         console.log('[STEP 2] Token response status:', tokenResponse.status);
 
@@ -157,14 +185,24 @@ module.exports = async function handler(req, res) {
         // Verify the user from state
         console.log('[STEP 4] Verifying user...');
         if (!userToken) {
-            return res.redirect('/broadcast/connect.html?error=Session expired, please login again');
+            console.error('[STEP 4] No userToken in state');
+            return res.redirect('/broadcast/connect.html?error=No session token provided');
         }
+
+        console.log('[STEP 4] Token length:', userToken.length);
+        console.log('[STEP 4] Token preview:', userToken.substring(0, 50) + '...');
 
         const { data: { user }, error: userError } = await supabase.auth.getUser(userToken);
 
-        if (userError || !user) {
-            console.error('[STEP 4] User verification error:', userError);
-            return res.redirect('/broadcast/connect.html?error=Session expired, please login again');
+        if (userError) {
+            console.error('[STEP 4] User verification error:', userError.message);
+            console.error('[STEP 4] Error details:', JSON.stringify(userError));
+            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Auth error: ' + userError.message));
+        }
+
+        if (!user) {
+            console.error('[STEP 4] No user returned from getUser');
+            return res.redirect('/broadcast/connect.html?error=Invalid session token');
         }
         console.log('[STEP 4] User verified:', user.id);
 

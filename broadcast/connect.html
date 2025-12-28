@@ -150,6 +150,10 @@
             currentUser = userRes.data.user;
             currentSession = sessionRes.data.session;
 
+            console.log('[Auth] User:', currentUser?.email || 'none');
+            console.log('[Auth] Session:', currentSession ? 'exists' : 'null');
+            console.log('[Auth] Token length:', currentSession?.access_token?.length || 0);
+
             if (!currentUser) {
                 document.getElementById('auth-required').style.display = 'flex';
                 document.getElementById('connect-main').style.display = 'none';
@@ -230,10 +234,12 @@
             });
 
             document.getElementById('twitter-btn').addEventListener('click', () => {
+                console.log('[Click] Twitter button clicked');
                 const account = connectedAccounts.find(a => a.platform === 'twitter');
                 if (account) {
                     disconnectAccount('twitter');
                 } else {
+                    console.log('[Click] Calling connectTwitter...');
                     connectTwitter();
                 }
             });
@@ -255,8 +261,17 @@
         }
 
         function connectTwitter() {
+            console.log('[Twitter] connectTwitter called');
+            console.log('[Twitter] currentSession:', currentSession);
+            if (!currentSession || !currentSession.access_token) {
+                alert('Session not found. Please refresh the page and try again.');
+                return;
+            }
             const state = currentSession.access_token;
-            window.location.href = `/api/broadcast/auth/twitter?state=${encodeURIComponent(state)}`;
+            const url = `/api/broadcast/auth/twitter?state=${encodeURIComponent(state)}`;
+            console.log('[Twitter] Token length:', state.length);
+            console.log('[Twitter] Redirecting to:', url.substring(0, 100) + '...');
+            window.location.href = url;
         }
 
         async function disconnectAccount(platform) {
