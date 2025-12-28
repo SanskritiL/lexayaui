@@ -146,7 +146,7 @@
             </div>
             <h1>Login Required</h1>
             <p>This free resource requires you to be logged in.</p>
-            <a href="/login.html" class="login-btn">
+            <a id="login-link" href="/login.html" class="login-btn">
                 <i class="fas fa-sign-in-alt"></i> Log In
             </a>
             <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 1rem;">
@@ -177,6 +177,22 @@
             <a href="/cs/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Courses</a>
         </div>
 
+        <div id="no-resource-state" style="display: none;">
+            <div class="icon login">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <h1>Choose a Resource</h1>
+            <p>Select a free resource to download:</p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+                <a href="?resource=portfolio" class="download-btn" style="text-decoration: none;">UGC Portfolio Template</a>
+                <a href="?resource=pitch" class="download-btn" style="text-decoration: none;">Brand Pitch Emails</a>
+                <a href="?resource=ratecard" class="download-btn" style="text-decoration: none;">Rate Card Template</a>
+                <a href="?resource=calendar" class="download-btn" style="text-decoration: none;">Content Calendar</a>
+                <a href="?resource=resume" class="download-btn" style="text-decoration: none;">FAANG Resume Template</a>
+                <a href="?resource=colleges" class="download-btn" style="text-decoration: none;">Colleges with Scholarships</a>
+            </div>
+        </div>
+
         <div class="support-text">
             Need help? Email <a href="mailto:sans@lexaya.io">sans@lexaya.io</a>
         </div>
@@ -184,90 +200,185 @@
 
     <script src="/js/config.js"></script>
     <script>
-        const supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        // ============ CACHE UTILITIES ============
+        const CACHE_KEYS = {
+            SESSION: 'lexaya_session',
+            DOWNLOADS: 'lexaya_downloads',
+            PENDING: 'pendingDownload'
+        };
+        const CACHE_DURATION = {
+            SESSION: 55 * 60 * 1000,  // 55 minutes (tokens last ~1hr)
+            DOWNLOAD: 50 * 60 * 1000  // 50 minutes (signed URLs last 1hr)
+        };
+
+        function getCache(key) {
+            try {
+                const cached = localStorage.getItem(key);
+                if (!cached) return null;
+                const { data, expiry } = JSON.parse(cached);
+                if (Date.now() > expiry) {
+                    localStorage.removeItem(key);
+                    return null;
+                }
+                return data;
+            } catch { return null; }
+        }
+
+        function setCache(key, data, duration) {
+            try {
+                localStorage.setItem(key, JSON.stringify({
+                    data,
+                    expiry: Date.now() + duration
+                }));
+            } catch (e) { console.warn('Cache write failed:', e); }
+        }
+
+        function getCachedDownload(resource) {
+            const downloads = getCache(CACHE_KEYS.DOWNLOADS) || {};
+            return downloads[resource] || null;
+        }
+
+        function setCachedDownload(resource, downloadData) {
+            const downloads = getCache(CACHE_KEYS.DOWNLOADS) || {};
+            downloads[resource] = downloadData;
+            setCache(CACHE_KEYS.DOWNLOADS, downloads, CACHE_DURATION.DOWNLOAD);
+        }
+
+        // ============ MAIN LOGIC ============
+        let supabaseClient;
 
         async function checkAccessAndDownload() {
+            // Get resource from URL or localStorage
             const urlParams = new URLSearchParams(window.location.search);
-            const resource = urlParams.get('resource');
-
-            console.log('[Free Download] Resource:', resource);
+            let resource = urlParams.get('resource');
 
             if (!resource) {
-                showError('No resource specified.');
+                resource = localStorage.getItem(CACHE_KEYS.PENDING);
+                if (resource) {
+                    window.history.replaceState({}, '', `${window.location.pathname}?resource=${resource}`);
+                }
+            }
+
+            if (!resource) {
+                showNoResource();
                 return;
             }
 
-            try {
-                // Check if user is logged in with timeout
-                console.log('[Free Download] Checking session...');
+            localStorage.setItem(CACHE_KEYS.PENDING, resource);
 
-                const sessionPromise = supabase.auth.getSession();
-                const timeoutPromise = new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Session check timed out')), 10000)
-                );
-
-                const { data: { session }, error: sessionError } = await Promise.race([sessionPromise, timeoutPromise]);
-
-                console.log('[Free Download] Session:', session ? 'exists' : 'none');
-                if (sessionError) console.error('[Free Download] Session error:', sessionError);
-
-                if (!session) {
-                    // Store the intended resource for after login
-                    localStorage.setItem('pendingDownload', resource);
-                    document.getElementById('loading-state').style.display = 'none';
-                    document.getElementById('login-state').style.display = 'block';
+            // Check for cached download URL first (no Supabase call needed!)
+            const cachedDownload = getCachedDownload(resource);
+            if (cachedDownload) {
+                console.log('[Free Download] Using cached download URL');
+                if (cachedDownload.type === 'redirect') {
+                    window.location.href = cachedDownload.downloadUrl;
                     return;
                 }
+                showSuccess(cachedDownload.downloadUrl, cachedDownload.resourceName);
+                return;
+            }
 
-                console.log('[Free Download] Fetching download URL...');
-                const controller = new AbortController();
-                const fetchTimeout = setTimeout(() => controller.abort(), 15000);
+            // Need to fetch - check session
+            let session = getCache(CACHE_KEYS.SESSION);
 
+            if (!session) {
+                // Initialize Supabase only when needed
+                if (!supabaseClient) {
+                    try {
+                        if (typeof CONFIG === 'undefined') throw new Error('CONFIG not loaded');
+                        supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+                    } catch (e) {
+                        showError('Failed to initialize. Please refresh.');
+                        return;
+                    }
+                }
+
+                console.log('[Free Download] Fetching session from Supabase...');
+                try {
+                    const { data, error } = await Promise.race([
+                        supabaseClient.auth.getSession(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
+                    ]);
+
+                    if (error || !data.session) {
+                        const currentUrl = window.location.pathname + window.location.search;
+                        document.getElementById('login-link').href = `/login.html?redirect=${encodeURIComponent(currentUrl)}`;
+                        showLogin();
+                        return;
+                    }
+
+                    session = data.session;
+                    setCache(CACHE_KEYS.SESSION, session, CACHE_DURATION.SESSION);
+                    console.log('[Free Download] Session cached');
+                } catch (err) {
+                    showError('Connection error. Please refresh.');
+                    return;
+                }
+            } else {
+                console.log('[Free Download] Using cached session');
+            }
+
+            // Fetch download URL from API
+            try {
+                console.log('[Free Download] Fetching download URL from API...');
                 const response = await fetch(`/api/free-download?resource=${resource}`, {
-                    headers: {
-                        'Authorization': `Bearer ${session.access_token}`
-                    },
-                    signal: controller.signal
+                    headers: { 'Authorization': `Bearer ${session.access_token}` }
                 });
-                clearTimeout(fetchTimeout);
 
-                console.log('[Free Download] Response status:', response.status);
                 const data = await response.json();
-                console.log('[Free Download] Response data:', data);
 
                 if (!response.ok) {
+                    // If auth failed, clear session cache and retry
+                    if (response.status === 401) {
+                        localStorage.removeItem(CACHE_KEYS.SESSION);
+                        location.reload();
+                        return;
+                    }
                     showError(data.error || 'Could not get access.');
                     return;
                 }
 
-                // Handle redirect type (page resources)
+                // Cache the download URL
+                setCachedDownload(resource, data);
+                console.log('[Free Download] Download URL cached');
+
                 if (data.type === 'redirect') {
                     window.location.href = data.downloadUrl;
                     return;
                 }
 
-                // Show success and set download link
-                document.getElementById('loading-state').style.display = 'none';
-                document.getElementById('success-state').style.display = 'block';
-                document.getElementById('download-link').href = data.downloadUrl;
-                document.getElementById('resource-name').textContent = data.resourceName || 'Your resource';
+                showSuccess(data.downloadUrl, data.resourceName);
 
             } catch (err) {
                 console.error('[Free Download] Error:', err);
-                if (err.message === 'Session check timed out') {
-                    showError('Connection timed out. Please check your internet and try again.');
-                } else if (err.name === 'AbortError') {
-                    showError('Request timed out. Please check your internet and try again.');
-                } else {
-                    showError('Network error. Please refresh and try again. (' + err.message + ')');
-                }
+                showError('Network error. Please refresh.');
             }
+        }
+
+        // ============ UI FUNCTIONS ============
+        function showSuccess(url, name) {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('success-state').style.display = 'block';
+            document.getElementById('download-link').href = url;
+            document.getElementById('resource-name').textContent = name || 'Your resource';
+            // Clear pending after successful access
+            localStorage.removeItem(CACHE_KEYS.PENDING);
+        }
+
+        function showLogin() {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('login-state').style.display = 'block';
         }
 
         function showError(message) {
             document.getElementById('loading-state').style.display = 'none';
             document.getElementById('error-state').style.display = 'block';
             document.getElementById('error-message').textContent = message;
+        }
+
+        function showNoResource() {
+            document.getElementById('loading-state').style.display = 'none';
+            document.getElementById('no-resource-state').style.display = 'block';
         }
 
         // Run on page load

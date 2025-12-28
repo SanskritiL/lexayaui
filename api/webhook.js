@@ -93,6 +93,25 @@ module.exports = async (req, res) => {
             }
             break;
 
+        case 'customer.subscription.created':
+            // Backup handler - checkout.session.completed usually handles this
+            const createdSub = event.data.object;
+            console.log('Subscription created:', createdSub.id);
+
+            // Only insert if not already exists (upsert)
+            await supabase
+                .from('subscriptions')
+                .upsert([{
+                    customer_email: createdSub.customer_email || createdSub.metadata?.email,
+                    stripe_customer_id: createdSub.customer,
+                    stripe_subscription_id: createdSub.id,
+                    product_key: createdSub.metadata?.productKey || 'broadcast',
+                    status: createdSub.status,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }], { onConflict: 'stripe_subscription_id', ignoreDuplicates: true });
+            break;
+
         case 'customer.subscription.updated':
             const updatedSub = event.data.object;
             console.log('Subscription updated:', updatedSub.id, updatedSub.status);
@@ -119,9 +138,46 @@ module.exports = async (req, res) => {
                 .eq('stripe_subscription_id', deletedSub.id);
             break;
 
-        case 'payment_intent.payment_failed':
-            const failedIntent = event.data.object;
-            console.log('Payment failed:', failedIntent.id);
+        case 'invoice.paid':
+            // Recurring payment succeeded - ensure subscription stays active
+            const paidInvoice = event.data.object;
+            if (paidInvoice.subscription) {
+                console.log('Invoice paid for subscription:', paidInvoice.subscription);
+                await supabase
+                    .from('subscriptions')
+                    .update({
+                        status: 'active',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('stripe_subscription_id', paidInvoice.subscription);
+            }
+            break;
+
+        case 'invoice.payment_failed':
+            // Recurring payment failed - mark as past_due
+            const failedInvoice = event.data.object;
+            if (failedInvoice.subscription) {
+                console.log('Invoice payment failed for subscription:', failedInvoice.subscription);
+                await supabase
+                    .from('subscriptions')
+                    .update({
+                        status: 'past_due',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('stripe_subscription_id', failedInvoice.subscription);
+            }
+            break;
+
+        case 'customer.subscription.paused':
+            const pausedSub = event.data.object;
+            console.log('Subscription paused:', pausedSub.id);
+            await supabase
+                .from('subscriptions')
+                .update({
+                    status: 'paused',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('stripe_subscription_id', pausedSub.id);
             break;
 
         default:

@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Lexaya</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1e40af;
+            --secondary: #3b82f6;
+            --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
+            --bg: #f9fafb;
+            --card: #ffffff;
+            --text: #1f2937;
+            --text-light: #6b7280;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        h1 { color: var(--primary); }
+        .refresh-btn {
+            padding: 0.5rem 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .refresh-btn:hover { background: var(--secondary); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .stat-card .subtext {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+        .stat-card.warning .value { color: var(--warning); }
+        .stat-card.danger .value { color: var(--danger); }
+        .stat-card.success .value { color: var(--success); }
+
+        .section {
+            background: var(--card);
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+        }
+        .section h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        .limits-grid {
+            display: grid;
+            gap: 1rem;
+        }
+        .limit-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .limit-item:last-child { border-bottom: none; }
+        .limit-bar {
+            width: 200px;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .limit-bar .fill {
+            height: 100%;
+            background: var(--success);
+            transition: width 0.3s;
+        }
+        .limit-bar .fill.warning { background: var(--warning); }
+        .limit-bar .fill.danger { background: var(--danger); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--text-light);
+        }
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .badge.active { background: #d1fae5; color: #065f46; }
+        .badge.trialing { background: #dbeafe; color: #1e40af; }
+        .badge.canceled { background: #fee2e2; color: #991b1b; }
+
+        .auth-wall {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+        }
+        .auth-card {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .auth-card h2 { margin-bottom: 1rem; }
+        .auth-card p { color: var(--text-light); margin-bottom: 1.5rem; }
+
+        .loading { color: var(--text-light); font-style: italic; }
+        .last-updated { font-size: 0.8rem; color: var(--text-light); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>Admin Dashboard</h1>
+                <p class="last-updated" id="last-updated"></p>
+            </div>
+            <button class="refresh-btn" onclick="loadAllData()">Refresh</button>
+        </header>
+
+        <div id="auth-wall" class="auth-wall" style="display: none;">
+            <div class="auth-card">
+                <h2>Admin Access Only</h2>
+                <p>You must be logged in as an admin to view this page.</p>
+                <a href="/login.html?redirect=/admin/" class="refresh-btn" style="text-decoration: none;">Login</a>
+            </div>
+        </div>
+
+        <main id="dashboard" style="display: none;">
+            <!-- Stats Overview -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Users</h3>
+                    <div class="value" id="total-users">-</div>
+                    <div class="subtext">Registered accounts</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Subscriptions</h3>
+                    <div class="value" id="active-subs">-</div>
+                    <div class="subtext" id="trial-count"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Posts</h3>
+                    <div class="value" id="total-posts">-</div>
+                    <div class="subtext" id="posts-today"></div>
+                </div>
+                <div class="stat-card">
+                    <h3>Connected Accounts</h3>
+                    <div class="value" id="connected-accounts">-</div>
+                    <div class="subtext">Social platforms linked</div>
+                </div>
+            </div>
+
+            <!-- Free Tier Limits -->
+            <div class="section">
+                <h2>Free Tier Usage Estimates</h2>
+                <div class="limits-grid">
+                    <div class="limit-item">
+                        <div>
+                            <strong>Supabase Database</strong>
+                            <div style="font-size: 0.85rem; color: var(--text-light);">500 MB limit</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div id="db-usage">Calculating...</div>
+                            <div class="limit-bar"><div class="fill" id="db-bar" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="limit-item">
+                        <div>
+                            <strong>Supabase Storage</strong>
+                            <div style="font-size: 0.85rem; color: var(--text-light);">1 GB limit</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div id="storage-usage">Calculating...</div>
+                            <div class="limit-bar"><div class="fill" id="storage-bar" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                    <div class="limit-item">
+                        <div>
+                            <strong>Monthly Active Users</strong>
+                            <div style="font-size: 0.85rem; color: var(--text-light);">50,000 MAU limit</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div id="mau-usage">-</div>
+                            <div class="limit-bar"><div class="fill" id="mau-bar" style="width: 0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <p style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-light);">
+                    Note: These are estimates. Check <a href="https://supabase.com/dashboard" target="_blank">Supabase Dashboard</a>
+                    and <a href="https://vercel.com/dashboard" target="_blank">Vercel Dashboard</a> for exact usage.
+                </p>
+            </div>
+
+            <!-- Recent Subscriptions -->
+            <div class="section">
+                <h2>Recent Subscriptions</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subs-table">
+                        <tr><td colspan="3" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Recent Posts -->
+            <div class="section">
+                <h2>Recent Posts</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Caption</th>
+                            <th>Platforms</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="posts-table">
+                        <tr><td colspan="4" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Admin emails that can access this page
+        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
+
+        async function init() {
+            const { data: { user } } = await supabase.auth.getUser();
+
+            if (!user || !ADMIN_EMAILS.includes(user.email)) {
+                document.getElementById('auth-wall').style.display = 'flex';
+                document.getElementById('dashboard').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('auth-wall').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadAllData();
+        }
+
+        async function loadAllData() {
+            document.getElementById('last-updated').textContent = 'Updating...';
+
+            await Promise.all([
+                loadStats(),
+                loadSubscriptions(),
+                loadRecentPosts()
+            ]);
+
+            document.getElementById('last-updated').textContent =
+                'Last updated: ' + new Date().toLocaleTimeString();
+        }
+
+        async function loadStats() {
+            // Get subscription counts
+            const { data: subs, count: subCount } = await supabase
+                .from('subscriptions')
+                .select('*', { count: 'exact' });
+
+            const activeSubs = subs?.filter(s => s.status === 'active').length || 0;
+            const trialSubs = subs?.filter(s => s.status === 'trialing').length || 0;
+
+            document.getElementById('active-subs').textContent = activeSubs + trialSubs;
+            document.getElementById('trial-count').textContent =
+                trialSubs > 0 ? `${trialSubs} on trial` : 'Paid subscribers';
+
+            // Get posts count
+            const { count: postCount } = await supabase
+                .from('posts')
+                .select('*', { count: 'exact', head: true });
+
+            document.getElementById('total-posts').textContent = postCount || 0;
+
+            // Get today's posts
+            const today = new Date().toISOString().split('T')[0];
+            const { count: todayPosts } = await supabase
+                .from('posts')
+                .select('*', { count: 'exact', head: true })
+                .gte('created_at', today);
+
+            document.getElementById('posts-today').textContent = `${todayPosts || 0} today`;
+
+            // Get connected accounts count
+            const { count: accountCount } = await supabase
+                .from('connected_accounts')
+                .select('*', { count: 'exact', head: true });
+
+            document.getElementById('connected-accounts').textContent = accountCount || 0;
+
+            // Estimate total users (unique emails from subscriptions + connected accounts)
+            const uniqueEmails = new Set();
+            subs?.forEach(s => uniqueEmails.add(s.customer_email));
+
+            document.getElementById('total-users').textContent = uniqueEmails.size || subCount || 0;
+
+            // Update MAU bar
+            const mauPercent = Math.min((uniqueEmails.size / 50000) * 100, 100);
+            document.getElementById('mau-usage').textContent = `${uniqueEmails.size} / 50,000`;
+            updateBar('mau-bar', mauPercent);
+
+            // Estimate storage (rough: count videos * avg size)
+            const { count: videoCount } = await supabase
+                .from('posts')
+                .select('*', { count: 'exact', head: true })
+                .not('video_url', 'is', null);
+
+            const estStorageMB = (videoCount || 0) * 50; // Assume 50MB average per video
+            const storagePercent = Math.min((estStorageMB / 1024) * 100, 100);
+            document.getElementById('storage-usage').textContent =
+                `~${estStorageMB} MB / 1,024 MB`;
+            updateBar('storage-bar', storagePercent);
+
+            // Estimate database (rough: rows * avg row size)
+            const totalRows = (subCount || 0) + (postCount || 0) + (accountCount || 0);
+            const estDbMB = (totalRows * 2) / 1024; // ~2KB per row estimate
+            const dbPercent = Math.min((estDbMB / 500) * 100, 100);
+            document.getElementById('db-usage').textContent =
+                `~${estDbMB.toFixed(1)} MB / 500 MB`;
+            updateBar('db-bar', dbPercent);
+        }
+
+        function updateBar(id, percent) {
+            const bar = document.getElementById(id);
+            bar.style.width = percent + '%';
+            bar.className = 'fill';
+            if (percent > 80) bar.classList.add('danger');
+            else if (percent > 50) bar.classList.add('warning');
+        }
+
+        async function loadSubscriptions() {
+            const { data: subs } = await supabase
+                .from('subscriptions')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            const tbody = document.getElementById('subs-table');
+
+            if (!subs || subs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3">No subscriptions yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = subs.map(sub => `
+                <tr>
+                    <td>${sub.customer_email}</td>
+                    <td><span class="badge ${sub.status}">${sub.status}</span></td>
+                    <td>${new Date(sub.created_at).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadRecentPosts() {
+            const { data: posts } = await supabase
+                .from('posts')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            const tbody = document.getElementById('posts-table');
+
+            if (!posts || posts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">No posts yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = posts.map(post => `
+                <tr>
+                    <td>${(post.caption || 'No caption').substring(0, 50)}...</td>
+                    <td>${(post.platforms || []).join(', ')}</td>
+                    <td><span class="badge ${post.status}">${post.status}</span></td>
+                    <td>${new Date(post.created_at).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

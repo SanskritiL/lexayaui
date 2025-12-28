@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { priceId, userEmail, userId, productKey, successUrl, mode } = req.body;
+        const { priceId, userEmail, userId, productKey, successUrl, mode, trialDays } = req.body;
 
         if (!priceId) {
             return res.status(400).json({ error: 'Price ID is required' });
@@ -44,6 +44,13 @@ module.exports = async (req, res) => {
             success_url: redirectUrl,
             cancel_url: `${origin}/cs/?canceled=true`,
         };
+
+        // Add free trial for subscriptions
+        if (checkoutMode === 'subscription' && trialDays) {
+            sessionConfig.subscription_data = {
+                trial_period_days: parseInt(trialDays)
+            };
+        }
 
         // Only set customer_email if provided
         if (userEmail) {

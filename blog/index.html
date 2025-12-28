@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog - Lexaya</title>
+    <meta name="description" content="CS resources, career tips, and insights from a software engineer turned content creator.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .blog-header {
+            text-align: center;
+            padding: 4rem 2rem;
+            border-bottom: 2px dashed var(--border-light);
+        }
+        .blog-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .blog-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        .blog-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .posts-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        .post-card {
+            padding: 2rem;
+            border: 3px solid var(--border);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            display: block;
+        }
+        .post-card:hover {
+            transform: rotate(-0.5deg);
+            box-shadow: 4px 4px 0 var(--border);
+        }
+        .post-card h2 {
+            font-size: 1.4rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        .post-card .excerpt {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        .post-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .post-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .tag {
+            background: var(--text-primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .back-home {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 2rem;
+        }
+        .back-home:hover {
+            color: var(--text-primary);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="blog-container">
+        <a href="/" class="back-home"><i class="fas fa-arrow-left"></i> lexaya.io</a>
+
+        <header class="blog-header">
+            <h1>Blog</h1>
+            <p>CS resources, career tips, and creator insights</p>
+        </header>
+
+        <div class="posts-grid" id="posts-grid">
+            <!-- Posts will be listed here -->
+
+            <a href="/blog/posts/best-programming-languages-2025.html" class="post-card">
+                <span class="tag">Programming</span>
+                <h2>The Ultimate Guide to Learning Python, Rust & JavaScript in 2025</h2>
+                <p class="excerpt">Curated free resources for learning the three most in-demand programming languages. Best courses, books, videos, and practice platforms.</p>
+                <div class="post-meta">
+                    <span><i class="fas fa-calendar"></i> Dec 28, 2025</span>
+                    <span><i class="fas fa-clock"></i> 15 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/posts/how-i-landed-faang-internship.html" class="post-card">
+                <span class="tag">Career</span>
+                <h2>How I Landed a FAANG Internship as a College Freshman</h2>
+                <p class="excerpt">The exact strategy, resources, and timeline I used to land my first big tech internship without any prior experience.</p>
+                <div class="post-meta">
+                    <span><i class="fas fa-calendar"></i> Dec 28, 2025</span>
+                    <span><i class="fas fa-clock"></i> 8 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/posts/ai-projects-for-beginners.html" class="post-card">
+                <span class="tag">AI</span>
+                <h2>5 AI Projects That Will Actually Impress Recruiters</h2>
+                <p class="excerpt">Forget to-do apps. Here are 5 AI project ideas that showcase real skills and stand out on your resume.</p>
+                <div class="post-meta">
+                    <span><i class="fas fa-calendar"></i> Dec 25, 2025</span>
+                    <span><i class="fas fa-clock"></i> 6 min read</span>
+                </div>
+            </a>
+
+            <a href="/blog/posts/ugc-creator-side-hustle.html" class="post-card">
+                <span class="tag">UGC</span>
+                <h2>How I Make $3K/Month as a UGC Creator (While in College)</h2>
+                <p class="excerpt">A step-by-step breakdown of how I started creating content for brands and turned it into a real income stream.</p>
+                <div class="post-meta">
+                    <span><i class="fas fa-calendar"></i> Dec 20, 2025</span>
+                    <span><i class="fas fa-clock"></i> 10 min read</span>
+                </div>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Ultimate Guide to Learning Python, Rust & JavaScript in 2025 - Lexaya</title>
+    <meta name="description" content="Curated free resources for learning Python, Rust, and JavaScript. Best courses, books, videos, and practice platforms for 2025.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/style.css">
+    <style>
+        .post-container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-bottom: 2rem;
+        }
+        .back-link:hover {
+            color: var(--text-primary);
+        }
+        .post-header {
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px dashed var(--border-light);
+        }
+        .tag {
+            background: var(--text-primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        .post-header h1 {
+            font-size: 2rem;
+            line-height: 1.3;
+            margin-bottom: 1rem;
+        }
+        .post-meta {
+            display: flex;
+            gap: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        .post-meta span {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .post-content {
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+        .post-content h2 {
+            color: var(--text-primary);
+            margin: 2.5rem 0 1rem;
+            font-size: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-light);
+        }
+        .post-content h3 {
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.75rem;
+            font-size: 1.15rem;
+        }
+        .post-content p {
+            margin-bottom: 1.25rem;
+        }
+        .post-content ul, .post-content ol {
+            margin: 1rem 0 1.5rem 1.5rem;
+        }
+        .post-content li {
+            margin-bottom: 0.75rem;
+        }
+        .post-content a {
+            color: var(--text-primary);
+            text-decoration: underline;
+        }
+        .post-content blockquote {
+            border-left: 4px solid var(--text-primary);
+            padding-left: 1.5rem;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: var(--text-muted);
+        }
+        .language-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .language-card h3 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .language-card .lang-icon {
+            font-size: 1.5rem;
+        }
+        .resource-list {
+            background: #f8fafc;
+            border-left: 4px solid var(--text-primary);
+            padding: 1rem 1.5rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .resource-list h4 {
+            margin: 0 0 0.75rem 0;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+        .resource-list ul {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+        .resource-list li {
+            margin-bottom: 0.5rem;
+        }
+        .tip-box {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .tip-box strong {
+            color: #92400e;
+        }
+        .cta-box {
+            background: #f8fafc;
+            border: 3px solid var(--border);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            padding: 2rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        .cta-box h3 {
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        .cta-box p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+        .cta-box .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--text-primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .cta-box .btn:hover {
+            transform: rotate(-1deg);
+        }
+        .paid-cta {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            margin-top: 3rem;
+        }
+        .paid-cta h3, .paid-cta p {
+            color: white;
+        }
+        .paid-cta .btn {
+            background: white;
+            color: var(--text-primary);
+        }
+        .author-box {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            padding: 1.5rem;
+            background: #f8fafc;
+            border-radius: 12px;
+            margin-top: 3rem;
+        }
+        .author-info h4 {
+            margin-bottom: 0.25rem;
+        }
+        .author-info p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        .toc {
+            background: #f8fafc;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+        .toc h4 {
+            margin: 0 0 1rem 0;
+            color: var(--text-primary);
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 1.25rem;
+        }
+        .toc li {
+            margin-bottom: 0.5rem;
+        }
+        .toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+        .toc a:hover {
+            color: var(--text-primary);
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="post-container">
+        <a href="/blog/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Blog</a>
+
+        <article>
+            <header class="post-header">
+                <span class="tag">Programming</span>
+                <h1>The Ultimate Guide to Learning Python, Rust & JavaScript in 2025</h1>
+                <div class="post-meta">
+                    <span><i class="fas fa-calendar"></i> Dec 28, 2025</span>
+                    <span><i class="fas fa-clock"></i> 15 min read</span>
+                </div>
+            </header>
+
+            <div class="post-content">
+                <p>Whether you're just starting out or looking to add a new language to your toolkit, choosing the right resources can save you months of frustration. I've compiled the best free resources for learning three of the most in-demand programming languages in 2025.</p>
+
+                <div class="toc">
+                    <h4>What's in this guide:</h4>
+                    <ul>
+                        <li><a href="#python">Python Resources</a> - Data science, AI, automation</li>
+                        <li><a href="#rust">Rust Resources</a> - Systems programming, performance</li>
+                        <li><a href="#javascript">JavaScript Resources</a> - Web development, full-stack</li>
+                        <li><a href="#strategies">Learning Strategies</a> - How to actually learn</li>
+                    </ul>
+                </div>
+
+                <h2 id="python">Python: The Versatile Powerhouse</h2>
+
+                <div class="language-card">
+                    <h3><span class="lang-icon"><i class="fab fa-python"></i></span> Why Python?</h3>
+                    <p>Python is the #1 language for data science, AI/ML, automation, and web development. Average US salary: <strong>$120,000/year</strong>. Known for beginner-friendly syntax and a massive ecosystem.</p>
+                </div>
+
+                <h3>Best Free Courses</h3>
+                <div class="resource-list">
+                    <h4>Start Here</h4>
+                    <ul>
+                        <li><a href="https://www.coursera.org/specializations/python" target="_blank">Python for Everybody (Coursera)</a> - Dr. Chuck's famous course, 3.1M+ students</li>
+                        <li><a href="https://www.codecademy.com/learn/learn-python-3" target="_blank">Codecademy Learn Python 3</a> - Interactive, beginner-friendly</li>
+                        <li><a href="https://www.youtube.com/watch?v=rfscVS0vtbw" target="_blank">freeCodeCamp Python Course</a> - 4.5-hour comprehensive course</li>
+                    </ul>
+                </div>
+
+                <div class="resource-list">
+                    <h4>Free Books</h4>
+                    <ul>
+                        <li><a href="https://automatetheboringstuff.com/" target="_blank">Automate the Boring Stuff</a> - Practical Python for everyday tasks</li>
+                        <li><a href="https://greenteapress.com/wp/think-python-3rd-edition/" target="_blank">Think Python</a> - Open-access ebook by Allen Downey</li>
+                        <li><a href="https://python.swaroopch.com/" target="_blank">A Byte of Python</a> - Perfect for beginners</li>
+                    </ul>
+                </div>
+
+                <div class="resource-list">
+                    <h4>Practice Platforms</h4>
+                    <ul>
+                        <li><a href="https://www.hackerrank.com/domains/python" target="_blank">HackerRank Python</a> - Structured problems with hints</li>
+                        <li><a href="https://exercism.org/tracks/python" target="_blank">Exercism Python Track</a> - Practice with mentor feedback</li>
+                        <li><a href="https://github.com/Asabeneh/30-Days-Of-Python" target="_blank">30 Days of Python</a> - Month-long coding challenge</li>
+                    </ul>
+                </div>
+
+                <h2 id="rust">Rust: The Performance King</h2>
+
+                <div class="language-card">
+                    <h3><span class="lang-icon"><i class="fas fa-cog"></i></span> Why Rust?</h3>
+                    <p>Most-loved language for 8 consecutive years (Stack Overflow). Used by Amazon, Google, Meta, and Microsoft for systems programming, blockchain, and high-performance apps. Combines C++ performance with memory safety.</p>
+                </div>
+
+                <h3>The Official Learning Path</h3>
+                <div class="resource-list">
+                    <h4>Foundation (Do These in Order)</h4>
+                    <ul>
+                        <li><a href="https://doc.rust-lang.org/book/" target="_blank">The Rust Book</a> - The official comprehensive guide</li>
+                        <li><a href="https://rust-book.cs.brown.edu/" target="_blank">Interactive Rust Book (Brown)</a> - Enhanced version with quizzes</li>
+                        <li><a href="https://github.com/rust-lang/rustlings" target="_blank">Rustlings</a> - Practical exercises (<code>cargo install rustlings</code>)</li>
+                        <li><a href="https://doc.rust-lang.org/rust-by-example/" target="_blank">Rust by Example</a> - Learn through code examples</li>
+                    </ul>
+                </div>
+
+                <div class="resource-list">
+                    <h4>Video Learning</h4>
+                    <ul>
+                        <li><a href="https://www.youtube.com/watch?v=BpPEoZW5IiY" target="_blank">freeCodeCamp Rust Course</a> - Comprehensive beginner course</li>
+                        <li><a href="https://www.youtube.com/@letsgetrusty" target="_blank">Let's Get Rusty</a> - Clear explanations of Rust concepts</li>
+                        <li><a href="https://www.youtube.com/@NoBoilerplate" target="_blank">No Boilerplate</a> - Quick, insightful Rust videos</li>
+                    </ul>
+                </div>
+
+                <div class="resource-list">
+                    <h4>Interactive Platforms</h4>
+                    <ul>
+                        <li><a href="https://www.rustfinity.com/" target="_blank">Rustfinity</a> - Modern, structured learning</li>
+                        <li><a href="https://rust-exercises.com/" target="_blank">100 Exercises to Learn Rust</a> - By Luca Palmieri</li>
+                        <li><a href="https://codecrafters.io/tracks/rust" target="_blank">CodeCrafters</a> - Build Git, Redis, HTTP servers in Rust</li>
+                    </ul>
+                </div>
+
+                <div class="tip-box">
+                    <strong>Rust Learning Tip:</strong> Rust has a steeper learning curve due to concepts like ownership and borrowing. Expect 2-3 months for basic proficiency. Don't get discouraged—the compiler errors are actually helping you write better code.
+                </div>
+
+                <h2 id="javascript">JavaScript: The Web's Language</h2>
+
+                <div class="language-card">
+                    <h3><span class="lang-icon"><i class="fab fa-js-square"></i></span> Why JavaScript?</h3>
+                    <p>The undisputed king of web development. Powers frontends (React, Vue), backends (Node.js), mobile apps (React Native), and desktop apps (Electron). Runs everywhere—browsers, servers, mobile devices.</p>
+                </div>
+
+                <h3>Top Free Guides</h3>
+                <div class="resource-list">
+                    <h4>Comprehensive Resources</h4>
+                    <ul>
+                        <li><a href="https://javascript.info/" target="_blank">JavaScript.info</a> - The Modern JS Tutorial (updated Dec 2025)</li>
+                        <li><a href="https://eloquentjavascript.net/" target="_blank">Eloquent JavaScript</a> - Free book, 21 chapters</li>
+                        <li><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">MDN Web Docs</a> - The authoritative reference</li>
+                        <li><a href="https://github.com/getify/You-Dont-Know-JS" target="_blank">You Don't Know JS</a> - Deep dive book series</li>
+                    </ul>
+                </div>
+
+                <div class="resource-list">
+                    <h4>Interactive Learning</h4>
+                    <ul>
+                        <li><a href="https://www.freecodecamp.org/learn/" target="_blank">freeCodeCamp</a> - Project-based certification</li>
+                        <li><a href="https://scrimba.com/learn/learnjavascript" target="_blank">Scrimba</a> - Interactive screencasts</li>
+                        <li><a href="https://www.theodinproject.com/" target="_blank">The Odin Project</a> - Full web dev curriculum</li>
+                        <li><a href="https://javascript30.com/" target="_blank">JavaScript30</a> - 30 day vanilla JS challenge (free)</li>
+                    </ul>
+                </div>
+
+                <div class="resource-list">
+                    <h4>YouTube Channels</h4>
+                    <ul>
+                        <li><a href="https://www.youtube.com/@TraversyMedia" target="_blank">Traversy Media</a> - ES6 to advanced projects</li>
+                        <li><a href="https://www.youtube.com/@WebDevSimplified" target="_blank">Web Dev Simplified</a> - Clear explanations</li>
+                        <li><a href="https://www.youtube.com/@NetNinja" target="_blank">The Net Ninja</a> - Bite-sized lessons</li>
+                    </ul>
+                </div>
+
+                <h2 id="strategies">Learning Strategies That Actually Work</h2>
+
+                <h3>The 4 Rules</h3>
+                <ol>
+                    <li><strong>Pick one resource and commit</strong> - Don't get paralyzed by choice. Finish one course before starting another.</li>
+                    <li><strong>Learn by doing</strong> - 79% of developers learn faster through practical application (Stack Overflow 2024). Build projects, don't just watch tutorials.</li>
+                    <li><strong>Code regularly</strong> - Even 30 minutes daily beats 5 hours once a week. Consistency > intensity.</li>
+                    <li><strong>Build real projects</strong> - Start simple (to-do list, calculator), then increase complexity. Portfolio projects get you hired.</li>
+                </ol>
+
+                <h3>Time Investment</h3>
+                <ul>
+                    <li><strong>Python:</strong> Basic proficiency in 24-36 hours. Professional level in 6-12 months.</li>
+                    <li><strong>Rust:</strong> Basic proficiency in 2-3 months. Professional level in 6-12 months.</li>
+                    <li><strong>JavaScript:</strong> Basic proficiency in 20-30 hours. Professional with frameworks in 4-8 months.</li>
+                </ul>
+
+                <h3>Common Pitfalls to Avoid</h3>
+                <ul>
+                    <li><strong>Tutorial Hell</strong> - Stop watching, start building after you learn the basics</li>
+                    <li><strong>Perfectionism</strong> - Your first projects will be messy. That's normal.</li>
+                    <li><strong>Skipping Fundamentals</strong> - Don't rush to React before understanding vanilla JS</li>
+                    <li><strong>Learning Everything</strong> - Master one language before spreading thin</li>
+                </ul>
+
+                <div class="cta-box">
+                    <h3>Want more project ideas?</h3>
+                    <p>I've compiled AI/ML project ideas with difficulty levels and tech stacks.</p>
+                    <a href="https://github.com/SanskritiL/ai_models_resources" target="_blank" class="btn">
+                        <i class="fab fa-github"></i> View on GitHub
+                    </a>
+                </div>
+
+                <h2>Final Thoughts</h2>
+                <p>The best language to learn is the one you'll actually use. Pick based on your goals:</p>
+                <ul>
+                    <li><strong>Data science / AI / automation</strong> → Python</li>
+                    <li><strong>Systems programming / performance</strong> → Rust</li>
+                    <li><strong>Web development / full-stack</strong> → JavaScript</li>
+                </ul>
+
+                <p>The resources in this guide are all free and represent the best available as of December 2025. Bookmark this page and come back whenever you need a reference.</p>
+
+                <p>Happy coding!</p>
+
+                <!-- Subtle paid product CTA -->
+                <div class="cta-box paid-cta">
+                    <h3>Enjoying my free resources?</h3>
+                    <p>If this guide helped you, check out my premium resources—including my actual resume template that landed me FAANG interviews, and a complete AI engineer roadmap.</p>
+                    <a href="/cs/" class="btn">
+                        <i class="fas fa-arrow-right"></i> Browse Premium Resources
+                    </a>
+                </div>
+            </div>
+
+            <div class="author-box">
+                <div class="author-info">
+                    <h4>Sans Lamsal</h4>
+                    <p>Software engineer, UGC creator, and the person behind Lexaya.</p>
+                </div>
+            </div>
+        </article>
+    </div>
+</body>
+</html>
