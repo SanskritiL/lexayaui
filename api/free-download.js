@@ -62,17 +62,8 @@ module.exports = async (req, res) => {
             return res.status(404).json({ error: 'Resource not found' });
         }
 
-        // Track the download/access in database
-        await supabase
-            .from('purchases')
-            .insert([{
-                user_id: user.id,
-                product_id: resource,
-                customer_email: user.email,
-                amount: 0,
-                status: 'free_access',
-                created_at: new Date().toISOString()
-            }]);
+        // User is logged in - that's all we need for free resources
+        // No database tracking required
 
         // Handle page-type resources (redirect to URL)
         if (resourceInfo.type === 'page') {
