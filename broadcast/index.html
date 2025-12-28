@@ -103,6 +103,21 @@
                 return;
             }
 
+            // Check subscription status
+            const { data: subscription } = await supabaseClient
+                .from('subscriptions')
+                .select('*')
+                .eq('customer_email', currentUser.email)
+                .eq('product_key', 'broadcast')
+                .eq('status', 'active')
+                .single();
+
+            if (!subscription) {
+                // No active subscription - redirect to pricing
+                window.location.href = '/broadcast/pricing.html';
+                return;
+            }
+
             if (authRequired) authRequired.style.display = 'none';
             if (dashboard) dashboard.style.display = 'block';
 

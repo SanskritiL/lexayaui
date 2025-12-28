@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { priceId, userEmail, userId, productKey, successUrl } = req.body;
+        const { priceId, userEmail, userId, productKey, successUrl, mode } = req.body;
 
         if (!priceId) {
             return res.status(400).json({ error: 'Price ID is required' });
@@ -26,9 +26,10 @@ module.exports = async (req, res) => {
 
         const origin = req.headers.origin || 'https://lexaya.io';
         const redirectUrl = successUrl || `${origin}/members.html?success=true`;
+        const checkoutMode = mode || 'payment'; // 'payment' or 'subscription'
 
         const sessionConfig = {
-            mode: 'payment',
+            mode: checkoutMode,
             payment_method_types: ['card'],
             line_items: [
                 {

@@ -190,29 +190,50 @@
             const urlParams = new URLSearchParams(window.location.search);
             const resource = urlParams.get('resource');
 
+            console.log('[Free Download] Resource:', resource);
+
             if (!resource) {
                 showError('No resource specified.');
                 return;
             }
 
-            // Check if user is logged in
-            const { data: { session } } = await supabase.auth.getSession();
-
-            if (!session) {
-                // Store the intended resource for after login
-                localStorage.setItem('pendingDownload', resource);
-                document.getElementById('loading-state').style.display = 'none';
-                document.getElementById('login-state').style.display = 'block';
-                return;
-            }
-
             try {
+                // Check if user is logged in with timeout
+                console.log('[Free Download] Checking session...');
+
+                const sessionPromise = supabase.auth.getSession();
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Session check timed out')), 10000)
+                );
+
+                const { data: { session }, error: sessionError } = await Promise.race([sessionPromise, timeoutPromise]);
+
+                console.log('[Free Download] Session:', session ? 'exists' : 'none');
+                if (sessionError) console.error('[Free Download] Session error:', sessionError);
+
+                if (!session) {
+                    // Store the intended resource for after login
+                    localStorage.setItem('pendingDownload', resource);
+                    document.getElementById('loading-state').style.display = 'none';
+                    document.getElementById('login-state').style.display = 'block';
+                    return;
+                }
+
+                console.log('[Free Download] Fetching download URL...');
+                const controller = new AbortController();
+                const fetchTimeout = setTimeout(() => controller.abort(), 15000);
+
                 const response = await fetch(`/api/free-download?resource=${resource}`, {
                     headers: {
                         'Authorization': `Bearer ${session.access_token}`
-                    }
+                    },
+                    signal: controller.signal
                 });
+                clearTimeout(fetchTimeout);
+
+                console.log('[Free Download] Response status:', response.status);
                 const data = await response.json();
+                console.log('[Free Download] Response data:', data);
 
                 if (!response.ok) {
                     showError(data.error || 'Could not get access.');
@@ -232,7 +253,14 @@
                 document.getElementById('resource-name').textContent = data.resourceName || 'Your resource';
 
             } catch (err) {
-                showError('Network error. Please refresh and try again.');
+                console.error('[Free Download] Error:', err);
+                if (err.message === 'Session check timed out') {
+                    showError('Connection timed out. Please check your internet and try again.');
+                } else if (err.name === 'AbortError') {
+                    showError('Request timed out. Please check your internet and try again.');
+                } else {
+                    showError('Network error. Please refresh and try again. (' + err.message + ')');
+                }
             }
         }
 

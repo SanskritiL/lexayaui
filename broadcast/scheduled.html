@@ -55,6 +55,20 @@
                 return;
             }
 
+            // Check subscription status
+            const { data: subscription } = await supabaseClient
+                .from('subscriptions')
+                .select('*')
+                .eq('customer_email', currentUser.email)
+                .eq('product_key', 'broadcast')
+                .eq('status', 'active')
+                .single();
+
+            if (!subscription) {
+                window.location.href = '/broadcast/pricing.html';
+                return;
+            }
+
             document.getElementById('auth-required').style.display = 'none';
             document.getElementById('main-content').style.display = 'block';
 

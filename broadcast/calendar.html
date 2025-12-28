@@ -108,6 +108,20 @@
                 return;
             }
 
+            // Check subscription status
+            const { data: subscription } = await supabaseClient
+                .from('subscriptions')
+                .select('*')
+                .eq('customer_email', currentUser.email)
+                .eq('product_key', 'broadcast')
+                .eq('status', 'active')
+                .single();
+
+            if (!subscription) {
+                window.location.href = '/broadcast/pricing.html';
+                return;
+            }
+
             authRequired.style.display = 'none';
             calendarMain.style.display = 'block';
 

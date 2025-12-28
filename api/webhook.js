@@ -50,24 +50,73 @@ module.exports = async (req, res) => {
         case 'checkout.session.completed':
             const session = event.data.object;
 
-            // Save purchase to Supabase
-            const { error } = await supabase
-                .from('purchases')
-                .insert([{
-                    user_id: session.metadata?.userId || null,
-                    stripe_session_id: session.id,
-                    amount: session.amount_total,
-                    product_id: session.metadata?.productKey || 'unknown',
-                    customer_email: session.customer_details?.email || session.customer_email,
-                    status: 'completed',
-                    created_at: new Date().toISOString()
-                }]);
+            // Check if this is a subscription or one-time payment
+            if (session.mode === 'subscription') {
+                // Handle subscription checkout
+                const { error: subError } = await supabase
+                    .from('subscriptions')
+                    .upsert([{
+                        user_id: session.metadata?.userId || null,
+                        customer_email: session.customer_details?.email || session.customer_email,
+                        stripe_customer_id: session.customer,
+                        stripe_subscription_id: session.subscription,
+                        product_key: session.metadata?.productKey || 'broadcast',
+                        status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }], { onConflict: 'customer_email,product_key' });
 
-            if (error) {
-                console.error('Error saving purchase:', error);
+                if (subError) {
+                    console.error('Error saving subscription:', subError);
+                } else {
+                    console.log('Subscription saved:', session.customer_details?.email, session.metadata?.productKey);
+                }
             } else {
-                console.log('Purchase saved:', session.customer_details?.email, session.metadata?.productKey);
+                // Save one-time purchase to Supabase
+                const { error } = await supabase
+                    .from('purchases')
+                    .insert([{
+                        user_id: session.metadata?.userId || null,
+                        stripe_session_id: session.id,
+                        amount: session.amount_total,
+                        product_id: session.metadata?.productKey || 'unknown',
+                        customer_email: session.customer_details?.email || session.customer_email,
+                        status: 'completed',
+                        created_at: new Date().toISOString()
+                    }]);
+
+                if (error) {
+                    console.error('Error saving purchase:', error);
+                } else {
+                    console.log('Purchase saved:', session.customer_details?.email, session.metadata?.productKey);
+                }
             }
+            break;
+
+        case 'customer.subscription.updated':
+            const updatedSub = event.data.object;
+            console.log('Subscription updated:', updatedSub.id, updatedSub.status);
+
+            await supabase
+                .from('subscriptions')
+                .update({
+                    status: updatedSub.status,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('stripe_subscription_id', updatedSub.id);
+            break;
+
+        case 'customer.subscription.deleted':
+            const deletedSub = event.data.object;
+            console.log('Subscription canceled:', deletedSub.id);
+
+            await supabase
+                .from('subscriptions')
+                .update({
+                    status: 'canceled',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('stripe_subscription_id', deletedSub.id);
             break;
 
         case 'payment_intent.payment_failed':

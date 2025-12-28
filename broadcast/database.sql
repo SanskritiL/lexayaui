@@ -141,3 +141,40 @@ CREATE POLICY "Service role full access to connected_accounts" ON connected_acco
 
 CREATE POLICY "Service role full access to posts" ON posts
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+
+-- 9. Subscriptions table for Broadcast Pro
+CREATE TABLE IF NOT EXISTS subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    customer_email TEXT NOT NULL,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    product_key TEXT NOT NULL DEFAULT 'broadcast',
+    status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'canceled', 'past_due', 'unpaid')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- Each email can only have one subscription per product
+    UNIQUE(customer_email, product_key)
+);
+
+-- Index for subscription lookups
+CREATE INDEX IF NOT EXISTS idx_subscriptions_email ON subscriptions(customer_email);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(status);
+
+-- RLS for subscriptions
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Users can view their own subscription
+CREATE POLICY "Users can view own subscription" ON subscriptions
+    FOR SELECT USING (auth.jwt() ->> 'email' = customer_email);
+
+-- Service role full access for webhook updates
+CREATE POLICY "Service role full access to subscriptions" ON subscriptions
+    FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+
+-- Trigger for updated_at
+CREATE TRIGGER update_subscriptions_updated_at
+    BEFORE UPDATE ON subscriptions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();

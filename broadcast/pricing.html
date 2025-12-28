@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcast Pro - Lexaya</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <a href="/" class="logo">← lexaya.io</a>
+            <h1>Broadcast Pro</h1>
+            <p class="tagline">Post to all your platforms in one click</p>
+        </header>
+
+        <!-- Pricing Card -->
+        <main class="pricing-main">
+            <div class="pricing-card">
+                <div class="pricing-header">
+                    <h2>Broadcast Pro</h2>
+                    <div class="price">
+                        <span class="amount">$14.88</span>
+                        <span class="period">/month</span>
+                    </div>
+                </div>
+
+                <ul class="features-list">
+                    <li>Post to TikTok, Instagram, LinkedIn, and X</li>
+                    <li>Upload once, publish everywhere</li>
+                    <li>Schedule posts for later</li>
+                    <li>Track your posting calendar</li>
+                    <li>Post history and analytics</li>
+                    <li>Cancel anytime</li>
+                </ul>
+
+                <div id="auth-section">
+                    <!-- Login required state -->
+                    <div id="login-required" style="display: none;">
+                        <p style="color: var(--text-light); margin-bottom: 1rem;">Login to subscribe</p>
+                        <a href="/login.html?redirect=/broadcast/pricing.html" class="btn btn-primary" style="width: 100%;">
+                            Login with Email
+                        </a>
+                    </div>
+
+                    <!-- Subscribe button -->
+                    <div id="subscribe-section" style="display: none;">
+                        <button id="subscribe-btn" class="btn btn-primary" style="width: 100%;">
+                            Subscribe - $14.88/month
+                        </button>
+                        <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.75rem; text-align: center;">
+                            Secure payment via Stripe
+                        </p>
+                    </div>
+
+                    <!-- Already subscribed -->
+                    <div id="subscribed-section" style="display: none;">
+                        <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <strong>You're subscribed!</strong>
+                        </div>
+                        <a href="./" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                            Go to Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FAQ -->
+            <section class="faq-section">
+                <h3>Questions?</h3>
+                <div class="faq-item">
+                    <strong>Can I cancel anytime?</strong>
+                    <p>Yes, cancel with one click. No questions asked.</p>
+                </div>
+                <div class="faq-item">
+                    <strong>Which platforms are supported?</strong>
+                    <p>TikTok, Instagram Reels, LinkedIn, and X (Twitter).</p>
+                </div>
+                <div class="faq-item">
+                    <strong>Is my data secure?</strong>
+                    <p>Yes. We use official OAuth APIs and never store your passwords.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Config
+        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Stripe Price ID for Broadcast Pro subscription
+        // TODO: Replace with your actual Stripe Price ID
+        const BROADCAST_PRICE_ID = 'price_broadcast_monthly';
+
+        let currentUser = null;
+        let currentSession = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const [userRes, sessionRes] = await Promise.all([
+                supabaseClient.auth.getUser(),
+                supabaseClient.auth.getSession()
+            ]);
+            currentUser = userRes.data.user;
+            currentSession = sessionRes.data.session;
+
+            if (!currentUser) {
+                document.getElementById('login-required').style.display = 'block';
+                return;
+            }
+
+            // Check if already subscribed
+            const { data: subscription } = await supabaseClient
+                .from('subscriptions')
+                .select('*')
+                .eq('customer_email', currentUser.email)
+                .eq('product_key', 'broadcast')
+                .eq('status', 'active')
+                .single();
+
+            if (subscription) {
+                document.getElementById('subscribed-section').style.display = 'block';
+            } else {
+                document.getElementById('subscribe-section').style.display = 'block';
+            }
+        });
+
+        document.getElementById('subscribe-btn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('subscribe-btn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+
+            try {
+                const response = await fetch('/api/create-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        priceId: BROADCAST_PRICE_ID,
+                        userEmail: currentUser.email,
+                        userId: currentUser.id,
+                        productKey: 'broadcast',
+                        mode: 'subscription',
+                        successUrl: window.location.origin + '/broadcast/?subscribed=true'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    throw new Error(data.error || 'Failed to create checkout');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+                btn.disabled = false;
+                btn.textContent = 'Subscribe - $14.88/month';
+            }
+        });
+    </script>
+
+    <style>
+        .pricing-main {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .pricing-card {
+            background: white;
+            border: 3px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .pricing-header h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .price {
+            margin-bottom: 1.5rem;
+        }
+
+        .price .amount {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .price .period {
+            font-size: 1.25rem;
+            color: var(--text-light);
+        }
+
+        .features-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 2rem 0;
+            text-align: left;
+        }
+
+        .features-list li {
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .features-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .faq-section {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 2px dashed var(--border);
+        }
+
+        .faq-section h3 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .faq-item {
+            margin-bottom: 1.5rem;
+        }
+
+        .faq-item strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .faq-item p {
+            color: var(--text-light);
+            margin: 0;
+        }
+    </style>
+</body>
+</html>
