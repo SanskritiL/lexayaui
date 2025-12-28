@@ -7,7 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -18,6 +19,18 @@
             <h1>try lexaya</h1>
             <p class="tagline">Post once, publish to multiple platforms</p>
         </header>
+
+        <!-- Member Badge (shown for paid users) -->
+        <div id="member-badge" class="member-badge" style="display: none;">
+            <div class="member-badge-content">
+                <span class="member-icon">✨</span>
+                <div class="member-info">
+                    <span class="member-label">PRO MEMBER</span>
+                    <span class="member-email" id="member-email"></span>
+                </div>
+                <span class="member-status">Active</span>
+            </div>
+        </div>
 
         <!-- Auth Check -->
         <div id="auth-required" class="auth-required" style="display: none;">
@@ -30,11 +43,13 @@
 
         <!-- Main Dashboard -->
         <main id="dashboard" style="display: none;">
+            <!-- Success Banner (shown after OAuth) -->
+            <div id="success-banner" class="success-banner" style="display: none;"></div>
+
             <!-- Connected Accounts Section -->
             <section class="section">
                 <div class="section-header">
                     <h2>Connected Accounts</h2>
-                    <a href="connect.html" class="btn btn-secondary">+ Connect Account</a>
                 </div>
 
                 <div id="accounts-grid" class="accounts-grid">
@@ -86,13 +101,49 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const PLATFORM_ICONS = { twitter: '𝕏', tiktok: '🎵', instagram: '📸', linkedin: '💼' };
+        const PLATFORM_ICONS = {
+            twitter: '<i class="fa-brands fa-x-twitter"></i>',
+            tiktok: '<i class="fa-brands fa-tiktok"></i>',
+            instagram: '<i class="fa-brands fa-instagram"></i>',
+            linkedin: '<i class="fa-brands fa-linkedin"></i>'
+        };
         const PLATFORM_NAMES = { twitter: 'Twitter/X', tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn' };
+        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
         let currentUser = null;
+        let currentSession = null;
+        let connectedAccounts = [];
+
+        // localStorage cache keys
+        const POSTS_CACHE_KEY = 'lexaya_recent_posts';
+        const ACCOUNTS_CACHE_KEY = 'lexaya_accounts';
+        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+        function getCachedData(key) {
+            try {
+                const cached = localStorage.getItem(key);
+                if (!cached) return null;
+                const data = JSON.parse(cached);
+                if (Date.now() - data.timestamp > CACHE_DURATION) return null;
+                return data.value;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function setCachedData(key, value) {
+            localStorage.setItem(key, JSON.stringify({ value, timestamp: Date.now() }));
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            currentUser = user;
+            // Check for OAuth callback first
+            const oauthResult = checkOAuthCallback();
+
+            const [userRes, sessionRes] = await Promise.all([
+                supabaseClient.auth.getUser(),
+                supabaseClient.auth.getSession()
+            ]);
+            currentUser = userRes.data.user;
+            currentSession = sessionRes.data.session;
 
             const authRequired = document.getElementById('auth-required');
             const dashboard = document.getElementById('dashboard');
@@ -103,31 +154,167 @@
                 return;
             }
 
-            // Check subscription status
-            const { data: subscription } = await supabaseClient
-                .from('subscriptions')
-                .select('*')
-                .eq('customer_email', currentUser.email)
-                .eq('product_key', 'broadcast')
-                .eq('status', 'active')
-                .single();
+            console.log('[Auth] User email:', currentUser.email);
+            console.log('[Auth] Is admin:', ADMIN_EMAILS.includes(currentUser.email));
 
-            if (!subscription) {
-                // No active subscription - redirect to pricing
-                window.location.href = '/broadcast/pricing.html';
-                return;
+            // Admin bypass - skip subscription check
+            if (!ADMIN_EMAILS.includes(currentUser.email.toLowerCase())) {
+                // Check subscription status (allow active or trialing)
+                const { data: subscription } = await supabaseClient
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('customer_email', currentUser.email)
+                    .eq('product_key', 'broadcast')
+                    .in('status', ['active', 'trialing'])
+                    .single();
+
+                if (!subscription) {
+                    // No active subscription - redirect to pricing
+                    window.location.href = '/broadcast/pricing.html';
+                    return;
+                }
             }
 
             if (authRequired) authRequired.style.display = 'none';
             if (dashboard) dashboard.style.display = 'block';
 
-            await loadConnectedAccounts();
-            await loadRecentPosts();
+            // Show member badge
+            showMemberBadge(currentUser.email);
+
+            // Load from cache first, then refresh in background
+            await loadConnectedAccounts(oauthResult.success);
+            await loadRecentPosts(oauthResult.success);
+
+            // Show success banner after accounts load
+            if (oauthResult.success) {
+                showSuccessBanner(oauthResult.platform);
+            } else if (oauthResult.error) {
+                showToast(oauthResult.error, 'error');
+            }
         });
 
-        async function loadConnectedAccounts() {
+        function checkOAuthCallback() {
+            const params = new URLSearchParams(window.location.search);
+            const success = params.get('success');
+            const platform = params.get('platform');
+            const error = params.get('error');
+
+            const result = { success: false, platform: null, error: null };
+
+            if (success === 'true' && platform) {
+                result.success = true;
+                result.platform = platform;
+                // Clear cache so we get fresh data
+                localStorage.removeItem(ACCOUNTS_CACHE_KEY);
+                window.history.replaceState({}, '', window.location.pathname);
+            } else if (error) {
+                result.error = error;
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+
+            return result;
+        }
+
+        function showMemberBadge(email) {
+            const badge = document.getElementById('member-badge');
+            const emailEl = document.getElementById('member-email');
+            if (badge && emailEl) {
+                emailEl.textContent = email;
+                badge.style.display = 'block';
+            }
+        }
+
+        function showSuccessBanner(platform) {
+            const banner = document.getElementById('success-banner');
+            if (!banner) return;
+
+            banner.innerHTML = `
+                <div class="success-banner-content">
+                    <i class="fas fa-check-circle"></i>
+                    <span><strong>${PLATFORM_NAMES[platform] || platform}</strong> connected successfully!</span>
+                    <button class="banner-close" onclick="document.getElementById('success-banner').style.display='none'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            banner.style.display = 'block';
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                banner.style.opacity = '0';
+                setTimeout(() => {
+                    banner.style.display = 'none';
+                    banner.style.opacity = '1';
+                }, 300);
+            }, 5000);
+        }
+
+        function showToast(message, type = 'success') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.background = type === 'success' ? '#10b981' : '#dc2626';
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Connect functions
+        function connectPlatform(platform) {
+            if (!currentSession?.access_token) {
+                showToast('Session expired. Please refresh.', 'error');
+                return;
+            }
+            const state = currentSession.access_token;
+            window.location.href = `/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;
+        }
+
+        async function disconnectPlatform(platform, event) {
+            event.stopPropagation();
+            if (!confirm(`Disconnect ${PLATFORM_NAMES[platform]}?`)) return;
+
+            const { error } = await supabaseClient
+                .from('connected_accounts')
+                .delete()
+                .eq('user_id', currentUser.id)
+                .eq('platform', platform);
+
+            if (error) {
+                showToast('Failed to disconnect', 'error');
+            } else {
+                // Clear cache and reload
+                localStorage.removeItem(ACCOUNTS_CACHE_KEY);
+                showToast(`${PLATFORM_NAMES[platform]} disconnected`, 'success');
+                await loadConnectedAccounts(true);
+            }
+        }
+
+        function formatFollowers(count) {
+            if (!count) return null;
+            if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+            if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+            return count.toString();
+        }
+
+        async function loadConnectedAccounts(forceRefresh = false) {
             const grid = document.getElementById('accounts-grid');
             if (!grid || !currentUser) return;
+
+            // Try cache first
+            if (!forceRefresh) {
+                const cached = getCachedData(ACCOUNTS_CACHE_KEY);
+                if (cached) {
+                    console.log('[Cache] Using cached accounts');
+                    renderAccounts(grid, cached);
+                    return;
+                }
+            }
 
             const { data: accounts, error } = await supabaseClient
                 .from('connected_accounts')
@@ -140,31 +327,113 @@
                 return;
             }
 
-            const platforms = ['twitter', 'tiktok', 'instagram', 'linkedin'];
+            // Cache the results
+            setCachedData(ACCOUNTS_CACHE_KEY, accounts);
+            renderAccounts(grid, accounts);
+        }
+
+        function renderAccounts(grid, accounts) {
+            const platforms = ['linkedin', 'instagram', 'tiktok', 'twitter'];
+            const platformColors = {
+                linkedin: '#0A66C2',
+                instagram: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
+                tiktok: '#000000',
+                twitter: '#000000'
+            };
+
             const html = platforms.map(platform => {
                 const account = accounts?.find(a => a.platform === platform);
                 const isConnected = !!account;
 
-                return `
-                    <div class="account-card ${isConnected ? 'connected' : ''}">
-                        <div class="account-icon">${PLATFORM_ICONS[platform]}</div>
-                        <div class="account-info">
-                            <h3>${PLATFORM_NAMES[platform]}</h3>
-                            <p>${isConnected ? account.account_name || 'Connected' : 'Not connected'}</p>
+                if (isConnected) {
+                    const metadata = account.metadata || {};
+                    const profilePic = metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url;
+                    const followers = metadata.followers_count || metadata.follower_count;
+                    const following = metadata.following_count || metadata.friends_count;
+                    const username = account.account_name || metadata.username || metadata.display_name;
+                    const displayName = metadata.display_name || metadata.name || username;
+                    const accountType = metadata.account_type || '';
+                    const formattedFollowers = formatFollowers(followers);
+                    const formattedFollowing = formatFollowers(following);
+
+                    return `
+                        <div class="account-card-v2 connected" data-platform="${platform}">
+                            <div class="account-card-header">
+                                <div class="platform-badge-icon" style="background: ${platformColors[platform]}">
+                                    ${PLATFORM_ICONS[platform]}
+                                </div>
+                                <button class="disconnect-btn" onclick="disconnectPlatform('${platform}', event)" title="Disconnect">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div class="account-card-body">
+                                <div class="profile-section">
+                                    ${profilePic
+                                        ? `<img src="${profilePic}" alt="${username}" class="profile-avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                           <div class="profile-avatar-fallback" style="display:none;"><i class="fas fa-user"></i></div>`
+                                        : `<div class="profile-avatar-fallback"><i class="fas fa-user"></i></div>`
+                                    }
+                                    <div class="profile-info">
+                                        <div class="profile-name">${displayName}</div>
+                                        <div class="profile-handle">@${username}</div>
+                                        ${accountType ? `<span class="account-type-badge">${accountType}</span>` : ''}
+                                    </div>
+                                </div>
+                                ${(formattedFollowers || formattedFollowing) ? `
+                                    <div class="stats-row">
+                                        ${formattedFollowers ? `
+                                            <div class="stat-item">
+                                                <span class="stat-number">${formattedFollowers}</span>
+                                                <span class="stat-text">followers</span>
+                                            </div>
+                                        ` : ''}
+                                        ${formattedFollowing ? `
+                                            <div class="stat-item">
+                                                <span class="stat-number">${formattedFollowing}</span>
+                                                <span class="stat-text">following</span>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
-                        <span class="account-status ${isConnected ? 'connected' : 'disconnected'}">
-                            ${isConnected ? 'Connected' : 'Connect'}
-                        </span>
-                    </div>
-                `;
+                    `;
+                } else {
+                    return `
+                        <div class="account-card-v2 disconnected" data-platform="${platform}" onclick="connectPlatform('${platform}')">
+                            <div class="account-card-header">
+                                <div class="platform-badge-icon" style="background: ${platformColors[platform]}">
+                                    ${PLATFORM_ICONS[platform]}
+                                </div>
+                            </div>
+                            <div class="account-card-body">
+                                <div class="disconnected-content">
+                                    <h4>${PLATFORM_NAMES[platform]}</h4>
+                                    <p>Not connected</p>
+                                    <span class="connect-link">+ Connect</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
             }).join('');
 
             grid.innerHTML = html;
         }
 
-        async function loadRecentPosts() {
+        async function loadRecentPosts(forceRefresh = false) {
             const container = document.getElementById('recent-posts');
             if (!container || !currentUser) return;
+
+            // Try cache first
+            if (!forceRefresh) {
+                const cached = getCachedData(POSTS_CACHE_KEY);
+                if (cached) {
+                    console.log('[Cache] Using cached posts');
+                    renderPosts(container, cached);
+                    return;
+                }
+            }
 
             const { data: posts, error } = await supabaseClient
                 .from('posts')
@@ -179,6 +448,12 @@
                 return;
             }
 
+            // Cache the results
+            setCachedData(POSTS_CACHE_KEY, posts || []);
+            renderPosts(container, posts || []);
+        }
+
+        function renderPosts(container, posts) {
             if (!posts || posts.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -216,6 +491,11 @@
             container.innerHTML = html;
         }
 
+        // Clear cache when new post is created (called from upload page)
+        window.clearPostsCache = function() {
+            localStorage.removeItem(POSTS_CACHE_KEY);
+        };
+
         function formatDate(dateStr) {
             const date = new Date(dateStr);
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -225,5 +505,362 @@
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
     </script>
+
+    <style>
+        /* Account Cards V2 - Dashboard Style */
+        .accounts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .account-card-v2 {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .account-card-v2.connected {
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .account-card-v2.disconnected:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .account-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            background: #f9fafb;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .platform-badge-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+        }
+
+        .connected-indicator {
+            color: #10b981;
+            font-size: 1.25rem;
+        }
+
+        .account-card-body {
+            padding: 1.25rem;
+        }
+
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+        }
+
+        .profile-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #e5e7eb;
+            flex-shrink: 0;
+        }
+
+        .profile-avatar-fallback {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .profile-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .profile-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .profile-handle {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .account-type-badge {
+            display: inline-block;
+            margin-top: 0.25rem;
+            padding: 0.125rem 0.5rem;
+            background: #eff6ff;
+            color: #1e40af;
+            font-size: 0.65rem;
+            font-weight: 500;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            padding-top: 0.875rem;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: baseline;
+            gap: 0.25rem;
+        }
+
+        .stat-number {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text);
+        }
+
+        .stat-text {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        /* Disconnected card styles */
+        .disconnected-content {
+            text-align: center;
+            padding: 0.5rem 0;
+        }
+
+        .disconnected-content h4 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1rem;
+            color: var(--text);
+        }
+
+        .disconnected-content p {
+            margin: 0 0 0.75rem 0;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        .connect-link {
+            display: inline-block;
+            color: var(--primary);
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .account-card-v2.disconnected:hover .connect-link {
+            text-decoration: underline;
+        }
+
+        .account-card-v2.disconnected {
+            cursor: pointer;
+        }
+
+        /* Disconnect button */
+        .disconnect-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #fee2e2;
+            color: #dc2626;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            opacity: 0.7;
+        }
+
+        .disconnect-btn:hover {
+            background: #dc2626;
+            color: white;
+            opacity: 1;
+        }
+
+        /* Loading state */
+        .accounts-grid .loading {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-light);
+        }
+
+        /* Success Banner */
+        .success-banner {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            animation: slideDown 0.3s ease;
+            transition: opacity 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .success-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .success-banner-content i.fa-check-circle {
+            font-size: 1.25rem;
+        }
+
+        .success-banner-content span {
+            flex: 1;
+        }
+
+        .banner-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .banner-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+            transition: opacity 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* Member Badge */
+        .member-badge {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #8b5cf6 100%);
+            border-radius: 16px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3); }
+            50% { box-shadow: 0 4px 30px rgba(139, 92, 246, 0.4); }
+        }
+
+        .member-badge-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .member-icon {
+            font-size: 1.75rem;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        @keyframes sparkle {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        .member-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.125rem;
+        }
+
+        .member-label {
+            color: white;
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .member-email {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+        }
+
+        .member-status {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 0.375rem 0.875rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .member-status::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
 </body>
 </html>

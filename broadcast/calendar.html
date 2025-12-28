@@ -7,7 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -72,6 +73,7 @@
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
+        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
         let currentDate = new Date();
         let postDates = new Set();
 
@@ -108,18 +110,20 @@
                 return;
             }
 
-            // Check subscription status
-            const { data: subscription } = await supabaseClient
-                .from('subscriptions')
-                .select('*')
-                .eq('customer_email', currentUser.email)
-                .eq('product_key', 'broadcast')
-                .eq('status', 'active')
-                .single();
+            // Admin bypass - skip subscription check
+            if (!ADMIN_EMAILS.includes(currentUser.email)) {
+                const { data: subscription } = await supabaseClient
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('customer_email', currentUser.email)
+                    .eq('product_key', 'broadcast')
+                    .in('status', ['active', 'trialing'])
+                    .single();
 
-            if (!subscription) {
-                window.location.href = '/broadcast/pricing.html';
-                return;
+                if (!subscription) {
+                    window.location.href = '/broadcast/pricing.html';
+                    return;
+                }
             }
 
             authRequired.style.display = 'none';

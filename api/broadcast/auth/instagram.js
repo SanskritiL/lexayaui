@@ -39,10 +39,10 @@ module.exports = async function handler(req, res) {
     // If no code, redirect to Facebook OAuth
     if (!code) {
         if (!FACEBOOK_APP_ID) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('FACEBOOK_APP_ID not configured in Vercel env vars'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('FACEBOOK_APP_ID not configured in Vercel env vars'));
         }
         if (!FACEBOOK_APP_SECRET) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('FACEBOOK_APP_SECRET not configured in Vercel env vars'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('FACEBOOK_APP_SECRET not configured in Vercel env vars'));
         }
 
         // Facebook OAuth with Instagram permissions
@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
     if (oauthError) {
         const errorMsg = `Facebook OAuth Error: ${oauthError}. ${error_description || ''} ${error_reason || ''}`.trim();
         console.error('OAuth error from Facebook:', errorMsg);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(errorMsg)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(errorMsg)}`);
     }
 
     try {
@@ -89,7 +89,7 @@ module.exports = async function handler(req, res) {
         if (!tokenResponse.ok || tokenData.error) {
             const errorMsg = tokenData.error?.message || JSON.stringify(tokenData);
             console.error('Facebook token error:', tokenData);
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + errorMsg));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + errorMsg));
         }
 
         const shortLivedToken = tokenData.access_token;
@@ -136,7 +136,7 @@ module.exports = async function handler(req, res) {
 
         if (pagesData.error) {
             console.error('Pages fetch error:', pagesData.error);
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Failed to get pages: ' + pagesData.error.message));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Failed to get pages: ' + pagesData.error.message));
         }
 
         if (!pagesData.data || pagesData.data.length === 0) {
@@ -176,7 +176,7 @@ module.exports = async function handler(req, res) {
                     });
                 }
 
-                return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent(`No Facebook Pages found for user ${meData.name || 'unknown'}. Make sure you granted Page permissions and have admin access to a Page connected to Instagram.`));
+                return res.redirect('/broadcast/?error=' + encodeURIComponent(`No Facebook Pages found for user ${meData.name || 'unknown'}. Make sure you granted Page permissions and have admin access to a Page connected to Instagram.`));
             }
         }
 
@@ -193,9 +193,9 @@ module.exports = async function handler(req, res) {
             // Check if instagram_business_account is already in the response
             if (page.instagram_business_account) {
                 console.log('[STEP 7] Found IG account on page, getting details...');
-                // Need to get full details
+                // Need to get full details including follower count
                 const igResponse = await fetch(
-                    `https://graph.facebook.com/v18.0/${page.instagram_business_account.id}?fields=id,username,profile_picture_url&access_token=${page.access_token}`
+                    `https://graph.facebook.com/v18.0/${page.instagram_business_account.id}?fields=id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${page.access_token}`
                 );
                 const igData = await igResponse.json();
                 console.log('Instagram account data:', igData);
@@ -203,7 +203,7 @@ module.exports = async function handler(req, res) {
                 if (igData.id) {
                     instagramAccount = igData;
                     pageAccessToken = page.access_token;
-                    console.log(`Found Instagram account: ${instagramAccount.username}`);
+                    console.log(`Found Instagram account: ${instagramAccount.username} (${instagramAccount.followers_count} followers)`);
                     pagesChecked.push({ name: page.name, hasInstagram: true, igUsername: igData.username });
                     break;
                 }
@@ -214,12 +214,12 @@ module.exports = async function handler(req, res) {
 
         if (!instagramAccount) {
             const checkedNames = pagesChecked.map(p => `${p.name} (IG: ${p.hasInstagram ? p.igUsername : 'none'})`).join(', ');
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent(`No Instagram Business account found. Pages checked: ${checkedNames}. Make sure your Instagram is a Business/Creator account and connected to a Facebook Page.`));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent(`No Instagram Business account found. Pages checked: ${checkedNames}. Make sure your Instagram is a Business/Creator account and connected to a Facebook Page.`));
         }
 
         // Verify user from state
         if (!state) {
-            return res.redirect('/broadcast/connect.html?error=Invalid state');
+            return res.redirect('/broadcast/?error=Invalid state');
         }
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -227,7 +227,7 @@ module.exports = async function handler(req, res) {
 
         if (userError || !user) {
             console.error('User verification error:', userError);
-            return res.redirect('/broadcast/connect.html?error=Session expired, please login again');
+            return res.redirect('/broadcast/?error=Session expired, please login again');
         }
 
         // Calculate expiry
@@ -248,6 +248,12 @@ module.exports = async function handler(req, res) {
                 metadata: {
                     profile_picture: instagramAccount.profile_picture_url,
                     ig_user_id: instagramAccount.id,
+                    display_name: instagramAccount.name || instagramAccount.username,
+                    username: instagramAccount.username,
+                    followers_count: instagramAccount.followers_count,
+                    following_count: instagramAccount.follows_count,
+                    media_count: instagramAccount.media_count,
+                    account_type: 'Business',
                 },
             }, {
                 onConflict: 'user_id,platform',
@@ -255,17 +261,17 @@ module.exports = async function handler(req, res) {
 
         if (saveError) {
             console.error('Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
         console.log('[STEP 8] ✅ SUCCESS! Instagram account saved:', instagramAccount.username);
         console.log('========== INSTAGRAM OAUTH COMPLETE ==========');
-        return res.redirect('/broadcast/connect.html?success=true&platform=instagram');
+        return res.redirect('/broadcast/?success=true&platform=instagram');
 
     } catch (error) {
         console.error('========== INSTAGRAM OAUTH ERROR ==========');
         console.error('Error:', error.message);
         console.error('Stack:', error.stack);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }

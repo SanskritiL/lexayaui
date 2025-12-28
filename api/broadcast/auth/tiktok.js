@@ -32,11 +32,11 @@ module.exports = async function handler(req, res) {
     if (!code) {
         if (!TIKTOK_CLIENT_KEY) {
             console.log('[ERROR] TIKTOK_CLIENT_KEY not set!');
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('TikTok not configured. Set TIKTOK_CLIENT_KEY in Vercel env vars.'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('TikTok not configured. Set TIKTOK_CLIENT_KEY in Vercel env vars.'));
         }
         if (!TIKTOK_CLIENT_SECRET) {
             console.log('[ERROR] TIKTOK_CLIENT_SECRET not set!');
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('TikTok not configured. Set TIKTOK_CLIENT_SECRET in Vercel env vars.'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('TikTok not configured. Set TIKTOK_CLIENT_SECRET in Vercel env vars.'));
         }
 
         // TikTok OAuth URL
@@ -59,7 +59,7 @@ module.exports = async function handler(req, res) {
     if (oauthError) {
         const errorMsg = error_description || oauthError;
         console.log('[ERROR] OAuth error from TikTok:', errorMsg);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(errorMsg)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(errorMsg)}`);
     }
 
     try {
@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
             console.error('[STEP 2] TikTok token error:', errorText);
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Failed to get TikTok access token: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Failed to get TikTok access token: ' + errorText));
         }
 
         const tokenData = await tokenResponse.json();
@@ -92,7 +92,7 @@ module.exports = async function handler(req, res) {
 
         if (tokenData.error) {
             console.error('[STEP 2] TikTok token error:', tokenData);
-            return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
+            return res.redirect(`/broadcast/?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
         }
 
         const {
@@ -106,9 +106,9 @@ module.exports = async function handler(req, res) {
 
         console.log('[STEP 2] Got token, open_id:', open_id, 'expires_in:', expires_in);
 
-        // Get user info
+        // Get user info with follower counts
         console.log('[STEP 3] Getting user info...');
-        const userInfoResponse = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username', {
+        const userInfoResponse = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username,follower_count,following_count,likes_count,video_count,bio_description', {
             headers: {
                 'Authorization': `Bearer ${access_token}`,
             },
@@ -134,7 +134,7 @@ module.exports = async function handler(req, res) {
         console.log('[STEP 4] Verifying user from state...');
         if (!state) {
             console.log('[STEP 4] No state provided!');
-            return res.redirect('/broadcast/connect.html?error=Invalid state');
+            return res.redirect('/broadcast/?error=Invalid state');
         }
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -142,7 +142,7 @@ module.exports = async function handler(req, res) {
 
         if (userError || !user) {
             console.error('[STEP 4] User verification error:', userError);
-            return res.redirect('/broadcast/connect.html?error=Session expired, please login again');
+            return res.redirect('/broadcast/?error=Session expired, please login again');
         }
         console.log('[STEP 4] User verified:', user.id);
 
@@ -163,8 +163,15 @@ module.exports = async function handler(req, res) {
                 token_expires_at: tokenExpiresAt,
                 scopes: scope ? scope.split(',') : ['user.info.basic', 'video.upload'],
                 metadata: {
-                    avatar_url: userInfo.avatar_url,
+                    profile_picture: userInfo.avatar_url,
+                    display_name: userInfo.display_name,
                     username: userInfo.username,
+                    followers_count: userInfo.follower_count,
+                    following_count: userInfo.following_count,
+                    likes_count: userInfo.likes_count,
+                    video_count: userInfo.video_count,
+                    bio: userInfo.bio_description,
+                    account_type: 'Creator',
                     refresh_expires_in: refresh_expires_in,
                 },
             }, {
@@ -173,17 +180,17 @@ module.exports = async function handler(req, res) {
 
         if (saveError) {
             console.error('[STEP 5] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
         console.log('[STEP 5] ✅ SUCCESS! TikTok account saved:', userInfo.display_name || userInfo.username);
         console.log('========== TIKTOK OAUTH COMPLETE ==========');
-        return res.redirect('/broadcast/connect.html?success=true&platform=tiktok');
+        return res.redirect('/broadcast/?success=true&platform=tiktok');
 
     } catch (error) {
         console.error('========== TIKTOK OAUTH ERROR ==========');
         console.error('Error:', error.message);
         console.error('Stack:', error.stack);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }

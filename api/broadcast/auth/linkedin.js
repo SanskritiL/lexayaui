@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
     if (!code) {
         if (!LINKEDIN_CLIENT_ID) {
             console.log('[ERROR] LINKEDIN_CLIENT_ID not set!');
-            return res.redirect('/broadcast/connect.html?error=LinkedIn not configured');
+            return res.redirect('/broadcast/?error=LinkedIn not configured');
         }
 
         const scopes = ['openid', 'profile', 'w_member_social'].join(' ');
@@ -52,7 +52,7 @@ module.exports = async function handler(req, res) {
     // Handle OAuth error
     if (oauthError) {
         console.log('[ERROR] OAuth error from LinkedIn:', oauthError, error_description);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(oauthError + ': ' + (error_description || ''))}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(oauthError + ': ' + (error_description || ''))}`);
     }
 
     // Exchange code for access token
@@ -77,7 +77,7 @@ module.exports = async function handler(req, res) {
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
             console.error('[STEP 2] LinkedIn token error:', errorText);
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
         }
 
         const tokenData = await tokenResponse.json();
@@ -97,7 +97,7 @@ module.exports = async function handler(req, res) {
         if (!profileResponse.ok) {
             const errorText = await profileResponse.text();
             console.error('[STEP 3] LinkedIn profile error:', errorText);
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Profile fetch failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Profile fetch failed: ' + errorText));
         }
 
         const profile = await profileResponse.json();
@@ -107,7 +107,7 @@ module.exports = async function handler(req, res) {
         console.log('[STEP 4] Verifying user from state...');
         if (!state) {
             console.log('[STEP 4] No state provided!');
-            return res.redirect('/broadcast/connect.html?error=Invalid state');
+            return res.redirect('/broadcast/?error=Invalid state');
         }
 
         // Create Supabase client
@@ -118,7 +118,7 @@ module.exports = async function handler(req, res) {
 
         if (userError || !user) {
             console.error('[STEP 4] User verification error:', userError);
-            return res.redirect('/broadcast/connect.html?error=Session expired, please login again');
+            return res.redirect('/broadcast/?error=Session expired, please login again');
         }
         console.log('[STEP 4] User verified:', user.id);
 
@@ -138,8 +138,11 @@ module.exports = async function handler(req, res) {
                 token_expires_at: tokenExpiresAt,
                 scopes: ['openid', 'profile', 'w_member_social'],
                 metadata: {
-                    picture: profile.picture,
+                    profile_picture: profile.picture,
+                    display_name: profile.name,
+                    username: profile.name?.replace(/\s+/g, '').toLowerCase() || profile.email?.split('@')[0],
                     email: profile.email,
+                    account_type: 'Personal'
                 },
             }, {
                 onConflict: 'user_id,platform',
@@ -147,18 +150,18 @@ module.exports = async function handler(req, res) {
 
         if (saveError) {
             console.error('[STEP 5] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
         // Success - redirect back to connect page
         console.log('[STEP 5] ✅ SUCCESS! LinkedIn connected:', profile.name);
         console.log('========== LINKEDIN OAUTH COMPLETE ==========');
-        return res.redirect('/broadcast/connect.html?success=true&platform=linkedin');
+        return res.redirect('/broadcast/?success=true&platform=linkedin');
 
     } catch (error) {
         console.error('========== LINKEDIN OAUTH ERROR ==========');
         console.error('Error:', error.message);
         console.error('Stack:', error.stack);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }

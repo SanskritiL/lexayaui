@@ -7,7 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -24,9 +25,12 @@
             <div class="pricing-card">
                 <div class="pricing-header">
                     <h2>Broadcast Pro</h2>
+                    <div class="trial-badge" style="background: #dcfce7; color: #166534; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; margin-bottom: 0.75rem; display: inline-block;">
+                        7 Days Free
+                    </div>
                     <div class="price">
-                        <span class="amount">$14.88</span>
-                        <span class="period">/month</span>
+                        <span class="amount">$14.99</span>
+                        <span class="period">/month after trial</span>
                     </div>
                 </div>
 
@@ -51,10 +55,10 @@
                     <!-- Subscribe button -->
                     <div id="subscribe-section" style="display: none;">
                         <button id="subscribe-btn" class="btn btn-primary" style="width: 100%;">
-                            Subscribe - $14.88/month
+                            Start 7-Day Free Trial
                         </button>
                         <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.75rem; text-align: center;">
-                            Secure payment via Stripe
+                            No charge for 7 days. Cancel anytime.
                         </p>
                     </div>
 
@@ -73,6 +77,10 @@
             <!-- FAQ -->
             <section class="faq-section">
                 <h3>Questions?</h3>
+                <div class="faq-item">
+                    <strong>How does the free trial work?</strong>
+                    <p>You get 7 days free. We'll remind you before your trial ends. Cancel anytime before to avoid charges.</p>
+                </div>
                 <div class="faq-item">
                     <strong>Can I cancel anytime?</strong>
                     <p>Yes, cancel with one click. No questions asked.</p>
@@ -95,9 +103,8 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Stripe Price ID for Broadcast Pro subscription
-        // TODO: Replace with your actual Stripe Price ID
-        const BROADCAST_PRICE_ID = 'price_broadcast_monthly';
+        // Stripe Price ID for Broadcast Pro subscription ($14.99/month)
+        const BROADCAST_PRICE_ID = 'price_1SjK7SA1WPL5LnBtWdgJCcVD';
 
         let currentUser = null;
         let currentSession = null;
@@ -121,7 +128,7 @@
                 .select('*')
                 .eq('customer_email', currentUser.email)
                 .eq('product_key', 'broadcast')
-                .eq('status', 'active')
+                .in('status', ['active', 'trialing'])
                 .single();
 
             if (subscription) {
@@ -146,6 +153,7 @@
                         userId: currentUser.id,
                         productKey: 'broadcast',
                         mode: 'subscription',
+                        trialDays: 7,
                         successUrl: window.location.origin + '/broadcast/?subscribed=true'
                     })
                 });
@@ -160,7 +168,7 @@
             } catch (error) {
                 alert('Error: ' + error.message);
                 btn.disabled = false;
-                btn.textContent = 'Subscribe - $14.88/month';
+                btn.textContent = 'Start Free Trial';
             }
         });
     </script>

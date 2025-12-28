@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -32,65 +33,86 @@
         <main id="connect-main" style="display: none;">
             <div class="connect-grid">
                 <!-- LinkedIn -->
-                <div class="connect-card" id="linkedin-card">
-                    <div class="icon">💼</div>
-                    <div class="info">
-                        <h3>LinkedIn</h3>
-                        <p>Share videos and updates to your professional network</p>
+                <div class="connect-card" id="linkedin-card" data-platform="linkedin">
+                    <div class="card-header">
+                        <div class="platform-icon linkedin">
+                            <i class="fa-brands fa-linkedin"></i>
+                        </div>
+                        <div class="platform-info">
+                            <h3>LinkedIn</h3>
+                            <p class="platform-desc">Share to your professional network</p>
+                        </div>
                     </div>
-                    <div class="status">
-                        <span id="linkedin-status" class="account-status disconnected">Not connected</span>
-                        <button id="linkedin-btn" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
-                            Connect
-                        </button>
+                    <div class="card-body" id="linkedin-body">
+                        <div class="disconnected-state">
+                            <p>Connect your LinkedIn account to share posts and videos</p>
+                            <button id="linkedin-btn" class="btn btn-primary">
+                                <i class="fa-brands fa-linkedin"></i> Connect LinkedIn
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- TikTok -->
-                <div class="connect-card" id="tiktok-card">
-                    <div class="icon">🎵</div>
-                    <div class="info">
-                        <h3>TikTok</h3>
-                        <p>Post short-form videos directly or to drafts</p>
+                <div class="connect-card" id="tiktok-card" data-platform="tiktok">
+                    <div class="card-header">
+                        <div class="platform-icon tiktok">
+                            <i class="fa-brands fa-tiktok"></i>
+                        </div>
+                        <div class="platform-info">
+                            <h3>TikTok</h3>
+                            <p class="platform-desc">Post short-form videos</p>
+                        </div>
                     </div>
-                    <div class="status">
-                        <span id="tiktok-status" class="account-status disconnected">Not connected</span>
-                        <button id="tiktok-btn" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
-                            Connect
-                        </button>
+                    <div class="card-body" id="tiktok-body">
+                        <div class="disconnected-state">
+                            <p>Connect your TikTok to post videos directly</p>
+                            <button id="tiktok-btn" class="btn btn-primary">
+                                <i class="fa-brands fa-tiktok"></i> Connect TikTok
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Instagram -->
-                <div class="connect-card" id="instagram-card">
-                    <div class="icon">📸</div>
-                    <div class="info">
-                        <h3>Instagram</h3>
-                        <p>Publish Reels to your Instagram business account</p>
-                        <p style="font-size: 0.8rem; color: var(--warning); margin-top: 0.25rem;">
-                            Requires Business or Creator account
-                        </p>
+                <div class="connect-card" id="instagram-card" data-platform="instagram">
+                    <div class="card-header">
+                        <div class="platform-icon instagram">
+                            <i class="fa-brands fa-instagram"></i>
+                        </div>
+                        <div class="platform-info">
+                            <h3>Instagram</h3>
+                            <p class="platform-desc">Publish Reels & posts</p>
+                        </div>
                     </div>
-                    <div class="status">
-                        <span id="instagram-status" class="account-status disconnected">Not connected</span>
-                        <button id="instagram-btn" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
-                            Connect
-                        </button>
+                    <div class="card-body" id="instagram-body">
+                        <div class="disconnected-state">
+                            <p>Connect your Instagram Business or Creator account</p>
+                            <button id="instagram-btn" class="btn btn-primary">
+                                <i class="fa-brands fa-instagram"></i> Connect Instagram
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Twitter/X -->
-                <div class="connect-card" id="twitter-card">
-                    <div class="icon">𝕏</div>
-                    <div class="info">
-                        <h3>Twitter/X</h3>
-                        <p>Share tweets and videos to your followers</p>
+                <div class="connect-card" id="twitter-card" data-platform="twitter">
+                    <div class="card-header">
+                        <div class="platform-icon twitter">
+                            <i class="fa-brands fa-x-twitter"></i>
+                        </div>
+                        <div class="platform-info">
+                            <h3>Twitter/X</h3>
+                            <p class="platform-desc">Share tweets & videos</p>
+                        </div>
                     </div>
-                    <div class="status">
-                        <span id="twitter-status" class="account-status disconnected">Not connected</span>
-                        <button id="twitter-btn" class="btn btn-primary btn-small" style="margin-top: 0.5rem;">
-                            Connect
-                        </button>
+                    <div class="card-body" id="twitter-body">
+                        <div class="disconnected-state">
+                            <p>Connect your X account to post tweets</p>
+                            <button id="twitter-btn" class="btn btn-primary">
+                                <i class="fa-brands fa-x-twitter"></i> Connect X
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -139,9 +161,48 @@
 
         let connectedAccounts = [];
         let currentUser = null;
+        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
         let currentSession = null;
 
+        // Cache config
+        const CACHE_KEY = 'lexaya_connected_accounts';
+        const CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 1 week in ms
+
+        function getCachedAccounts() {
+            try {
+                const cached = localStorage.getItem(CACHE_KEY);
+                if (!cached) return null;
+                const data = JSON.parse(cached);
+                return data;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function setCachedAccounts(accounts) {
+            const cacheData = {
+                accounts: accounts,
+                timestamp: Date.now()
+            };
+            localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        }
+
+        function isCacheStale(cachedData) {
+            if (!cachedData || !cachedData.timestamp) return true;
+            return Date.now() - cachedData.timestamp > CACHE_DURATION;
+        }
+
+        function clearAccountCache() {
+            localStorage.removeItem(CACHE_KEY);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
+            // Clear any stale cache on page load
+            clearAccountCache();
+
+            // Check for OAuth callback FIRST (before anything else)
+            const oauthResult = checkOAuthCallback();
+
             // Cache both user and session once on load
             const [userRes, sessionRes] = await Promise.all([
                 supabaseClient.auth.getUser(),
@@ -160,38 +221,216 @@
                 return;
             }
 
-            // Check subscription status
-            const { data: subscription } = await supabaseClient
-                .from('subscriptions')
-                .select('*')
-                .eq('customer_email', currentUser.email)
-                .eq('product_key', 'broadcast')
-                .eq('status', 'active')
-                .single();
+            // Admin bypass - skip subscription check
+            if (!ADMIN_EMAILS.includes(currentUser.email)) {
+                const { data: subscription } = await supabaseClient
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('customer_email', currentUser.email)
+                    .eq('product_key', 'broadcast')
+                    .in('status', ['active', 'trialing'])
+                    .single();
 
-            if (!subscription) {
-                window.location.href = '/broadcast/pricing.html';
-                return;
+                if (!subscription) {
+                    window.location.href = '/broadcast/pricing.html';
+                    return;
+                }
             }
 
             document.getElementById('auth-required').style.display = 'none';
             document.getElementById('connect-main').style.display = 'block';
 
-            await loadConnectedAccounts();
+            // If OAuth just completed, force fresh data
+            await loadConnectedAccounts(oauthResult.wasOAuthCallback);
             setupButtons();
-            checkOAuthCallback();
+
+            // Show success message after UI is ready
+            if (oauthResult.wasOAuthCallback) {
+                setTimeout(() => {
+                    if (oauthResult.success) {
+                        showSuccessBanner(oauthResult.platform);
+                    } else if (oauthResult.error) {
+                        showToast(oauthResult.error, 'error');
+                    }
+                }, 100);
+            }
         });
 
-        async function loadConnectedAccounts() {
+        async function loadConnectedAccounts(forceRefresh = false) {
             if (!currentUser) return;
 
+            // Always fetch fresh data from database - cache was causing issues
+            console.log('[DB] Fetching account data from database...');
+
+            // Fetch from Supabase
             const { data: accounts } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
                 .eq('user_id', currentUser.id);
 
             connectedAccounts = accounts || [];
+
+            // If cache is stale, try to refresh follower counts from APIs
+            if (connectedAccounts.length > 0 && (forceRefresh || isCacheStale(cachedData))) {
+                await refreshAccountStats();
+            }
+
+            // Update cache
+            setCachedAccounts(connectedAccounts);
             updateUI();
+        }
+
+        async function refreshAccountStats() {
+            console.log('[Refresh] Refreshing account stats from platform APIs...');
+
+            try {
+                const response = await fetch('/api/broadcast/refresh-accounts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentSession.access_token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const { accounts } = await response.json();
+                    if (accounts && accounts.length > 0) {
+                        connectedAccounts = accounts;
+                        console.log('[Refresh] Account stats updated');
+                    }
+                } else {
+                    console.log('[Refresh] Could not refresh stats, using existing data');
+                }
+            } catch (err) {
+                console.log('[Refresh] Error refreshing stats:', err.message);
+            }
+        }
+
+        // Expose to window for onclick handlers
+        window.refreshSingleAccount = async function(platform) {
+            const btn = document.querySelector(`#${platform}-card .btn-refresh`);
+            if (btn) {
+                btn.classList.add('spinning');
+                btn.disabled = true;
+            }
+
+            try {
+                await refreshAccountStats();
+                clearAccountCache();
+                setCachedAccounts(connectedAccounts);
+                updateUI();
+                showToast('Stats refreshed!', 'success');
+            } catch (err) {
+                showToast('Failed to refresh', 'error');
+            }
+
+            // Re-query button after UI update
+            setTimeout(() => {
+                const newBtn = document.querySelector(`#${platform}-card .btn-refresh`);
+                if (newBtn) {
+                    newBtn.classList.remove('spinning');
+                    newBtn.disabled = false;
+                }
+            }, 100);
+        }
+
+        function formatFollowers(count) {
+            if (!count) return null;
+            if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+            if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+            return count.toString();
+        }
+
+        function getConnectedHTML(platform, account) {
+            const metadata = account.metadata || {};
+            const profilePic = metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url;
+            const followers = metadata.followers_count || metadata.follower_count;
+            const following = metadata.following_count || metadata.friends_count;
+            const username = account.account_name || metadata.username || metadata.display_name;
+            const displayName = metadata.display_name || metadata.name || username;
+            const bio = metadata.bio || metadata.headline || '';
+            const accountType = metadata.account_type || '';
+
+            const formattedFollowers = formatFollowers(followers);
+            const formattedFollowing = formatFollowers(following);
+
+            return `
+                <div class="connected-state">
+                    <div class="account-profile">
+                        ${profilePic
+                            ? `<img src="${profilePic}" alt="${username}" class="profile-pic" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                               <div class="profile-pic-fallback" style="display:none;"><i class="fas fa-user"></i></div>`
+                            : `<div class="profile-pic-fallback"><i class="fas fa-user"></i></div>`
+                        }
+                        <div class="account-details">
+                            <div class="account-name">${displayName}</div>
+                            <div class="account-handle">@${username}</div>
+                            ${accountType ? `<span class="account-type">${accountType}</span>` : ''}
+                        </div>
+                    </div>
+                    ${(formattedFollowers || formattedFollowing) ? `
+                        <div class="account-stats">
+                            ${formattedFollowers ? `
+                                <div class="stat">
+                                    <span class="stat-value">${formattedFollowers}</span>
+                                    <span class="stat-label">Followers</span>
+                                </div>
+                            ` : ''}
+                            ${formattedFollowing ? `
+                                <div class="stat">
+                                    <span class="stat-value">${formattedFollowing}</span>
+                                    <span class="stat-label">Following</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : ''}
+                    <div class="connected-actions">
+                        <span class="connected-badge"><i class="fas fa-check-circle"></i> Connected</span>
+                        <div class="action-buttons">
+                            <button class="btn-refresh" onclick="refreshSingleAccount('${platform}')" title="Refresh stats">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button id="${platform}-btn" class="btn btn-disconnect">
+                                Disconnect
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getDisconnectedHTML(platform) {
+            const platformConfig = {
+                linkedin: {
+                    icon: 'fa-linkedin',
+                    name: 'LinkedIn',
+                    desc: 'Connect your LinkedIn account to share posts and videos'
+                },
+                tiktok: {
+                    icon: 'fa-tiktok',
+                    name: 'TikTok',
+                    desc: 'Connect your TikTok to post videos directly'
+                },
+                instagram: {
+                    icon: 'fa-instagram',
+                    name: 'Instagram',
+                    desc: 'Connect your Instagram Business or Creator account'
+                },
+                twitter: {
+                    icon: 'fa-x-twitter',
+                    name: 'X',
+                    desc: 'Connect your X account to post tweets'
+                }
+            };
+            const config = platformConfig[platform];
+            return `
+                <div class="disconnected-state">
+                    <p>${config.desc}</p>
+                    <button id="${platform}-btn" class="btn btn-primary">
+                        <i class="fa-brands ${config.icon}"></i> Connect ${config.name}
+                    </button>
+                </div>
+            `;
         }
 
         function updateUI() {
@@ -199,24 +438,20 @@
 
             platforms.forEach(platform => {
                 const account = connectedAccounts.find(a => a.platform === platform);
-                const statusEl = document.getElementById(`${platform}-status`);
-                const btnEl = document.getElementById(`${platform}-btn`);
                 const cardEl = document.getElementById(`${platform}-card`);
+                const bodyEl = document.getElementById(`${platform}-body`);
 
                 if (account) {
-                    statusEl.textContent = account.account_name || 'Connected';
-                    statusEl.className = 'account-status connected';
-                    btnEl.textContent = 'Disconnect';
-                    btnEl.className = 'btn btn-secondary btn-small';
                     cardEl.classList.add('connected');
+                    bodyEl.innerHTML = getConnectedHTML(platform, account);
                 } else {
-                    statusEl.textContent = 'Not connected';
-                    statusEl.className = 'account-status disconnected';
-                    btnEl.textContent = 'Connect';
-                    btnEl.className = 'btn btn-primary btn-small';
                     cardEl.classList.remove('connected');
+                    bodyEl.innerHTML = getDisconnectedHTML(platform);
                 }
             });
+
+            // Re-attach button listeners after updating DOM
+            setupButtons();
         }
 
         function setupButtons() {
@@ -299,11 +534,35 @@
                 .eq('platform', platform);
 
             if (error) {
-                alert('Error disconnecting account');
+                showToast('Error disconnecting account', 'error');
                 return;
             }
 
-            await loadConnectedAccounts();
+            // Clear cache and reload
+            clearAccountCache();
+            showToast(`${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected`, 'success');
+            await loadConnectedAccounts(true);
+        }
+
+        function showToast(message, type = 'success') {
+            // Remove existing toast
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.background = type === 'success' ? '#10b981' : '#dc2626';
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
+                <span>${message}</span>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(-50%) translateY(20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         function checkOAuthCallback() {
@@ -312,20 +571,391 @@
             const platform = params.get('platform');
             const error = params.get('error');
 
+            const result = {
+                wasOAuthCallback: false,
+                success: false,
+                platform: null,
+                error: null
+            };
+
             if (success === 'true' && platform) {
-                alert(`Successfully connected ${platform}!`);
+                result.wasOAuthCallback = true;
+                result.success = true;
+                result.platform = platform;
+                // Clear cache immediately so we get fresh data
+                clearAccountCache();
+                // Clean URL
                 window.history.replaceState({}, '', window.location.pathname);
-                loadConnectedAccounts();
             } else if (error) {
-                alert(`Error connecting: ${error}`);
+                result.wasOAuthCallback = true;
+                result.error = `Connection failed: ${error}`;
                 window.history.replaceState({}, '', window.location.pathname);
             }
+
+            return result;
+        }
+
+        function showSuccessBanner(platform) {
+            const platformNames = {
+                linkedin: 'LinkedIn',
+                tiktok: 'TikTok',
+                instagram: 'Instagram',
+                twitter: 'Twitter/X'
+            };
+            const platformName = platformNames[platform] || platform;
+
+            // Remove any existing banner
+            const existing = document.querySelector('.success-banner');
+            if (existing) existing.remove();
+
+            // Create success banner
+            const banner = document.createElement('div');
+            banner.className = 'success-banner';
+            banner.innerHTML = `
+                <div class="success-banner-content">
+                    <i class="fas fa-check-circle"></i>
+                    <span><strong>${platformName}</strong> connected successfully!</span>
+                    <button class="banner-close" onclick="this.parentElement.parentElement.remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+
+            // Insert at top of main content
+            const main = document.getElementById('connect-main');
+            if (main) {
+                main.insertBefore(banner, main.firstChild);
+            }
+
+            // Auto-dismiss after 5 seconds
+            setTimeout(() => {
+                if (banner.parentElement) {
+                    banner.style.opacity = '0';
+                    banner.style.transform = 'translateY(-10px)';
+                    setTimeout(() => banner.remove(), 300);
+                }
+            }, 5000);
         }
     </script>
 
     <style>
+        .connect-grid {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .connect-card {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
         .connect-card.connected {
-            border-color: var(--success);
+            border-color: #10b981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+            background: #f9fafb;
+        }
+
+        .platform-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .platform-icon.linkedin { background: #0A66C2; }
+        .platform-icon.tiktok { background: #000000; }
+        .platform-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+        .platform-icon.twitter { background: #000000; }
+
+        .platform-info h3 {
+            margin: 0 0 0.125rem 0;
+            font-size: 1.1rem;
+        }
+
+        .platform-desc {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        /* Disconnected State */
+        .disconnected-state {
+            text-align: center;
+        }
+
+        .disconnected-state p {
+            color: var(--text-light);
+            margin: 0 0 1rem 0;
+            font-size: 0.9rem;
+        }
+
+        .disconnected-state .btn {
+            width: 100%;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        /* Connected State */
+        .connected-state {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .account-profile {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+        }
+
+        .profile-pic {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #e5e7eb;
+        }
+
+        .profile-pic-fallback {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .account-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .account-name {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .account-handle {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .account-type {
+            display: inline-block;
+            margin-top: 0.25rem;
+            padding: 0.125rem 0.5rem;
+            background: #eff6ff;
+            color: #1e40af;
+            font-size: 0.7rem;
+            font-weight: 500;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .account-stats {
+            display: flex;
+            gap: 1.5rem;
+            padding: 0.75rem 1rem;
+            background: #f9fafb;
+            border-radius: 10px;
+        }
+
+        .account-stats .stat {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        .connected-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.5rem;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .connected-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-size: 0.85rem;
+            color: #10b981;
+            font-weight: 500;
+        }
+
+        .connected-badge i {
+            font-size: 1rem;
+        }
+
+        .btn-disconnect {
+            background: transparent;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-disconnect:hover {
+            background: #fef2f2;
+            border-color: #dc2626;
+        }
+
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-refresh {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .btn-refresh:hover {
+            background: #f3f4f6;
+            color: #1e40af;
+            border-color: #1e40af;
+        }
+
+        .btn-refresh.spinning i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .btn-refresh:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Toast notification for success */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            z-index: 1000;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* Success Banner */
+        .success-banner {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            animation: slideDown 0.3s ease;
+            transition: all 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .success-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .success-banner-content i.fa-check-circle {
+            font-size: 1.25rem;
+        }
+
+        .success-banner-content span {
+            flex: 1;
+        }
+
+        .banner-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .banner-close:hover {
+            background: rgba(255,255,255,0.3);
         }
     </style>
 </body>

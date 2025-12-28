@@ -7,7 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -135,12 +136,21 @@
             </form>
         </main>
 
-        <!-- Publishing Progress -->
+        <!-- Publishing Progress Modal -->
         <div id="publishing-modal" class="modal" style="display: none;">
-            <div class="modal-content">
-                <h2>Publishing...</h2>
-                <div id="publish-progress">
-                    <!-- Progress items will be added here -->
+            <div class="modal-content publishing-modal">
+                <div class="modal-header">
+                    <div class="modal-icon" id="modal-icon">
+                        <div class="spinner"></div>
+                    </div>
+                    <h2 id="modal-title">Publishing your post...</h2>
+                    <p id="modal-subtitle" class="modal-subtitle">This may take a moment</p>
+                </div>
+                <div id="publish-progress" class="publish-progress">
+                    <!-- Progress items will be added dynamically -->
+                </div>
+                <div id="modal-actions" class="modal-actions" style="display: none;">
+                    <a href="./" class="btn btn-primary">Back to Dashboard</a>
                 </div>
             </div>
         </div>
@@ -154,8 +164,9 @@
 
         let selectedFile = null;
         let connectedAccounts = [];
-        let currentUser = null; // Cache user to avoid repeated auth calls
-        let videoThumbnailBlob = null; // Generated thumbnail
+        let currentUser = null;
+        let videoThumbnailBlob = null;
+        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -170,18 +181,20 @@
                 return;
             }
 
-            // Check subscription status
-            const { data: subscription } = await supabaseClient
-                .from('subscriptions')
-                .select('*')
-                .eq('customer_email', currentUser.email)
-                .eq('product_key', 'broadcast')
-                .eq('status', 'active')
-                .single();
+            // Admin bypass - skip subscription check
+            if (!ADMIN_EMAILS.includes(currentUser.email)) {
+                const { data: subscription } = await supabaseClient
+                    .from('subscriptions')
+                    .select('*')
+                    .eq('customer_email', currentUser.email)
+                    .eq('product_key', 'broadcast')
+                    .in('status', ['active', 'trialing'])
+                    .single();
 
-            if (!subscription) {
-                window.location.href = '/broadcast/pricing.html';
-                return;
+                if (!subscription) {
+                    window.location.href = '/broadcast/pricing.html';
+                    return;
+                }
             }
 
             document.getElementById('auth-required').style.display = 'none';
@@ -510,7 +523,14 @@
             console.log('[VALIDATION] All checks passed, proceeding...');
             const publishBtn = document.getElementById('publish-btn');
             publishBtn.disabled = true;
-            publishBtn.textContent = 'Posting...';
+            publishBtn.textContent = 'Preparing...';
+
+            // Show modal early if not a draft
+            if (!isDraft && !document.getElementById('schedule-toggle').checked) {
+                showPublishingModal(selectedPlatforms);
+                // Set all to "Preparing..." initially
+                selectedPlatforms.forEach(p => updatePlatformProgress(p, '', 'Preparing...'));
+            }
 
             try {
                 let videoUrl = null;
@@ -545,6 +565,7 @@
                 if (needsLinkedInVideo) {
                     console.log('[LINKEDIN] Uploading video directly to LinkedIn...');
                     publishBtn.textContent = 'Uploading to LinkedIn...';
+                    updatePlatformProgress('linkedin', 'publishing', 'Uploading video...');
 
                     try {
                         const { data: { session } } = await supabaseClient.auth.getSession();
@@ -583,6 +604,7 @@
 
                     } catch (linkedinError) {
                         console.error('[LINKEDIN] Video upload failed:', linkedinError.message);
+                        updatePlatformProgress('linkedin', '', 'Will post as text');
                         // Continue anyway - will fall back to text post
                     }
                 }
@@ -591,6 +613,7 @@
                 if (needsTikTokVideo) {
                     console.log('[TIKTOK] Uploading video directly to TikTok...');
                     publishBtn.textContent = 'Uploading to TikTok...';
+                    updatePlatformProgress('tiktok', 'publishing', 'Uploading video...');
 
                     try {
                         const { data: { session } } = await supabaseClient.auth.getSession();
@@ -634,6 +657,7 @@
 
                     } catch (tiktokError) {
                         console.error('[TIKTOK] Video upload failed:', tiktokError.message);
+                        updatePlatformProgress('tiktok', 'failed', 'Upload failed');
                         // Store error so publish.js knows upload failed
                         metadata.tiktok_upload_error = tiktokError.message;
                     }
@@ -643,6 +667,7 @@
                 if (selectedFile && needsSupabaseVideo) {
                     console.log('[STORAGE] Uploading video for Instagram...');
                     publishBtn.textContent = 'Uploading video...';
+                    updatePlatformProgress('instagram', 'publishing', 'Uploading video...');
 
                     const fileName = `${currentUser.id}/${Date.now()}_${selectedFile.name}`;
 
@@ -694,27 +719,35 @@
 
                 // 5. If publishing now, trigger the publish API
                 if (!isDraft && !scheduleToggle.checked) {
-                    publishBtn.textContent = 'Publishing...';
+                    // Show the publishing modal
+                    showPublishingModal(selectedPlatforms);
+
+                    // Update each platform to "Publishing..." state
+                    selectedPlatforms.forEach(p => updatePlatformProgress(p, 'publishing', 'Publishing...'));
+
                     console.log('Publishing to platforms:', selectedPlatforms);
                     const publishResult = await publishToAllPlatforms(post.id, selectedPlatforms);
                     console.log('Publish result:', publishResult);
 
-                    // Show detailed results
-                    let message = '';
-                    if (publishResult.status === 'published') {
-                        message = '✅ Post published successfully!\n\n' + formatPublishResults(publishResult.results);
-                    } else if (publishResult.status === 'partial') {
-                        message = '⚠️ Partially published:\n\n' + formatPublishResults(publishResult.results);
-                    } else {
-                        message = '❌ Publish failed:\n\n' + formatPublishResults(publishResult.results);
+                    // Update each platform's status based on results
+                    let successCount = 0;
+                    const totalCount = selectedPlatforms.length;
+
+                    for (const [platform, result] of Object.entries(publishResult.results || {})) {
+                        if (result.status === 'success') {
+                            successCount++;
+                            const successMsg = result.url ? 'Posted!' : (result.note || 'Success!');
+                            updatePlatformProgress(platform, 'success', successMsg);
+                        } else {
+                            const errorMsg = result.error || 'Failed';
+                            updatePlatformProgress(platform, 'failed', errorMsg);
+                        }
                     }
 
-                    // Log before alert so it's visible in console
-                    console.log('PUBLISH COMPLETE:', publishResult);
-                    console.log('Message:', message);
+                    // Complete the modal
+                    completePublishingModal(publishResult.status, successCount, totalCount);
 
-                    alert(message);
-                    window.location.href = './';
+                    console.log('PUBLISH COMPLETE:', publishResult);
                     return;
                 }
 
@@ -735,10 +768,27 @@
                 // More descriptive error message
                 let errorMsg = error.message || 'Unknown error';
                 if (error.message?.includes('row-level security')) {
-                    errorMsg = 'Permission denied: ' + error.message + '\n\nThis is a database policy issue. Check the browser console for details.';
+                    errorMsg = 'Permission denied. Check the browser console for details.';
                 }
 
-                alert('Error: ' + errorMsg);
+                // Hide modal if it's showing and show alert
+                const modal = document.getElementById('publishing-modal');
+                if (modal.style.display === 'flex') {
+                    // Update modal to show error state
+                    const modalIcon = document.getElementById('modal-icon');
+                    const modalTitle = document.getElementById('modal-title');
+                    const modalSubtitle = document.getElementById('modal-subtitle');
+                    const modalActions = document.getElementById('modal-actions');
+
+                    modalIcon.innerHTML = '';
+                    modalIcon.className = 'modal-icon failed';
+                    modalTitle.textContent = 'Something went wrong';
+                    modalSubtitle.textContent = errorMsg;
+                    modalActions.style.display = 'block';
+                } else {
+                    alert('Error: ' + errorMsg);
+                }
+
                 publishBtn.disabled = false;
                 publishBtn.textContent = 'Publish Now';
             }
@@ -750,6 +800,87 @@
                 const msg = result.error || result.note || result.url || 'OK';
                 return `${icon} ${platform.toUpperCase()}: ${msg}`;
             }).join('\n');
+        }
+
+        // Platform display info
+        const platformInfo = {
+            linkedin: { name: 'LinkedIn', icon: '<i class="fa-brands fa-linkedin"></i>' },
+            tiktok: { name: 'TikTok', icon: '<i class="fa-brands fa-tiktok"></i>' },
+            instagram: { name: 'Instagram', icon: '<i class="fa-brands fa-instagram"></i>' },
+            twitter: { name: 'Twitter/X', icon: '<i class="fa-brands fa-x-twitter"></i>' }
+        };
+
+        function showPublishingModal(platforms) {
+            const modal = document.getElementById('publishing-modal');
+            const progressContainer = document.getElementById('publish-progress');
+            const modalIcon = document.getElementById('modal-icon');
+            const modalTitle = document.getElementById('modal-title');
+            const modalSubtitle = document.getElementById('modal-subtitle');
+            const modalActions = document.getElementById('modal-actions');
+
+            // Reset modal state
+            modalIcon.innerHTML = '<div class="spinner"></div>';
+            modalIcon.className = 'modal-icon';
+            modalTitle.textContent = 'Publishing your post...';
+            modalSubtitle.textContent = 'This may take a moment';
+            modalActions.style.display = 'none';
+
+            // Build progress items
+            progressContainer.innerHTML = platforms.map(platform => {
+                const info = platformInfo[platform] || { name: platform, icon: '📱' };
+                return `
+                    <div class="progress-item" id="progress-${platform}" data-platform="${platform}">
+                        <div class="progress-icon ${platform}">${info.icon}</div>
+                        <div class="progress-info">
+                            <h4>${info.name}</h4>
+                            <p id="progress-${platform}-status">Waiting...</p>
+                        </div>
+                        <div class="progress-status" id="progress-${platform}-icon">
+                            <div class="mini-spinner"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            modal.style.display = 'flex';
+        }
+
+        function updatePlatformProgress(platform, status, message) {
+            const item = document.getElementById(`progress-${platform}`);
+            const statusText = document.getElementById(`progress-${platform}-status`);
+            const statusIcon = document.getElementById(`progress-${platform}-icon`);
+
+            if (!item) return;
+
+            item.className = `progress-item ${status}`;
+            statusText.textContent = message;
+            statusIcon.innerHTML = '';
+            statusIcon.className = `progress-status ${status}`;
+        }
+
+        function completePublishingModal(overallStatus, successCount, totalCount) {
+            const modalIcon = document.getElementById('modal-icon');
+            const modalTitle = document.getElementById('modal-title');
+            const modalSubtitle = document.getElementById('modal-subtitle');
+            const modalActions = document.getElementById('modal-actions');
+
+            modalIcon.innerHTML = '';
+
+            if (overallStatus === 'published') {
+                modalIcon.className = 'modal-icon success';
+                modalTitle.textContent = 'Published successfully!';
+                modalSubtitle.textContent = `Posted to ${successCount} platform${successCount > 1 ? 's' : ''}`;
+            } else if (overallStatus === 'partial') {
+                modalIcon.className = 'modal-icon partial';
+                modalTitle.textContent = 'Partially published';
+                modalSubtitle.textContent = `${successCount} of ${totalCount} platforms succeeded`;
+            } else {
+                modalIcon.className = 'modal-icon failed';
+                modalTitle.textContent = 'Publishing failed';
+                modalSubtitle.textContent = 'Check the details below';
+            }
+
+            modalActions.style.display = 'block';
         }
 
         async function publishToAllPlatforms(postId, platforms) {
@@ -790,18 +921,175 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 1000;
+            backdrop-filter: blur(4px);
         }
-        .modal-content {
+        .modal-content.publishing-modal {
             background: white;
             padding: 2rem;
-            border-radius: 12px;
-            max-width: 400px;
+            border-radius: 16px;
+            max-width: 420px;
             width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .modal-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        .modal-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-icon .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #1e40af;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .modal-icon.success {
+            background: #dcfce7;
+            border-radius: 50%;
+        }
+        .modal-icon.success::after {
+            content: '✓';
+            font-size: 2rem;
+            color: #16a34a;
+        }
+        .modal-icon.partial {
+            background: #fef3c7;
+            border-radius: 50%;
+        }
+        .modal-icon.partial::after {
+            content: '⚠';
+            font-size: 2rem;
+        }
+        .modal-icon.failed {
+            background: #fee2e2;
+            border-radius: 50%;
+        }
+        .modal-icon.failed::after {
+            content: '✗';
+            font-size: 2rem;
+            color: #dc2626;
+        }
+        .modal-header h2 {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+        .modal-subtitle {
+            color: #6b7280;
+            font-size: 0.9rem;
+            margin: 0;
+        }
+        .publish-progress {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            background: #f9fafb;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+        .progress-item.publishing {
+            border-color: #1e40af;
+            background: #eff6ff;
+        }
+        .progress-item.success {
+            border-color: #16a34a;
+            background: #f0fdf4;
+        }
+        .progress-item.failed {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+        .progress-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        .progress-icon.linkedin { background: #0A66C2; color: white; }
+        .progress-icon.tiktok { background: #000000; color: white; }
+        .progress-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
+        .progress-icon.twitter { background: #000000; color: white; }
+        .progress-info {
+            flex: 1;
+            min-width: 0;
+        }
+        .progress-info h4 {
+            font-size: 0.95rem;
+            margin: 0 0 0.125rem 0;
+        }
+        .progress-info p {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .progress-status {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .progress-status .mini-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #1e40af;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        .progress-status.success::after {
+            content: '✓';
+            color: #16a34a;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .progress-status.failed::after {
+            content: '✗';
+            color: #dc2626;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        .modal-actions {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        .modal-actions .btn {
+            width: 100%;
         }
     </style>
 </body>

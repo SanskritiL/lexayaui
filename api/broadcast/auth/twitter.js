@@ -35,7 +35,7 @@ module.exports = async function handler(req, res) {
     // Handle OAuth error FIRST (before checking for code)
     if (oauthError) {
         console.log('[ERROR] OAuth error from Twitter:', oauthError, error_description);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(oauthError + ': ' + (error_description || 'Authorization denied'))}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(oauthError + ': ' + (error_description || 'Authorization denied'))}`);
     }
 
     // Create Supabase client
@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
     if (!code) {
         if (!TWITTER_CLIENT_ID) {
             console.log('[ERROR] TWITTER_CLIENT_ID not set!');
-            return res.redirect('/broadcast/connect.html?error=Twitter not configured');
+            return res.redirect('/broadcast/?error=Twitter not configured');
         }
 
         // Generate PKCE code_verifier and code_challenge
@@ -87,7 +87,7 @@ module.exports = async function handler(req, res) {
     try {
         // Decode state to get code_verifier and user token
         if (!state) {
-            return res.redirect('/broadcast/connect.html?error=Invalid state');
+            return res.redirect('/broadcast/?error=Invalid state');
         }
 
         let stateData;
@@ -95,7 +95,7 @@ module.exports = async function handler(req, res) {
             stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
         } catch (e) {
             console.error('[ERROR] Failed to parse state:', e.message);
-            return res.redirect('/broadcast/connect.html?error=Invalid state format');
+            return res.redirect('/broadcast/?error=Invalid state format');
         }
 
         const { userToken, codeVerifier } = stateData;
@@ -112,7 +112,7 @@ module.exports = async function handler(req, res) {
 
         if (!TWITTER_CLIENT_ID || !TWITTER_CLIENT_SECRET) {
             console.error('[STEP 2] Missing Twitter credentials!');
-            return res.redirect('/broadcast/connect.html?error=Twitter credentials not configured');
+            return res.redirect('/broadcast/?error=Twitter credentials not configured');
         }
 
         // Try with Basic auth first (for confidential clients / Web App)
@@ -155,16 +155,16 @@ module.exports = async function handler(req, res) {
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
             console.error('[STEP 2] Twitter token error:', errorText);
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
         }
 
         const tokenData = await tokenResponse.json();
         console.log('[STEP 2] Token data keys:', Object.keys(tokenData));
         const { access_token, expires_in, refresh_token } = tokenData;
 
-        // Get user profile from Twitter
+        // Get user profile from Twitter with extra fields
         console.log('[STEP 3] Getting user profile...');
-        const profileResponse = await fetch('https://api.twitter.com/2/users/me', {
+        const profileResponse = await fetch('https://api.twitter.com/2/users/me?user.fields=profile_image_url,public_metrics,description,verified', {
             headers: {
                 'Authorization': `Bearer ${access_token}`,
             },
@@ -175,7 +175,7 @@ module.exports = async function handler(req, res) {
         if (!profileResponse.ok) {
             const errorText = await profileResponse.text();
             console.error('[STEP 3] Twitter profile error:', errorText);
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Profile fetch failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Profile fetch failed: ' + errorText));
         }
 
         const profileData = await profileResponse.json();
@@ -186,7 +186,7 @@ module.exports = async function handler(req, res) {
         console.log('[STEP 4] Verifying user...');
         if (!userToken) {
             console.error('[STEP 4] No userToken in state');
-            return res.redirect('/broadcast/connect.html?error=No session token provided');
+            return res.redirect('/broadcast/?error=No session token provided');
         }
 
         console.log('[STEP 4] Token length:', userToken.length);
@@ -197,12 +197,12 @@ module.exports = async function handler(req, res) {
         if (userError) {
             console.error('[STEP 4] User verification error:', userError.message);
             console.error('[STEP 4] Error details:', JSON.stringify(userError));
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Auth error: ' + userError.message));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Auth error: ' + userError.message));
         }
 
         if (!user) {
             console.error('[STEP 4] No user returned from getUser');
-            return res.redirect('/broadcast/connect.html?error=Invalid session token');
+            return res.redirect('/broadcast/?error=Invalid session token');
         }
         console.log('[STEP 4] User verified:', user.id);
 
@@ -222,8 +222,15 @@ module.exports = async function handler(req, res) {
                 token_expires_at: tokenExpiresAt,
                 scopes: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
                 metadata: {
-                    name: profile.name,
+                    display_name: profile.name,
                     username: profile.username,
+                    profile_picture: profile.profile_image_url?.replace('_normal', ''),
+                    followers_count: profile.public_metrics?.followers_count,
+                    following_count: profile.public_metrics?.following_count,
+                    tweet_count: profile.public_metrics?.tweet_count,
+                    bio: profile.description,
+                    verified: profile.verified,
+                    account_type: profile.verified ? 'Verified' : 'Personal',
                 },
             }, {
                 onConflict: 'user_id,platform',
@@ -231,17 +238,17 @@ module.exports = async function handler(req, res) {
 
         if (saveError) {
             console.error('[STEP 5] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
         console.log('[STEP 5] ✅ SUCCESS! Twitter connected:', profile.username);
         console.log('========== TWITTER OAUTH COMPLETE ==========');
-        return res.redirect('/broadcast/connect.html?success=true&platform=twitter');
+        return res.redirect('/broadcast/?success=true&platform=twitter');
 
     } catch (error) {
         console.error('========== TWITTER OAUTH ERROR ==========');
         console.error('Error:', error.message);
         console.error('Stack:', error.stack);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }
