@@ -18,6 +18,8 @@ module.exports = async function handler(req, res) {
             return handleTikTok(req, res);
         case 'twitter':
             return handleTwitter(req, res);
+        case 'threads':
+            return handleThreads(req, res);
         default:
             return res.status(400).json({ error: 'Unknown platform: ' + platform });
     }
@@ -561,6 +563,146 @@ async function handleTwitter(req, res) {
 
     } catch (error) {
         console.error('Twitter OAuth Error:', error);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
+    }
+}
+
+// ============== THREADS ==============
+async function handleThreads(req, res) {
+    // Threads uses the same Facebook App as Instagram
+    const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
+    const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+    const { code, state, error: oauthError, error_description } = req.query;
+
+    const isLocalhost = req.headers.host?.includes('localhost');
+    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
+    const redirectUri = `${baseUrl}/api/broadcast/auth/threads`;
+
+    if (!code) {
+        if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Threads not configured (requires Facebook App)'));
+        }
+
+        // Threads OAuth uses threads.net domain
+        const scopes = ['threads_basic', 'threads_content_publish'].join(',');
+        const authUrl = new URL('https://threads.net/oauth/authorize');
+        authUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        authUrl.searchParams.set('scope', scopes);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('state', state || '');
+
+        console.log('[Threads] Redirecting to:', authUrl.toString());
+        return res.redirect(authUrl.toString());
+    }
+
+    if (oauthError) {
+        const errorMsg = `Threads OAuth Error: ${oauthError}. ${error_description || ''}`.trim();
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(errorMsg)}`);
+    }
+
+    try {
+        console.log('[Threads] Exchanging code for token...');
+
+        // Exchange code for access token using Threads API
+        const tokenUrl = new URL('https://graph.threads.net/oauth/access_token');
+        const tokenResponse = await fetch(tokenUrl.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: FACEBOOK_APP_ID,
+                client_secret: FACEBOOK_APP_SECRET,
+                grant_type: 'authorization_code',
+                redirect_uri: redirectUri,
+                code: code,
+            }),
+        });
+
+        const tokenData = await tokenResponse.json();
+        console.log('[Threads] Token response:', JSON.stringify(tokenData));
+
+        if (!tokenResponse.ok || tokenData.error) {
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + (tokenData.error?.message || tokenData.error_message || JSON.stringify(tokenData))));
+        }
+
+        const shortLivedToken = tokenData.access_token;
+        const userId = tokenData.user_id;
+
+        // Exchange for long-lived token
+        console.log('[Threads] Exchanging for long-lived token...');
+        const longTokenUrl = new URL('https://graph.threads.net/access_token');
+        longTokenUrl.searchParams.set('grant_type', 'th_exchange_token');
+        longTokenUrl.searchParams.set('client_secret', FACEBOOK_APP_SECRET);
+        longTokenUrl.searchParams.set('access_token', shortLivedToken);
+
+        const longTokenResponse = await fetch(longTokenUrl.toString());
+        const longTokenData = await longTokenResponse.json();
+        console.log('[Threads] Long-lived token response:', JSON.stringify(longTokenData));
+
+        const accessToken = longTokenData.access_token || shortLivedToken;
+        const expiresIn = longTokenData.expires_in || 3600;
+
+        // Get user profile
+        console.log('[Threads] Fetching user profile...');
+        const profileUrl = new URL(`https://graph.threads.net/v1.0/${userId}`);
+        profileUrl.searchParams.set('fields', 'id,username,threads_profile_picture_url,threads_biography');
+        profileUrl.searchParams.set('access_token', accessToken);
+
+        const profileResponse = await fetch(profileUrl.toString());
+        const profileData = await profileResponse.json();
+        console.log('[Threads] Profile data:', JSON.stringify(profileData));
+
+        if (profileData.error) {
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Failed to get profile: ' + profileData.error.message));
+        }
+
+        if (!state) {
+            return res.redirect('/broadcast/?error=Invalid state');
+        }
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        const { data: { user }, error: userError } = await supabase.auth.getUser(state);
+
+        if (userError || !user) {
+            return res.redirect('/broadcast/?error=Session expired, please login again');
+        }
+
+        const tokenExpiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
+
+        const { error: saveError } = await supabase
+            .from('connected_accounts')
+            .upsert({
+                user_id: user.id,
+                platform: 'threads',
+                platform_user_id: userId,
+                account_name: profileData.username || 'Threads User',
+                access_token: accessToken,
+                refresh_token: null,
+                token_expires_at: tokenExpiresAt,
+                scopes: ['threads_basic', 'threads_content_publish'],
+                metadata: {
+                    threads_user_id: userId,
+                    username: profileData.username,
+                    display_name: profileData.username,
+                    profile_picture: profileData.threads_profile_picture_url,
+                    bio: profileData.threads_biography,
+                    account_type: 'Personal',
+                },
+            }, { onConflict: 'user_id,platform' });
+
+        if (saveError) {
+            console.error('[Threads] Save error:', saveError);
+            return res.redirect('/broadcast/?error=Failed to save account');
+        }
+
+        console.log('[Threads] Successfully connected!');
+        return res.redirect('/broadcast/?success=true&platform=threads');
+
+    } catch (error) {
+        console.error('Threads OAuth Error:', error);
         return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }

@@ -98,12 +98,12 @@
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         const PLATFORM_ICONS = {
-            twitter: '<i class="fa-brands fa-x-twitter"></i>',
             tiktok: '<i class="fa-brands fa-tiktok"></i>',
             instagram: '<i class="fa-brands fa-instagram"></i>',
-            linkedin: '<i class="fa-brands fa-linkedin"></i>'
+            linkedin: '<i class="fa-brands fa-linkedin"></i>',
+            threads: '<i class="fa-brands fa-threads"></i>'
         };
-        const PLATFORM_NAMES = { twitter: 'Twitter/X', tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn' };
+        const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn', threads: 'Threads' };
         const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
         let currentUser = null;
         let currentSession = null;
@@ -155,13 +155,13 @@
 
             // Admin bypass - skip subscription check
             if (!ADMIN_EMAILS.includes(currentUser.email.toLowerCase())) {
-                // Check subscription status (allow active or trialing)
+                // Check subscription status (only active, no trials)
                 const { data: subscription } = await supabaseClient
                     .from('subscriptions')
                     .select('*')
                     .eq('customer_email', currentUser.email)
                     .eq('product_key', 'broadcast')
-                    .in('status', ['active', 'trialing'])
+                    .eq('status', 'active')
                     .single();
 
                 if (!subscription) {
@@ -329,12 +329,12 @@
         }
 
         function renderAccounts(grid, accounts) {
-            const platforms = ['linkedin', 'instagram', 'tiktok', 'twitter'];
+            const platforms = ['linkedin', 'instagram', 'tiktok', 'threads'];
             const platformColors = {
                 linkedin: '#0A66C2',
                 instagram: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
                 tiktok: '#000000',
-                twitter: '#000000'
+                threads: '#000000'
             };
 
             const html = platforms.map(platform => {

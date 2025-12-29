@@ -95,26 +95,27 @@
                     </div>
                 </div>
 
-                <!-- Twitter/X -->
-                <div class="connect-card" id="twitter-card" data-platform="twitter">
+                <!-- Threads -->
+                <div class="connect-card" id="threads-card" data-platform="threads">
                     <div class="card-header">
-                        <div class="platform-icon twitter">
-                            <i class="fa-brands fa-x-twitter"></i>
+                        <div class="platform-icon threads">
+                            <i class="fa-brands fa-threads"></i>
                         </div>
                         <div class="platform-info">
-                            <h3>Twitter/X</h3>
-                            <p class="platform-desc">Share tweets & videos</p>
+                            <h3>Threads</h3>
+                            <p class="platform-desc">Share text & video posts</p>
                         </div>
                     </div>
-                    <div class="card-body" id="twitter-body">
+                    <div class="card-body" id="threads-body">
                         <div class="disconnected-state">
-                            <p>Connect your X account to post tweets</p>
-                            <button id="twitter-btn" class="btn btn-primary">
-                                <i class="fa-brands fa-x-twitter"></i> Connect X
+                            <p>Connect your Threads account</p>
+                            <button id="threads-btn" class="btn btn-primary">
+                                <i class="fa-brands fa-threads"></i> Connect Threads
                             </button>
                         </div>
                     </div>
                 </div>
+
             </div>
 
             <!-- Info Section -->
@@ -228,7 +229,7 @@
                     .select('*')
                     .eq('customer_email', currentUser.email)
                     .eq('product_key', 'broadcast')
-                    .in('status', ['active', 'trialing'])
+                    .eq('status', 'active')
                     .single();
 
                 if (!subscription) {
@@ -416,10 +417,10 @@
                     name: 'Instagram',
                     desc: 'Connect your Instagram Business or Creator account'
                 },
-                twitter: {
-                    icon: 'fa-x-twitter',
-                    name: 'X',
-                    desc: 'Connect your X account to post tweets'
+                threads: {
+                    icon: 'fa-threads',
+                    name: 'Threads',
+                    desc: 'Connect your Threads account'
                 }
             };
             const config = platformConfig[platform];
@@ -434,7 +435,7 @@
         }
 
         function updateUI() {
-            const platforms = ['linkedin', 'tiktok', 'instagram', 'twitter'];
+            const platforms = ['linkedin', 'tiktok', 'instagram', 'threads'];
 
             platforms.forEach(platform => {
                 const account = connectedAccounts.find(a => a.platform === platform);
@@ -482,16 +483,15 @@
                 }
             });
 
-            document.getElementById('twitter-btn').addEventListener('click', () => {
-                console.log('[Click] Twitter button clicked');
-                const account = connectedAccounts.find(a => a.platform === 'twitter');
+            document.getElementById('threads-btn').addEventListener('click', () => {
+                const account = connectedAccounts.find(a => a.platform === 'threads');
                 if (account) {
-                    disconnectAccount('twitter');
+                    disconnectAccount('threads');
                 } else {
-                    console.log('[Click] Calling connectTwitter...');
-                    connectTwitter();
+                    connectThreads();
                 }
             });
+
         }
 
         function connectLinkedIn() {
@@ -509,18 +509,9 @@
             window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
         }
 
-        function connectTwitter() {
-            console.log('[Twitter] connectTwitter called');
-            console.log('[Twitter] currentSession:', currentSession);
-            if (!currentSession || !currentSession.access_token) {
-                alert('Session not found. Please refresh the page and try again.');
-                return;
-            }
+        function connectThreads() {
             const state = currentSession.access_token;
-            const url = `/api/broadcast/auth/twitter?state=${encodeURIComponent(state)}`;
-            console.log('[Twitter] Token length:', state.length);
-            console.log('[Twitter] Redirecting to:', url.substring(0, 100) + '...');
-            window.location.href = url;
+            window.location.href = `/api/broadcast/auth/threads?state=${encodeURIComponent(state)}`;
         }
 
         async function disconnectAccount(platform) {
@@ -600,7 +591,7 @@
                 linkedin: 'LinkedIn',
                 tiktok: 'TikTok',
                 instagram: 'Instagram',
-                twitter: 'Twitter/X'
+                threads: 'Threads'
             };
             const platformName = platformNames[platform] || platform;
 
@@ -681,7 +672,7 @@
         .platform-icon.linkedin { background: #0A66C2; }
         .platform-icon.tiktok { background: #000000; }
         .platform-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
-        .platform-icon.twitter { background: #000000; }
+        .platform-icon.threads { background: #000000; }
 
         .platform-info h3 {
             margin: 0 0 0.125rem 0;

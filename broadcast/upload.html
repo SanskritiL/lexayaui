@@ -93,11 +93,11 @@
                             </label>
                             <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
                         </div>
-                        <div data-platform="twitter" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-twitter" name="platforms" value="twitter" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
-                            <label for="platform-twitter" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
-                                <span style="font-size: 1.5rem;">𝕏</span>
-                                <span style="font-weight: 500;">Twitter/X</span>
+                        <div data-platform="threads" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
+                            <input type="checkbox" id="platform-threads" name="platforms" value="threads" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <label for="platform-threads" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
+                                <span style="font-size: 1.5rem;">🧵</span>
+                                <span style="font-weight: 500;">Threads</span>
                             </label>
                             <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
                         </div>
@@ -189,7 +189,7 @@
                     .select('*')
                     .eq('customer_email', currentUser.email)
                     .eq('product_key', 'broadcast')
-                    .in('status', ['active', 'trialing'])
+                    .eq('status', 'active')
                     .single();
 
                 if (!subscription) {
@@ -230,7 +230,7 @@
         }
 
         function updatePlatformCheckboxes() {
-            const platforms = ['tiktok', 'instagram', 'linkedin', 'twitter'];
+            const platforms = ['tiktok', 'instagram', 'linkedin', 'threads'];
             const warning = document.getElementById('no-accounts-warning');
             const hasVideo = !!selectedFile;
 
@@ -454,8 +454,8 @@
             const scheduleToggle = document.getElementById('schedule-toggle');
             const caption = document.getElementById('caption').value.trim();
 
-            // Check if only text-friendly platforms are selected (LinkedIn, Twitter)
-            const textFriendlyPlatforms = ['linkedin', 'twitter'];
+            // Check if only text-friendly platforms are selected (LinkedIn, Threads)
+            const textFriendlyPlatforms = ['linkedin', 'threads'];
             const onlyTextFriendly = selectedPlatforms.every(p => textFriendlyPlatforms.includes(p.value));
             const hasVideoRequired = selectedPlatforms.some(p => p.value === 'tiktok' || p.value === 'instagram');
 
@@ -841,7 +841,7 @@
             linkedin: { name: 'LinkedIn', icon: '<i class="fa-brands fa-linkedin"></i>' },
             tiktok: { name: 'TikTok', icon: '<i class="fa-brands fa-tiktok"></i>' },
             instagram: { name: 'Instagram', icon: '<i class="fa-brands fa-instagram"></i>' },
-            twitter: { name: 'Twitter/X', icon: '<i class="fa-brands fa-x-twitter"></i>' }
+            threads: { name: 'Threads', icon: '<i class="fa-brands fa-threads"></i>' }
         };
 
         function showPublishingModal(platforms) {
@@ -1073,7 +1073,7 @@
         .progress-icon.linkedin { background: #0A66C2; color: white; }
         .progress-icon.tiktok { background: #000000; color: white; }
         .progress-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
-        .progress-icon.twitter { background: #000000; color: white; }
+        .progress-icon.threads { background: #000000; color: white; }
         .progress-info {
             flex: 1;
             min-width: 0;

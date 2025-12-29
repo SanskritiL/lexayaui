@@ -134,6 +134,11 @@ module.exports = async function handler(req, res) {
                         result = await publishToTwitter(post, account);
                         console.log('[PUBLISH] Twitter result:', result);
                         break;
+                    case 'threads':
+                        console.log('[PUBLISH] Calling publishToThreads...');
+                        result = await publishToThreads(post, account);
+                        console.log('[PUBLISH] Threads result:', result);
+                        break;
                     default:
                         result = { status: 'error', error: 'Unknown platform' };
                 }
@@ -755,4 +760,136 @@ async function uploadVideoToTwitter(accessToken, videoUrl) {
     }
 
     return mediaId;
+}
+
+// ============== THREADS ==============
+async function publishToThreads(post, account) {
+    console.log('[THREADS] Starting publish...');
+    console.log('[THREADS] Post:', { id: post.id, caption: post.caption?.substring(0, 50), video_url: !!post.video_url });
+
+    const { access_token, platform_user_id: userId } = account;
+
+    try {
+        // Threads API follows same pattern as Instagram:
+        // Step 1: Create media container
+        // Step 2: Publish the container
+
+        let mediaType = 'TEXT';
+        let containerParams = {
+            text: post.caption || '',
+        };
+
+        // If there's a video, it's a VIDEO post
+        if (post.video_url) {
+            console.log('[THREADS] Creating video container...');
+            mediaType = 'VIDEO';
+            containerParams = {
+                media_type: 'VIDEO',
+                video_url: post.video_url,
+                text: post.caption || '',
+            };
+        }
+
+        // Step 1: Create container
+        console.log('[THREADS] Step 1: Creating container...', { mediaType, userId });
+
+        const containerUrl = new URL(`https://graph.threads.net/v1.0/${userId}/threads`);
+        Object.entries(containerParams).forEach(([key, value]) => {
+            containerUrl.searchParams.set(key, value);
+        });
+        containerUrl.searchParams.set('access_token', access_token);
+
+        console.log('[THREADS] Container URL:', containerUrl.toString().replace(access_token, 'TOKEN'));
+
+        const containerResponse = await fetch(containerUrl.toString(), {
+            method: 'POST',
+        });
+
+        const containerData = await containerResponse.json();
+        console.log('[THREADS] Container response:', JSON.stringify(containerData));
+
+        if (containerData.error) {
+            console.error('[THREADS] Container error:', containerData.error);
+            return {
+                status: 'error',
+                error: containerData.error.message || containerData.error.error_user_msg || JSON.stringify(containerData.error),
+            };
+        }
+
+        const containerId = containerData.id;
+        console.log('[THREADS] Container created:', containerId);
+
+        // For video posts, wait for processing
+        if (post.video_url) {
+            console.log('[THREADS] Waiting for video processing...');
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            while (attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                const statusUrl = new URL(`https://graph.threads.net/v1.0/${containerId}`);
+                statusUrl.searchParams.set('fields', 'status');
+                statusUrl.searchParams.set('access_token', access_token);
+
+                const statusResponse = await fetch(statusUrl.toString());
+                const statusData = await statusResponse.json();
+
+                console.log('[THREADS] Processing status:', statusData.status);
+
+                if (statusData.status === 'FINISHED') {
+                    break;
+                } else if (statusData.status === 'ERROR') {
+                    return {
+                        status: 'error',
+                        error: 'Video processing failed',
+                    };
+                }
+
+                attempts++;
+            }
+
+            if (attempts >= maxAttempts) {
+                return {
+                    status: 'error',
+                    error: 'Video processing timed out',
+                };
+            }
+        }
+
+        // Step 2: Publish
+        console.log('[THREADS] Step 2: Publishing...');
+        const publishUrl = new URL(`https://graph.threads.net/v1.0/${userId}/threads_publish`);
+        publishUrl.searchParams.set('creation_id', containerId);
+        publishUrl.searchParams.set('access_token', access_token);
+
+        const publishResponse = await fetch(publishUrl.toString(), {
+            method: 'POST',
+        });
+
+        const publishData = await publishResponse.json();
+        console.log('[THREADS] Publish response:', JSON.stringify(publishData));
+
+        if (publishData.error) {
+            console.error('[THREADS] Publish error:', publishData.error);
+            return {
+                status: 'error',
+                error: publishData.error.message || publishData.error.error_user_msg || JSON.stringify(publishData.error),
+            };
+        }
+
+        console.log('[THREADS] ✅ Published successfully!');
+        return {
+            status: 'success',
+            post_id: publishData.id,
+            url: `https://threads.net/@${account.account_name}/post/${publishData.id}`,
+        };
+
+    } catch (error) {
+        console.error('[THREADS] ❌ Error:', error.message);
+        return {
+            status: 'error',
+            error: error.message,
+        };
+    }
 }

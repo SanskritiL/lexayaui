@@ -87,7 +87,7 @@
                 </div>
                 <div class="faq-item">
                     <strong>Which platforms are supported?</strong>
-                    <p>TikTok, Instagram Reels, LinkedIn, and X (Twitter).</p>
+                    <p>TikTok, Instagram Reels, LinkedIn, and Threads.</p>
                 </div>
                 <div class="faq-item">
                     <strong>Is my data secure?</strong>
@@ -128,7 +128,7 @@
                 .select('*')
                 .eq('customer_email', currentUser.email)
                 .eq('product_key', 'broadcast')
-                .in('status', ['active', 'trialing'])
+                .eq('status', 'active')
                 .single();
 
             if (subscription) {
