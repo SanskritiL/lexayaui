@@ -2,6 +2,18 @@
 // Handles publishing a post to multiple platforms
 
 const { createClient } = require('@supabase/supabase-js');
+const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+
+// R2 client for cleanup
+const R2_ACCOUNT_ID = '20ed24d883ada4e35ecd4e48ae90ab27';
+const r2Client = new S3Client({
+    region: 'auto',
+    endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+        accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+    },
+});
 
 module.exports = async function handler(req, res) {
     console.log('========== PUBLISH API START ==========');
@@ -162,37 +174,51 @@ module.exports = async function handler(req, res) {
             })
             .eq('id', postId);
 
-        // CLEANUP: Delete video from Supabase storage after successful publish
+        // CLEANUP: Delete video from R2 or Supabase storage after successful publish
         if (hasSuccess && post.video_url) {
-            console.log('[CLEANUP] Deleting video from Supabase storage...');
+            console.log('[CLEANUP] Starting video cleanup...');
             try {
-                // Extract path from URL: https://xxx.supabase.co/storage/v1/object/public/videos/user_id/timestamp_filename.mp4
-                const videoUrl = post.video_url;
-                const match = videoUrl.match(/\/videos\/(.+)$/);
+                // Check if this is an R2 video (has r2_key in metadata)
+                if (post.metadata?.r2_key) {
+                    console.log('[CLEANUP] Deleting from R2:', post.metadata.r2_key);
 
-                if (match) {
-                    const filePath = match[1];
-                    console.log('[CLEANUP] Deleting file:', filePath);
-
-                    const { error: deleteError } = await supabase.storage
-                        .from('videos')
-                        .remove([filePath]);
-
-                    if (deleteError) {
-                        console.error('[CLEANUP] Failed to delete video:', deleteError.message);
-                    } else {
-                        console.log('[CLEANUP] Video deleted successfully');
-
-                        // Clear video_url from post (keep thumbnail_url)
-                        await supabase
-                            .from('posts')
-                            .update({ video_url: null })
-                            .eq('id', postId);
-                        console.log('[CLEANUP] Cleared video_url from post');
+                    try {
+                        await r2Client.send(new DeleteObjectCommand({
+                            Bucket: process.env.R2_BUCKET_NAME || 'lexaya-videos',
+                            Key: post.metadata.r2_key,
+                        }));
+                        console.log('[CLEANUP] R2 video deleted successfully');
+                    } catch (r2Error) {
+                        console.error('[CLEANUP] R2 delete failed:', r2Error.message);
                     }
                 } else {
-                    console.log('[CLEANUP] Could not parse video path from URL:', videoUrl);
+                    // Legacy Supabase storage cleanup
+                    const videoUrl = post.video_url;
+                    const match = videoUrl.match(/\/videos\/(.+)$/);
+
+                    if (match) {
+                        const filePath = match[1];
+                        console.log('[CLEANUP] Deleting from Supabase:', filePath);
+
+                        const { error: deleteError } = await supabase.storage
+                            .from('videos')
+                            .remove([filePath]);
+
+                        if (deleteError) {
+                            console.error('[CLEANUP] Supabase delete failed:', deleteError.message);
+                        } else {
+                            console.log('[CLEANUP] Supabase video deleted successfully');
+                        }
+                    }
                 }
+
+                // Clear video_url from post (keep thumbnail_url)
+                await supabase
+                    .from('posts')
+                    .update({ video_url: null })
+                    .eq('id', postId);
+                console.log('[CLEANUP] Cleared video_url from post');
+
             } catch (cleanupError) {
                 console.error('[CLEANUP] Error during cleanup:', cleanupError.message);
                 // Don't fail the whole request if cleanup fails

@@ -38,9 +38,9 @@
                     <div class="upload-zone" id="upload-zone">
                         <div class="upload-icon">🎬</div>
                         <h3>Drop your video here</h3>
-                        <p>or click to browse (MP4, MOV - max 500MB)</p>
+                        <p>or click to browse (MP4, MOV)</p>
                         <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
-                            📝 No video? You can still post text to LinkedIn
+                            🗜️ Large videos will be compressed automatically
                         </p>
                         <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/mov" hidden>
                     </div>
@@ -167,6 +167,7 @@
         let currentUser = null;
         let videoThumbnailBlob = null;
         const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
+
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -319,9 +320,9 @@
                 uploadZone.innerHTML = `
                     <div class="upload-icon">🎬</div>
                     <h3>Drop your video here</h3>
-                    <p>or click to browse (MP4, MOV - max 500MB)</p>
+                    <p>or click to browse (MP4, MOV)</p>
                     <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
-                        📝 No video? You can still post text to LinkedIn
+                        🗜️ Large videos will be compressed automatically
                     </p>
                     <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/mov" hidden>
                 `;
@@ -383,8 +384,22 @@
             });
         }
 
-        function handleFileSelect(file) {
+        // Max file size in MB
+        const MAX_FILE_SIZE_MB = 500;
+
+        async function handleFileSelect(file) {
+            const sizeMB = file.size / (1024 * 1024);
+
+            // Check absolute max file size
+            if (sizeMB > MAX_FILE_SIZE_MB) {
+                alert(`Video too large! Max file size is ${MAX_FILE_SIZE_MB}MB.\n\nYour file: ${sizeMB.toFixed(2)}MB`);
+                return;
+            }
+
+            // No more size limit! R2 handles large files for Instagram
+
             selectedFile = file;
+            const finalSizeMB = file.size / (1024 * 1024);
 
             const uploadZone = document.getElementById('upload-zone');
             const previewContainer = document.getElementById('video-preview-container');
@@ -401,8 +416,7 @@
             preview.src = URL.createObjectURL(file);
             previewContainer.style.display = 'block';
 
-            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-            videoInfo.textContent = `Size: ${sizeMB} MB`;
+            videoInfo.textContent = `Size: ${finalSizeMB.toFixed(2)} MB`;
 
             // Generate thumbnail when video loads
             preview.onloadeddata = () => generateThumbnail(preview);
@@ -663,29 +677,49 @@
                     }
                 }
 
-                // 3. Upload video to Supabase (only if Instagram needs it)
+                // 3. Upload video to R2 (for Instagram - no file size limit!)
                 if (selectedFile && needsSupabaseVideo) {
-                    console.log('[STORAGE] Uploading video for Instagram...');
+                    console.log('[R2] Uploading video for Instagram...');
                     publishBtn.textContent = 'Uploading video...';
                     updatePlatformProgress('instagram', 'publishing', 'Uploading video...');
 
-                    const fileName = `${currentUser.id}/${Date.now()}_${selectedFile.name}`;
+                    const { data: { session } } = await supabaseClient.auth.getSession();
 
-                    const { error: uploadError } = await supabaseClient.storage
-                        .from('videos')
-                        .upload(fileName, selectedFile);
+                    // Get presigned upload URL from our API
+                    const presignRes = await fetch('/api/upload-video', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${session.access_token}`
+                        },
+                        body: JSON.stringify({
+                            fileName: selectedFile.name,
+                            contentType: selectedFile.type
+                        })
+                    });
 
-                    if (uploadError) {
-                        console.error('[STORAGE] Upload failed:', uploadError.message);
-                        throw uploadError;
+                    if (!presignRes.ok) {
+                        const err = await presignRes.json();
+                        throw new Error(err.error || 'Failed to get upload URL');
                     }
 
-                    const { data: { publicUrl } } = supabaseClient.storage
-                        .from('videos')
-                        .getPublicUrl(fileName);
+                    const { uploadUrl, key, publicUrl } = await presignRes.json();
+                    console.log('[R2] Got presigned URL, uploading...');
+
+                    // Upload directly to R2
+                    const uploadRes = await fetch(uploadUrl, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': selectedFile.type },
+                        body: selectedFile
+                    });
+
+                    if (!uploadRes.ok) {
+                        throw new Error('Failed to upload video to R2');
+                    }
 
                     videoUrl = publicUrl;
-                    console.log('[STORAGE] Video URL:', videoUrl);
+                    metadata.r2_key = key; // Store key for deletion after publish
+                    console.log('[R2] Video uploaded:', videoUrl);
                 }
 
                 // 4. Create post record

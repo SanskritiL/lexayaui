@@ -6,68 +6,86 @@
     <title>Posting Calendar - Lexaya</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <a href="./" class="logo">← Back to Dashboard</a>
-            <h1>Posting Calendar</h1>
-            <p class="tagline">Track your posting consistency</p>
+    <div class="container" style="max-width: 500px; padding: 1rem;">
+        <!-- Compact Header -->
+        <header style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+            <a href="/broadcast/" style="color: #64748b; text-decoration: none; font-size: 1.5rem;">←</a>
+            <div>
+                <h1 style="margin: 0; font-size: 1.25rem; color: #1e293b;">Your Posting Calendar</h1>
+            </div>
         </header>
 
         <!-- Auth Check -->
-        <div id="auth-required" class="auth-required" style="display: none;">
-            <div class="card">
-                <h2>Login Required</h2>
-                <p>Please login to view your calendar</p>
-                <a href="/login.html?redirect=/broadcast/calendar.html" class="btn btn-primary">Login with Email</a>
-            </div>
+        <div id="auth-required" style="display: none; text-align: center; padding: 2rem;">
+            <h2>Login Required</h2>
+            <p style="color: #64748b;">Please login to view your calendar</p>
+            <a href="/login.html?redirect=/broadcast/calendar.html" class="btn btn-primary">Login</a>
         </div>
 
-        <!-- Calendar -->
+        <!-- Main Content -->
         <main id="calendar-main" style="display: none;">
-            <div class="calendar-container">
-                <!-- Month Navigation -->
-                <div class="month-nav">
-                    <button id="prev-month" class="btn btn-secondary">&lt;</button>
-                    <h2 id="month-year"></h2>
-                    <button id="next-month" class="btn btn-secondary">&gt;</button>
+            <!-- Stats Row - Just streak and total -->
+            <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem;">
+                <div style="flex: 1; background: linear-gradient(135deg, #fff7ed, #fed7aa); border-radius: 12px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.5rem;">🔥</span>
+                    <div>
+                        <div id="current-streak" style="font-size: 1.25rem; font-weight: 800; color: #c2410c;">0</div>
+                        <div style="font-size: 0.7rem; color: #9a3412;">Day Streak</div>
+                    </div>
                 </div>
-
-                <!-- Calendar Grid -->
-                <div class="calendar-grid">
-                    <div class="calendar-header">Sun</div>
-                    <div class="calendar-header">Mon</div>
-                    <div class="calendar-header">Tue</div>
-                    <div class="calendar-header">Wed</div>
-                    <div class="calendar-header">Thu</div>
-                    <div class="calendar-header">Fri</div>
-                    <div class="calendar-header">Sat</div>
+                <div style="flex: 1; background: linear-gradient(135deg, #f0fdf4, #bbf7d0); border-radius: 12px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.5rem;">📊</span>
+                    <div>
+                        <div id="total-posts" style="font-size: 1.25rem; font-weight: 800; color: #15803d;">0</div>
+                        <div style="font-size: 0.7rem; color: #166534;">Total Posts</div>
+                    </div>
                 </div>
-                <div id="calendar-days" class="calendar-days"></div>
             </div>
 
-            <!-- Legend -->
-            <div class="calendar-legend">
-                <div class="legend-item">
-                    <span class="legend-emoji">🎬</span>
-                    <span>Posted</span>
+            <!-- Motivation Banner -->
+            <div id="motivation-banner" style="background: linear-gradient(135deg, #818cf8, #a78bfa); color: white; padding: 0.6rem 1rem; border-radius: 10px; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+                <span id="motivation-emoji">💡</span>
+                <span id="motivation-text">Loading...</span>
+            </div>
+
+            <!-- Calendar -->
+            <div style="background: white; border-radius: 12px; padding: 0.75rem; box-shadow: 0 2px 10px rgba(0,0,0,0.06);">
+                <!-- Month Navigation -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <button id="prev-month" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; background: white; cursor: pointer;">←</button>
+                    <h2 id="month-year" style="margin: 0; font-size: 1rem; font-weight: 600;"></h2>
+                    <button id="next-month" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; background: white; cursor: pointer;">→</button>
                 </div>
-                <div class="legend-item">
-                    <span class="legend-dot"></span>
-                    <span>Today</span>
+
+                <!-- Day Headers -->
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 4px;">
+                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">S</div>
+                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">M</div>
+                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">T</div>
+                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">W</div>
+                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">T</div>
+                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">F</div>
+                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">S</div>
                 </div>
+
+                <!-- Calendar Days -->
+                <div id="calendar-days" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;"></div>
+            </div>
+
+            <!-- Simple Legend -->
+            <div style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.5rem; font-size: 0.75rem; color: #64748b;">
+                <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(135deg, #22c55e, #16a34a); vertical-align: middle; margin-right: 4px;"></span>Posted</span>
+                <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #1e40af; vertical-align: middle; margin-right: 4px;"></span>Today</span>
             </div>
         </main>
     </div>
 
     <script>
-        // Config
         const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -75,42 +93,43 @@
         let currentUser = null;
         const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
         let currentDate = new Date();
-        let postDates = new Set();
+        let allPosts = [];
+
+        const MESSAGES = [
+            { emoji: '🚀', text: "Keep that content flowing!" },
+            { emoji: '💪', text: "Consistency is key!" },
+            { emoji: '🌟', text: "Every post counts!" },
+            { emoji: '⚡', text: "Your audience awaits!" },
+            { emoji: '✨', text: "Keep sharing your story!" }
+        ];
+
+        const NEW_USER_MSGS = [
+            { emoji: '👋', text: "Create your first post!" },
+            { emoji: '🎬', text: "Start your journey today!" }
+        ];
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // Check localStorage first to reduce auth requests
             let user = null;
             const cachedUser = localStorage.getItem('supabase_user');
 
             if (cachedUser) {
-                try {
-                    user = JSON.parse(cachedUser);
-                } catch (e) {
-                    localStorage.removeItem('supabase_user');
-                }
+                try { user = JSON.parse(cachedUser); } catch (e) { localStorage.removeItem('supabase_user'); }
             }
 
-            // Verify with Supabase if no cached user
             if (!user) {
                 const { data } = await supabaseClient.auth.getUser();
                 user = data.user;
-                if (user) {
-                    localStorage.setItem('supabase_user', JSON.stringify(user));
-                }
+                if (user) localStorage.setItem('supabase_user', JSON.stringify(user));
             }
 
             currentUser = user;
 
-            const authRequired = document.getElementById('auth-required');
-            const calendarMain = document.getElementById('calendar-main');
-
             if (!currentUser) {
-                authRequired.style.display = 'flex';
-                calendarMain.style.display = 'none';
+                document.getElementById('auth-required').style.display = 'block';
                 return;
             }
 
-            // Admin bypass - skip subscription check
+            // Admin bypass
             if (!ADMIN_EMAILS.includes(currentUser.email)) {
                 const { data: subscription } = await supabaseClient
                     .from('subscriptions')
@@ -126,10 +145,10 @@
                 }
             }
 
-            authRequired.style.display = 'none';
-            calendarMain.style.display = 'block';
+            document.getElementById('calendar-main').style.display = 'block';
+            await loadAllPosts();
+            updateStats();
 
-            // Set up navigation
             document.getElementById('prev-month').addEventListener('click', () => {
                 currentDate.setMonth(currentDate.getMonth() - 1);
                 renderCalendar();
@@ -140,75 +159,108 @@
                 renderCalendar();
             });
 
-            await renderCalendar();
+            renderCalendar();
         });
 
-        async function loadPostsForMonth(year, month) {
-            const startDate = new Date(year, month, 1);
-            const endDate = new Date(year, month + 1, 0, 23, 59, 59);
-
+        async function loadAllPosts() {
             const { data: posts, error } = await supabaseClient
                 .from('posts')
-                .select('created_at, published_at, status')
+                .select('created_at, published_at, status, platforms')
                 .eq('user_id', currentUser.id)
-                .gte('created_at', startDate.toISOString())
-                .lte('created_at', endDate.toISOString());
+                .in('status', ['published', 'partial'])
+                .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Error loading posts:', error);
-                return new Set();
-            }
-
-            // Get unique dates that have posts
-            const dates = new Set();
-            posts?.forEach(post => {
-                const date = new Date(post.created_at);
-                dates.add(date.getDate());
-            });
-
-            return dates;
+            allPosts = error ? [] : (posts || []);
         }
 
-        async function renderCalendar() {
+        function updateStats() {
+            document.getElementById('total-posts').textContent = allPosts.length;
+
+            const streak = calculateStreak();
+            document.getElementById('current-streak').textContent = streak;
+
+            // Update motivation
+            const banner = document.getElementById('motivation-banner');
+            let msg;
+            if (allPosts.length === 0) {
+                msg = NEW_USER_MSGS[Math.floor(Math.random() * NEW_USER_MSGS.length)];
+                banner.style.background = 'linear-gradient(135deg, #3b82f6, #1e40af)';
+            } else if (streak >= 7) {
+                msg = { emoji: '🏆', text: `${streak} day streak! Crushing it!` };
+                banner.style.background = 'linear-gradient(135deg, #f97316, #ef4444)';
+            } else if (streak >= 3) {
+                msg = { emoji: '🔥', text: `${streak} days! Keep going!` };
+                banner.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+            } else {
+                msg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+            }
+            document.getElementById('motivation-emoji').textContent = msg.emoji;
+            document.getElementById('motivation-text').textContent = msg.text;
+        }
+
+        function calculateStreak() {
+            if (allPosts.length === 0) return 0;
+
+            const postDays = new Set();
+            allPosts.forEach(post => postDays.add(new Date(post.created_at).toDateString()));
+
+            let streak = 0;
+            let checkDate = new Date();
+
+            if (!postDays.has(checkDate.toDateString())) {
+                checkDate.setDate(checkDate.getDate() - 1);
+                if (!postDays.has(checkDate.toDateString())) return 0;
+            }
+
+            while (postDays.has(checkDate.toDateString())) {
+                streak++;
+                checkDate.setDate(checkDate.getDate() - 1);
+            }
+
+            return streak;
+        }
+
+        function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
 
-            // Update month/year display
-            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-                'July', 'August', 'September', 'October', 'November', 'December'];
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             document.getElementById('month-year').textContent = `${monthNames[month]} ${year}`;
 
-            // Load posts for this month
-            postDates = await loadPostsForMonth(year, month);
+            const monthPosts = {};
+            allPosts.forEach(post => {
+                const date = new Date(post.created_at);
+                if (date.getFullYear() === year && date.getMonth() === month) {
+                    monthPosts[date.getDate()] = true;
+                }
+            });
 
-            // Get first day of month and total days
             const firstDay = new Date(year, month, 1).getDay();
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const today = new Date();
 
-            // Build calendar HTML
             let html = '';
 
-            // Empty cells for days before first of month
             for (let i = 0; i < firstDay; i++) {
-                html += '<div class="calendar-day empty"></div>';
+                html += '<div style="aspect-ratio: 1;"></div>';
             }
 
-            // Days of the month
             for (let day = 1; day <= daysInMonth; day++) {
-                const isToday = today.getFullYear() === year &&
-                               today.getMonth() === month &&
-                               today.getDate() === day;
-                const hasPost = postDates.has(day);
+                const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+                const hasPost = monthPosts[day];
 
-                let classes = 'calendar-day';
-                if (isToday) classes += ' today';
-                if (hasPost) classes += ' has-post';
+                let bg = '#f8fafc';
+                let color = '#475569';
+                if (hasPost) {
+                    bg = 'linear-gradient(135deg, #22c55e, #16a34a)';
+                    color = 'white';
+                }
+                if (isToday) {
+                    bg = '#1e40af';
+                    color = 'white';
+                }
 
-                html += `<div class="${classes}">
-                    <span class="day-number">${day}</span>
-                    ${hasPost ? '<span class="post-emoji">🎬</span>' : ''}
-                </div>`;
+                html += `<div style="aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 0.8rem; font-weight: 500; background: ${bg}; color: ${color};">${day}</div>`;
             }
 
             document.getElementById('calendar-days').innerHTML = html;
