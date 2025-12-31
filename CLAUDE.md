@@ -8,7 +8,7 @@ Personal brand site for a UGC creator at **lexaya.io** (LIVE). Offers free resou
 - **Hosting**: Vercel (LIVE at lexaya.io)
 - **Auth**: Supabase (magic link email auth)
 - **Payments**: Stripe Checkout
-- **File Storage**: Supabase Storage (signed URLs for protected downloads)
+- **File Storage**: Cloudflare R2 (videos/images) + Supabase Storage (PDFs)
 - **Booking**: Cal.com (for 1:1 calls)
 - **Analytics**: Plausible
 
@@ -17,6 +17,7 @@ Personal brand site for a UGC creator at **lexaya.io** (LIVE). Offers free resou
 - **Font**: Inter (clean, readable)
 - **Aesthetic**: Hand-drawn/sketchy borders using irregular border-radius
 - **Borders**: Dashed lines for section dividers, solid for cards
+- **Icons**: Font Awesome with gradient backgrounds (no emojis in UI)
 
 ## Site Structure
 
@@ -37,22 +38,25 @@ lexayaui/
 │   ├── webhook.js          # Stripe webhook (saves purchases)
 │   ├── download.js         # Paid content signed URLs
 │   ├── free-download.js    # Free content signed URLs (requires login)
+│   ├── upload-video.js     # R2 video/image upload
 │   └── broadcast/          # Multi-platform publishing APIs
 │       ├── auth/
-│       │   ├── linkedin.js     # LinkedIn OAuth (WORKING)
-│       │   ├── tiktok.js       # TikTok OAuth
-│       │   ├── instagram.js    # Instagram/Meta OAuth (WORKING)
-│       │   └── twitter.js      # Twitter/X OAuth
-│       ├── publish.js          # Publish to all platforms (WORKING for LinkedIn)
-│       ├── refresh-accounts.js # Refresh follower counts from platform APIs
+│       │   └── [platform].js   # Unified OAuth handler (linkedin, instagram, tiktok, threads)
+│       ├── publish.js          # Publish to all platforms
+│       ├── refresh-accounts.js # Refresh follower counts
+│       ├── tiktok/
+│       │   └── init-video.js   # TikTok direct video upload (with auto token refresh)
+│       ├── linkedin/
+│       │   └── init-video.js   # LinkedIn video upload
 │       └── cron/
 │           └── process-scheduled.js  # Scheduled posts cron
 ├── broadcast/              # Multi-platform publishing app
-│   ├── index.html          # Dashboard - shows recent posts
-│   ├── upload.html         # Upload & create posts (supports text-only for LinkedIn)
+│   ├── index.html          # Dashboard - shows recent posts, quick actions
+│   ├── upload.html         # Upload & create posts (supports photos + videos)
 │   ├── connect.html        # Connect social accounts
 │   ├── scheduled.html      # View scheduled posts
-│   ├── history.html        # Post history
+│   ├── calendar.html       # Posting calendar view
+│   ├── pricing.html        # Subscription pricing ($14.99/mo)
 │   ├── style.css           # Broadcast styles
 │   └── database.sql        # Supabase schema
 └── cs/
@@ -61,45 +65,6 @@ lexayaui/
     ├── free-download.html  # Free download page (requires login)
     └── ai-projects.html    # AI project ideas page
 ```
-
-## Key Features
-
-### Resource Protection
-ALL resources require login. Access is tracked in `purchases` table:
-- `user_id`, `customer_email`, `product_id`, `amount`, `status`
-- Free resources: `amount: 0`, `status: 'free_access'`
-- Paid resources: `amount: price`, `status: 'completed'`
-
-### Free Resources (api/free-download.js)
-Files stored in Supabase Storage → `resources` bucket → `free/` folder:
-- CS: `resume`, `colleges`, `ai-projects` (page redirect)
-- UGC: `portfolio`, `pitch`, `ratecard`, `calendar`
-
-### Paid Resources (api/download.js)
-Files in Supabase Storage → `resources` bucket → `paid/` folder:
-- `regularDigital` → AI Roadmap guide
-
-### Booking
-Cal.com integration for $50/30min calls on CS page.
-
-## Pages
-
-### Landing (index.html)
-- Hero: "engineer figuring out marketing"
-- Brands carousel (Claude, Replit, Lovable, etc.)
-- UGC Resources grid (4 free resources, require login)
-- Navbar shows user email when logged in, "login" when not
-
-### CS Courses (cs/index.html)
-- Free: Resume, Colleges list, AI Project Ideas
-- Paid ($25): AI Roadmap, AI Projects Premium
-- Booking: 1:1 Call ($50/30min via Cal.com)
-
-### Login Flow
-1. User clicks resource → redirected to free-download.html
-2. If not logged in → shown login prompt
-3. Login via magic link → redirected back
-4. Access granted + tracked in database
 
 ## Environment Variables (Vercel)
 - `STRIPE_SECRET_KEY`
@@ -110,39 +75,41 @@ Cal.com integration for $50/30min calls on CS page.
 - `LINKEDIN_CLIENT_SECRET` - LinkedIn app secret
 - `TIKTOK_CLIENT_KEY` - TikTok app client key
 - `TIKTOK_CLIENT_SECRET` - TikTok app secret
-- `FACEBOOK_APP_ID` - Meta/Facebook app ID: `1391901732240133`
+- `FACEBOOK_APP_ID` - Meta/Facebook app ID (used for Instagram + Threads)
 - `FACEBOOK_APP_SECRET` - Meta/Facebook app secret
-- `TWITTER_CLIENT_ID` - Twitter OAuth 2.0 Client ID
-- `TWITTER_CLIENT_SECRET` - Twitter OAuth 2.0 Client Secret
+- `R2_ACCESS_KEY_ID` - Cloudflare R2 access key
+- `R2_SECRET_ACCESS_KEY` - Cloudflare R2 secret
+- `R2_BUCKET_NAME` - R2 bucket name (`lexaya-videos`)
 - `CRON_SECRET` - Secret for cron job authentication
 
 ---
 
-## Broadcast Feature - WORKING (Dec 28, 2025)
+## Broadcast Feature - Updated Dec 31, 2025
 
 ### Overview
-Multi-platform publishing tool at `/broadcast`. Upload once, publish to TikTok, Instagram, LinkedIn, and Twitter.
+Multi-platform publishing tool at `/broadcast`. Upload once, publish to TikTok, Instagram, LinkedIn, and Threads.
 
-### Current Status
-- **LinkedIn**: ✅ WORKING - Text posts publish successfully
-- **Instagram**: ✅ OAuth WORKING - Connects to `sansmi_boutique` account
-- **Twitter/X**: ⏳ OAuth configured, testing in progress
-- **TikTok**: ⏳ Not tested yet
+### Supported Platforms
+| Platform | Video | Photo | Text-Only | Status |
+|----------|-------|-------|-----------|--------|
+| LinkedIn | ✅ | ✅ | ✅ | WORKING |
+| Instagram | ✅ | ✅ | ❌ | WORKING |
+| Threads | ✅ | ✅ | ✅ | OAuth needs redirect URL config |
+| TikTok | ✅ | ❌ | ❌ | Has auto token refresh |
 
-### Admin Access
-Admin emails bypass subscription check:
-```javascript
-const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
-```
-Admins see PRO MEMBER badge and have full access without payment.
+**Twitter/X removed from UI** - may add back later
 
-### UI Features (Dec 28, 2025)
-- **PRO MEMBER Badge**: Animated gradient banner showing member status
-- **Connect from Dashboard**: Click platform cards to connect/disconnect directly
-- **localStorage Caching**: 5-minute cache for accounts and posts (faster loading)
-- **Success Banners**: Green animated banners after connecting accounts
-- **Publishing Modal**: Real-time status for each platform during publish
-- **Follower Counts**: Profile pictures and follower counts displayed on cards
+### Subscription Required
+- Users must have **active paid subscription** to use Broadcast
+- No trial users - subscription status must be `'active'` (not `'trialing'`)
+- Admin bypass for `sanslamsal16@gmail.com`
+
+### Photo/Image Support (Added Dec 31, 2025)
+- Supports: JPEG, PNG, WebP, GIF
+- TikTok is disabled for photo uploads (video only)
+- Instagram uses `image_url` parameter for photos
+- LinkedIn uses Images API (initializeUpload → upload binary → create post)
+- Threads uses `IMAGE` media_type
 
 ### Key Technical Details
 
@@ -150,19 +117,23 @@ Admins see PRO MEMBER badge and have full access without payment.
 **CRITICAL**: LinkedIn API versions expire after 1 year. Current working version: `202411`
 - If you get `NONEXISTENT_VERSION` error, update the version in `/api/broadcast/publish.js`
 - Check active versions at: https://learn.microsoft.com/en-us/linkedin/marketing/versioning
-- Version format: `YYYYMM` (e.g., `202411` = November 2024)
 
-#### Text-Only Posts
-- LinkedIn supports text-only posts (no video required)
-- TikTok and Instagram require video
-- Upload form (`/broadcast/upload.html`) handles this automatically
+#### TikTok Token Auto-Refresh
+- Tokens checked before each API call in `/api/broadcast/tiktok/init-video.js`
+- Auto-refreshes if expired or expiring within 5 minutes
+- If refresh fails, prompts user to reconnect account
 
-### Database Tables (IN SUPABASE)
+#### Cloudflare R2 Storage
+- Videos and images uploaded to R2 bucket `lexaya-videos`
+- Public URL format: `https://pub-{hash}.r2.dev/{key}`
+- Files deleted after successful publish to save storage
+
+### Database Tables (Supabase)
 
 **connected_accounts**
 ```sql
 - user_id (uuid, references auth.users)
-- platform (text: 'linkedin', 'instagram', 'tiktok')
+- platform (text: 'tiktok', 'instagram', 'linkedin', 'threads')
 - platform_user_id (text)
 - account_name (text)
 - access_token (text)
@@ -177,106 +148,110 @@ Admins see PRO MEMBER badge and have full access without payment.
 ```sql
 - id (uuid)
 - user_id (uuid)
-- video_url (text, nullable for text-only posts)
+- video_url (text, nullable - used for both videos and images)
+- thumbnail_url (text, nullable)
 - caption (text)
 - platforms (text[])
 - status (text: 'draft', 'scheduled', 'publishing', 'published', 'partial', 'failed')
 - scheduled_at (timestamptz)
 - published_at (timestamptz)
 - platform_results (jsonb - stores success/error per platform)
+- metadata (jsonb - includes media_type: 'image' or 'video', r2_key, etc.)
 - created_at (timestamptz)
 ```
 
-### Supabase Storage
-- Bucket: `videos` (public, 500MB limit, video/* MIME types)
+**subscriptions**
+```sql
+- customer_email (text)
+- product_key (text: 'broadcast')
+- status (text: 'active', 'canceled', etc.)
+```
 
 ### OAuth Redirect URLs
 
 **LinkedIn Developer Console** → Auth → Authorized redirect URLs:
 ```
 https://lexaya.io/api/broadcast/auth/linkedin
-http://localhost:3000/api/broadcast/auth/linkedin  (for local testing)
 ```
 
-**Meta Developer Console** → Facebook Login → Settings → Valid OAuth Redirect URIs:
+**Meta Developer Console** → Facebook Login → Valid OAuth Redirect URIs:
 ```
 https://lexaya.io/api/broadcast/auth/instagram
-http://localhost:3000/api/broadcast/auth/instagram  (for local testing)
 ```
 
-**Twitter Developer Portal** → User authentication settings → Callback URI:
+**Meta Developer Console** → Threads API → Settings → Redirect Callback URLs:
 ```
-https://lexaya.io/api/broadcast/auth/twitter
-http://localhost:3000/api/broadcast/auth/twitter  (for local testing)
+https://lexaya.io/api/broadcast/auth/threads
 ```
-- App type must be: "Web App, Automated App or Bot"
-- Permissions: Read and write
+**NOTE**: This must be configured for Threads OAuth to work! Without it, Threads won't redirect back after login.
 
-### Instagram OAuth Notes
-- Uses Facebook Graph API (not direct Instagram API)
-- Requires: Instagram Business/Creator account linked to Facebook Page
-- During OAuth, user MUST select BOTH the Instagram account AND the Facebook Page
-- App must have user added as "Tester" in Roles section (for development mode)
-- Connected account: `sansmi_boutique`
+**TikTok Developer Portal** → Login Kit → Redirect URI:
+```
+https://lexaya.io/api/broadcast/auth/tiktok
+```
+
+### UI Components
+
+#### Quick Actions (Dashboard)
+Vibrant gradient icons instead of emojis:
+- **New Post**: Blue gradient (`#3b82f6` → `#1e40af`) with plus icon
+- **Scheduled**: Orange gradient (`#f59e0b` → `#d97706`) with clock icon
+- **Calendar**: Green gradient (`#10b981` → `#059669`) with calendar-check icon
+
+#### Member Badge
+- Solid blue background (`#1e40af`) - no gradient
+- Shows "PRO MEMBER" and "Active" status
+- No email displayed, no sparkle emoji
 
 ### Post Flow
-1. User goes to `/broadcast/` dashboard
-2. Clicks platform card to connect (OAuth redirects back to `/broadcast/`)
-3. Goes to `/broadcast/upload.html`
-4. Optionally uploads video (required for TikTok/Instagram, optional for LinkedIn)
-5. Writes caption
-6. Selects platforms via checkboxes (only connected accounts are enabled)
-7. Clicks "Publish Now" - publishing modal shows real-time status
-8. Post saved to `posts` table with status `publishing`
-9. `/api/broadcast/publish` called with post ID and platforms
-10. Each platform publish attempt logged with detailed console output
-11. Results stored in `platform_results` JSONB field
-12. Modal shows success/failure per platform with checkmarks/X icons
-
-### OAuth Metadata Stored
-All OAuth handlers save these fields in `metadata` JSONB:
-- `profile_picture` - User avatar URL
-- `display_name` - User's display name
-- `username` - Handle/username
-- `followers_count` - Follower count (where available)
-- `following_count` - Following count
-- `account_type` - Business/Personal/Creator
-
-### Debugging
-
-**Vercel Logs**: `vercel logs` or check Vercel dashboard
-**Local Testing**: `vercel dev` (runs on localhost:3000 or 3001)
-
-**Publish API Logging**: The `/api/broadcast/publish.js` has extensive `console.log` statements:
-- `[AUTH]` - Authentication steps
-- `[DB]` - Database operations
-- `[PUBLISH]` - Platform publishing
-- `[LINKEDIN]` - LinkedIn-specific operations
-
-### DNS Setup (Cloudflare)
-```
-Type: CNAME, Name: @, Target: cname.vercel-dns.com, Proxy: OFF
-Type: CNAME, Name: www, Target: cname.vercel-dns.com, Proxy: OFF
-```
+1. User goes to `/broadcast/upload.html`
+2. Uploads video OR image (images disable TikTok checkbox)
+3. Writes caption
+4. Selects platforms (only connected accounts enabled)
+5. Clicks "Publish Now"
+6. Publishing modal shows real-time status per platform
+7. Videos/images uploaded to R2, then to each platform
+8. Results stored in `platform_results` JSONB
+9. Media deleted from R2 after successful publish
 
 ---
 
-## Supabase Storage Structure
-```
-resources/
-├── free/
-│   ├── sans_lamsal_resume.pdf
-│   ├── college_with_sch.pdf
-│   ├── ugc_portfolio_template.pdf
-│   ├── brand_pitch_emails.pdf
-│   ├── rate_card_template.pdf
-│   └── content_calendar.pdf
-└── paid/
-    └── ai_engineer_resources_guide.pdf
+## Debugging
 
-videos/
-└── {user_id}/
-    └── {timestamp}_{filename}.mp4
+**Vercel Logs**: `vercel logs` or check Vercel dashboard
+**Local Testing**: `vercel dev` (runs on localhost:3000)
+**Deploy**: `npx vercel --prod` or `git push` (auto-deploys)
+
+**Publish API Logging** (`/api/broadcast/publish.js`):
+- `[AUTH]` - Authentication steps
+- `[DB]` - Database operations
+- `[PUBLISH]` - Platform publishing
+- `[LINKEDIN]` - LinkedIn-specific
+- `[INSTAGRAM]` - Instagram-specific
+- `[THREADS]` - Threads-specific
+- `[TIKTOK]` - TikTok-specific
+- `[CLEANUP]` - R2 file deletion
+
+---
+
+## Known Issues / TODO
+
+1. **Threads OAuth Redirect** - Must add `https://lexaya.io/api/broadcast/auth/threads` to Meta Developer Console → Threads API → Settings. User getting errors trying to save this - may need app review or business verification.
+
+2. **TikTok blocked on laptop** - User's laptop blocks TikTok. Can connect via phone browser at same URL.
+
+3. **LinkedIn API Version Expiry** - Version `202411` expires ~Nov 2025. Update when needed.
+
+4. **Instagram requires Facebook Page** - User must select both Instagram account AND Facebook Page during OAuth.
+
+---
+
+## Commands
+```bash
+vercel dev          # Local development
+git push            # Deploy via GitHub (auto)
+npx vercel --prod   # Deploy directly via CLI
+vercel logs         # View production logs
 ```
 
 ## Social Links
@@ -284,29 +259,3 @@ videos/
 - X/Twitter: @LamsalSans
 - TikTok: @lexaya_io
 - Email: sans@lexaya.io
-
-## Commands
-```bash
-vercel dev          # Local development (port 3000 or 3001)
-git push            # Deploy (auto-deploys on Vercel)
-npx vercel --prod   # Deploy directly via CLI
-vercel logs         # View production logs
-```
-
----
-
-## Next Steps / TODO
-
-1. **Twitter Publishing** - Complete Twitter OAuth testing and video upload
-2. **TikTok Publishing** - Test TikTok OAuth and video upload flow
-3. **Instagram Publishing** - Test video upload to Instagram Reels
-4. **Scheduled Posts** - Test the cron job for scheduled posts
-5. **Token Refresh** - LinkedIn tokens expire; may need refresh logic
-6. **Video Upload to LinkedIn** - Currently falls back to text; full video upload is complex
-
-## Known Issues
-
-1. **LinkedIn API Version Expiry** - Version `202411` works now, but will expire ~Nov 2025. Update to newer version when needed.
-2. **Instagram requires Facebook Page** - User must select both Instagram account AND Facebook Page during OAuth for it to work.
-3. **LinkedIn no follower count** - LinkedIn basic API doesn't expose follower counts for personal profiles (requires Marketing API).
-4. **Twitter callback URL strict** - Must match exactly in Developer Portal (no trailing slashes, correct http/https).
