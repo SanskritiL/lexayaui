@@ -251,7 +251,8 @@ module.exports = async function handler(req, res) {
 // LinkedIn Publishing
 async function publishToLinkedIn(post, account) {
     console.log('[LINKEDIN] Starting publish...');
-    console.log('[LINKEDIN] Post:', { id: post.id, caption: post.caption?.substring(0, 30), video_url: !!post.video_url });
+    const mediaType = post.metadata?.media_type;
+    console.log('[LINKEDIN] Post:', { id: post.id, caption: post.caption?.substring(0, 30), media_url: !!post.video_url, media_type: mediaType });
     console.log('[LINKEDIN] Metadata:', post.metadata);
     console.log('[LINKEDIN] Account:', { platform_user_id: account.platform_user_id, has_token: !!account.access_token });
 
@@ -290,8 +291,14 @@ async function publishToLinkedIn(post, account) {
         return await createLinkedInVideoPost(headers, authorUrn, post, linkedinVideoUrn);
     }
 
+    // Check if we have an image to upload
+    if (mediaType === 'image' && post.video_url) {
+        console.log('[LINKEDIN] Image detected, uploading to LinkedIn...');
+        return await createLinkedInImagePost(headers, authorUrn, post, access_token);
+    }
+
     // Text-only post
-    console.log('[LINKEDIN] No video, creating text post...');
+    console.log('[LINKEDIN] No media, creating text post...');
     return await createLinkedInTextPost(headers, authorUrn, post);
 }
 
@@ -341,6 +348,108 @@ async function createLinkedInVideoPost(headers, authorUrn, post, videoUrn) {
         post_id: postId,
         url: `https://www.linkedin.com/feed/update/${postId}`,
     };
+}
+
+// Create LinkedIn post with image
+async function createLinkedInImagePost(headers, authorUrn, post, accessToken) {
+    console.log('[LINKEDIN] Creating image post...');
+    console.log('[LINKEDIN] Image URL:', post.video_url);
+
+    try {
+        // Step 1: Initialize image upload
+        console.log('[LINKEDIN] Step 1: Initializing image upload...');
+        const initBody = {
+            initializeUploadRequest: {
+                owner: authorUrn,
+            },
+        };
+
+        const initResponse = await fetch('https://api.linkedin.com/rest/images?action=initializeUpload', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(initBody),
+        });
+
+        if (!initResponse.ok) {
+            const errorText = await initResponse.text();
+            console.error('[LINKEDIN] Image init error:', errorText);
+            throw new Error('Failed to initialize LinkedIn image upload: ' + errorText);
+        }
+
+        const initData = await initResponse.json();
+        const uploadUrl = initData.value?.uploadUrl;
+        const imageUrn = initData.value?.image;
+        console.log('[LINKEDIN] Got upload URL and image URN:', imageUrn);
+
+        // Step 2: Download image from R2 and upload to LinkedIn
+        console.log('[LINKEDIN] Step 2: Downloading image from R2...');
+        const imageResponse = await fetch(post.video_url);
+        if (!imageResponse.ok) {
+            throw new Error('Failed to download image from storage');
+        }
+        const imageBuffer = await imageResponse.arrayBuffer();
+        console.log('[LINKEDIN] Image size:', (imageBuffer.byteLength / 1024).toFixed(2), 'KB');
+
+        console.log('[LINKEDIN] Uploading to LinkedIn...');
+        const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/octet-stream',
+            },
+            body: imageBuffer,
+        });
+
+        if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            console.error('[LINKEDIN] Image upload error:', errorText);
+            throw new Error('Failed to upload image to LinkedIn: ' + errorText);
+        }
+        console.log('[LINKEDIN] Image uploaded successfully!');
+
+        // Step 3: Create post with image
+        console.log('[LINKEDIN] Step 3: Creating post with image...');
+        const postBody = {
+            author: authorUrn,
+            commentary: post.caption || '',
+            visibility: 'PUBLIC',
+            distribution: {
+                feedDistribution: 'MAIN_FEED',
+                targetEntities: [],
+                thirdPartyDistributionChannels: [],
+            },
+            content: {
+                media: {
+                    id: imageUrn,
+                },
+            },
+            lifecycleState: 'PUBLISHED',
+        };
+
+        const postResponse = await fetch('https://api.linkedin.com/rest/posts', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(postBody),
+        });
+
+        if (!postResponse.ok) {
+            const errorText = await postResponse.text();
+            console.error('[LINKEDIN] Image post error:', errorText);
+            throw new Error('Failed to create LinkedIn image post: ' + errorText);
+        }
+
+        const postId = postResponse.headers.get('x-restli-id');
+        console.log('[LINKEDIN] Created image post ID:', postId);
+
+        return {
+            status: 'success',
+            post_id: postId,
+            url: `https://www.linkedin.com/feed/update/${postId}`,
+        };
+    } catch (error) {
+        console.error('[LINKEDIN] Image post error:', error.message);
+        throw error;
+    }
 }
 
 async function createLinkedInTextPost(headers, authorUrn, post) {
@@ -423,25 +532,35 @@ async function publishToTikTok(post, account) {
 // Instagram Publishing
 async function publishToInstagram(post, account) {
     console.log('[INSTAGRAM] Starting publish...');
-    console.log('[INSTAGRAM] Post:', { id: post.id, caption: post.caption?.substring(0, 30), video_url: post.video_url });
+    const mediaType = post.metadata?.media_type || 'video';
+    console.log('[INSTAGRAM] Post:', { id: post.id, caption: post.caption?.substring(0, 30), media_url: post.video_url, media_type: mediaType });
     console.log('[INSTAGRAM] Account:', { platform_user_id: account.platform_user_id, account_name: account.account_name, has_token: !!account.access_token });
 
     const { access_token, platform_user_id: igUserId } = account;
 
     if (!post.video_url) {
-        console.error('[INSTAGRAM] ❌ No video URL provided');
-        throw new Error('Video is required for Instagram Reels');
+        console.error('[INSTAGRAM] ❌ No media URL provided');
+        throw new Error('Media (image or video) is required for Instagram');
     }
 
-    console.log('[INSTAGRAM] Video URL:', post.video_url);
+    const isImage = mediaType === 'image';
+    console.log('[INSTAGRAM] Media URL:', post.video_url);
+    console.log('[INSTAGRAM] Is Image:', isImage);
     console.log('[INSTAGRAM] Instagram User ID:', igUserId);
 
-    // Step 1: Create media container for Reel
+    // Step 1: Create media container
     console.log('[INSTAGRAM] Step 1: Creating media container...');
     const containerUrl = new URL(`https://graph.facebook.com/v18.0/${igUserId}/media`);
     containerUrl.searchParams.set('access_token', access_token);
-    containerUrl.searchParams.set('media_type', 'REELS');
-    containerUrl.searchParams.set('video_url', post.video_url);
+
+    if (isImage) {
+        // For images, use image_url parameter
+        containerUrl.searchParams.set('image_url', post.video_url);
+    } else {
+        // For videos, use REELS media_type
+        containerUrl.searchParams.set('media_type', 'REELS');
+        containerUrl.searchParams.set('video_url', post.video_url);
+    }
     containerUrl.searchParams.set('caption', post.caption || '');
 
     console.log('[INSTAGRAM] Container URL (without token):', containerUrl.toString().replace(access_token, '***TOKEN***'));
@@ -487,11 +606,11 @@ async function publishToInstagram(post, account) {
 
         if (statusData.status_code === 'FINISHED') {
             isReady = true;
-            console.log('[INSTAGRAM] ✅ Video processing complete!');
+            console.log('[INSTAGRAM] ✅ Media processing complete!');
         } else if (statusData.status_code === 'ERROR') {
-            console.error('[INSTAGRAM] ❌ Video processing failed!');
+            console.error('[INSTAGRAM] ❌ Media processing failed!');
             console.error('[INSTAGRAM] Status data:', JSON.stringify(statusData, null, 2));
-            throw new Error('Instagram video processing failed: ' + (statusData.status || 'Unknown error'));
+            throw new Error('Instagram media processing failed: ' + (statusData.status || 'Unknown error'));
         }
 
         attempts++;
@@ -502,7 +621,7 @@ async function publishToInstagram(post, account) {
         return {
             status: 'pending',
             container_id: containerId,
-            note: 'Video is still processing. It will be published automatically when ready.',
+            note: 'Media is still processing. It will be published automatically when ready.',
         };
     }
 
@@ -765,7 +884,8 @@ async function uploadVideoToTwitter(accessToken, videoUrl) {
 // ============== THREADS ==============
 async function publishToThreads(post, account) {
     console.log('[THREADS] Starting publish...');
-    console.log('[THREADS] Post:', { id: post.id, caption: post.caption?.substring(0, 50), video_url: !!post.video_url });
+    const postMediaType = post.metadata?.media_type; // 'image' or 'video'
+    console.log('[THREADS] Post:', { id: post.id, caption: post.caption?.substring(0, 50), media_url: !!post.video_url, media_type: postMediaType });
 
     const { access_token, platform_user_id: userId } = account;
 
@@ -779,15 +899,27 @@ async function publishToThreads(post, account) {
             text: post.caption || '',
         };
 
-        // If there's a video, it's a VIDEO post
+        // Check if it's an image or video post
         if (post.video_url) {
-            console.log('[THREADS] Creating video container...');
-            mediaType = 'VIDEO';
-            containerParams = {
-                media_type: 'VIDEO',
-                video_url: post.video_url,
-                text: post.caption || '',
-            };
+            const isImage = postMediaType === 'image';
+
+            if (isImage) {
+                console.log('[THREADS] Creating image container...');
+                mediaType = 'IMAGE';
+                containerParams = {
+                    media_type: 'IMAGE',
+                    image_url: post.video_url,
+                    text: post.caption || '',
+                };
+            } else {
+                console.log('[THREADS] Creating video container...');
+                mediaType = 'VIDEO';
+                containerParams = {
+                    media_type: 'VIDEO',
+                    video_url: post.video_url,
+                    text: post.caption || '',
+                };
+            }
         }
 
         // Step 1: Create container
@@ -819,14 +951,16 @@ async function publishToThreads(post, account) {
         const containerId = containerData.id;
         console.log('[THREADS] Container created:', containerId);
 
-        // For video posts, wait for processing
-        if (post.video_url) {
-            console.log('[THREADS] Waiting for video processing...');
+        // Wait for media processing (videos take longer, images are quick)
+        if (mediaType === 'VIDEO' || mediaType === 'IMAGE') {
+            const isVideo = mediaType === 'VIDEO';
+            console.log(`[THREADS] Waiting for ${isVideo ? 'video' : 'image'} processing...`);
             let attempts = 0;
-            const maxAttempts = 30;
+            const maxAttempts = isVideo ? 30 : 10; // Longer wait for videos
+            const waitTime = isVideo ? 2000 : 1000; // 2s for video, 1s for image
 
             while (attempts < maxAttempts) {
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, waitTime));
 
                 const statusUrl = new URL(`https://graph.threads.net/v1.0/${containerId}`);
                 statusUrl.searchParams.set('fields', 'status');
@@ -842,7 +976,7 @@ async function publishToThreads(post, account) {
                 } else if (statusData.status === 'ERROR') {
                     return {
                         status: 'error',
-                        error: 'Video processing failed',
+                        error: `${isVideo ? 'Video' : 'Image'} processing failed`,
                     };
                 }
 
@@ -852,7 +986,7 @@ async function publishToThreads(post, account) {
             if (attempts >= maxAttempts) {
                 return {
                     status: 'error',
-                    error: 'Video processing timed out',
+                    error: `${isVideo ? 'Video' : 'Image'} processing timed out`,
                 };
             }
         }

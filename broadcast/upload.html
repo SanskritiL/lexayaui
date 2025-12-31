@@ -32,24 +32,36 @@
         <!-- Upload Form -->
         <main id="upload-form" style="display: none;">
             <form id="post-form" autocomplete="off">
-                <!-- Step 1: Video Upload (Optional for LinkedIn) -->
+                <!-- Step 1: Media Upload (Video or Photo) -->
                 <section class="section">
-                    <h2>1. Upload Video <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn)</span></h2>
+                    <h2>1. Upload Media <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn/Threads)</span></h2>
                     <div class="upload-zone" id="upload-zone">
-                        <div class="upload-icon">🎬</div>
-                        <h3>Drop your video here</h3>
-                        <p>or click to browse (MP4, MOV)</p>
+                        <div class="upload-icon">📷</div>
+                        <h3>Drop your photo or video here</h3>
+                        <p>or click to browse</p>
                         <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
-                            🗜️ Large videos will be compressed automatically
+                            📸 Images: JPG, PNG, WebP &nbsp;|&nbsp; 🎬 Videos: MP4, MOV
                         </p>
-                        <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/mov" hidden>
+                        <input type="file" id="media-input" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/mov" hidden>
                     </div>
+                    <!-- Video Preview -->
                     <div id="video-preview-container" style="display: none; margin-top: 1rem;">
                         <video id="video-preview" class="video-preview" controls></video>
                         <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
                             <p id="video-info" style="color: var(--text-light); font-size: 0.9rem; margin: 0;"></p>
-                            <button type="button" id="remove-video" class="btn btn-secondary btn-small">Remove</button>
+                            <button type="button" id="remove-media" class="btn btn-secondary btn-small">Remove</button>
                         </div>
+                    </div>
+                    <!-- Image Preview -->
+                    <div id="image-preview-container" style="display: none; margin-top: 1rem;">
+                        <img id="image-preview" style="max-width: 100%; max-height: 400px; border-radius: 8px; object-fit: contain;">
+                        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
+                            <p id="image-info" style="color: var(--text-light); font-size: 0.9rem; margin: 0;"></p>
+                            <button type="button" id="remove-image" class="btn btn-secondary btn-small">Remove</button>
+                        </div>
+                        <p style="font-size: 0.85rem; color: #f59e0b; margin-top: 0.5rem;">
+                            ⚠️ TikTok requires video - it will be disabled for photo posts
+                        </p>
                     </div>
                 </section>
 
@@ -163,6 +175,7 @@
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let selectedFile = null;
+        let selectedMediaType = null; // 'image' or 'video'
         let connectedAccounts = [];
         let currentUser = null;
         let videoThumbnailBlob = null;
@@ -232,7 +245,9 @@
         function updatePlatformCheckboxes() {
             const platforms = ['tiktok', 'instagram', 'linkedin', 'threads'];
             const warning = document.getElementById('no-accounts-warning');
-            const hasVideo = !!selectedFile;
+            const hasMedia = !!selectedFile;
+            const hasVideo = hasMedia && selectedMediaType === 'video';
+            const hasImage = hasMedia && selectedMediaType === 'image';
 
             let hasAnyConnected = false;
 
@@ -242,21 +257,50 @@
                 const status = container.querySelector('.status');
                 const account = connectedAccounts.find(a => a.platform === platform);
 
-                console.log(`Platform ${platform}:`, { account: !!account, hasVideo });
+                console.log(`Platform ${platform}:`, { account: !!account, hasVideo, hasImage });
 
                 if (account) {
                     hasAnyConnected = true;
 
-                    // TikTok and Instagram require video
-                    const requiresVideo = platform === 'tiktok' || platform === 'instagram';
-
-                    if (requiresVideo && !hasVideo) {
-                        input.disabled = true;
-                        input.checked = false;
-                        status.textContent = '(Requires video)';
-                        status.style.color = '#f59e0b';
-                        container.style.opacity = '0.6';
-                    } else {
+                    // TikTok requires video (no image support)
+                    if (platform === 'tiktok') {
+                        if (hasImage) {
+                            input.disabled = true;
+                            input.checked = false;
+                            status.textContent = '(Video only)';
+                            status.style.color = '#f59e0b';
+                            container.style.opacity = '0.6';
+                        } else if (!hasVideo) {
+                            input.disabled = true;
+                            input.checked = false;
+                            status.textContent = '(Requires video)';
+                            status.style.color = '#f59e0b';
+                            container.style.opacity = '0.6';
+                        } else {
+                            input.disabled = false;
+                            status.textContent = account.account_name ? `@${account.account_name}` : '✓ Connected';
+                            status.style.color = '#10b981';
+                            container.style.opacity = '1';
+                        }
+                    }
+                    // Instagram supports both video (Reels) and images (Posts)
+                    else if (platform === 'instagram') {
+                        if (!hasMedia) {
+                            input.disabled = true;
+                            input.checked = false;
+                            status.textContent = '(Requires media)';
+                            status.style.color = '#f59e0b';
+                            container.style.opacity = '0.6';
+                        } else {
+                            input.disabled = false;
+                            const mediaTypeLabel = hasImage ? '📷' : '🎬';
+                            status.textContent = `${mediaTypeLabel} @${account.account_name || 'Connected'}`;
+                            status.style.color = '#10b981';
+                            container.style.opacity = '1';
+                        }
+                    }
+                    // LinkedIn and Threads support text, images, and videos
+                    else {
                         input.disabled = false;
                         status.textContent = account.account_name ? `@${account.account_name}` : '✓ Connected';
                         status.style.color = '#10b981';
@@ -280,9 +324,9 @@
         function setupEventListeners() {
             // Upload zone
             const uploadZone = document.getElementById('upload-zone');
-            const videoInput = document.getElementById('video-input');
+            const mediaInput = document.getElementById('media-input');
 
-            uploadZone.addEventListener('click', () => videoInput.click());
+            uploadZone.addEventListener('click', () => mediaInput.click());
 
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
@@ -297,46 +341,64 @@
                 e.preventDefault();
                 uploadZone.classList.remove('dragover');
                 const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('video/')) {
+                if (file && (file.type.startsWith('video/') || file.type.startsWith('image/'))) {
                     handleFileSelect(file);
                 }
             });
 
-            videoInput.addEventListener('change', (e) => {
+            mediaInput.addEventListener('change', (e) => {
                 if (e.target.files[0]) {
                     handleFileSelect(e.target.files[0]);
                 }
             });
 
-            // Remove video button
-            document.getElementById('remove-video').addEventListener('click', () => {
-                selectedFile = null;
-                videoThumbnailBlob = null;
-                const uploadZone = document.getElementById('upload-zone');
-                const previewContainer = document.getElementById('video-preview-container');
-                const preview = document.getElementById('video-preview');
+            // Remove media buttons (video and image)
+            document.getElementById('remove-media').addEventListener('click', clearMedia);
+            document.getElementById('remove-image').addEventListener('click', clearMedia);
 
-                uploadZone.classList.remove('has-file');
-                uploadZone.innerHTML = `
-                    <div class="upload-icon">🎬</div>
-                    <h3>Drop your video here</h3>
-                    <p>or click to browse (MP4, MOV)</p>
-                    <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
-                        🗜️ Large videos will be compressed automatically
-                    </p>
-                    <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/mov" hidden>
-                `;
-                previewContainer.style.display = 'none';
-                preview.src = '';
+            // Setup form event listeners
+            setupFormEventListeners();
+        }
 
-                // Re-attach file input listener
-                document.getElementById('video-input').addEventListener('change', (e) => {
-                    if (e.target.files[0]) handleFileSelect(e.target.files[0]);
-                });
+        function clearMedia() {
+            selectedFile = null;
+            selectedMediaType = null;
+            videoThumbnailBlob = null;
 
-                updatePlatformCheckboxes();
+            const uploadZone = document.getElementById('upload-zone');
+            const videoPreviewContainer = document.getElementById('video-preview-container');
+            const imagePreviewContainer = document.getElementById('image-preview-container');
+            const videoPreview = document.getElementById('video-preview');
+            const imagePreview = document.getElementById('image-preview');
+
+            uploadZone.classList.remove('has-file');
+            uploadZone.innerHTML = `
+                <div class="upload-icon">📷</div>
+                <h3>Drop your photo or video here</h3>
+                <p>or click to browse</p>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
+                    📸 Images: JPG, PNG, WebP &nbsp;|&nbsp; 🎬 Videos: MP4, MOV
+                </p>
+                <input type="file" id="media-input" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/mov" hidden>
+            `;
+            videoPreviewContainer.style.display = 'none';
+            imagePreviewContainer.style.display = 'none';
+            videoPreview.src = '';
+            imagePreview.src = '';
+
+            // Re-attach file input listener
+            document.getElementById('media-input').addEventListener('change', (e) => {
+                if (e.target.files[0]) handleFileSelect(e.target.files[0]);
+            });
+            // Re-attach click to open file dialog
+            document.getElementById('upload-zone').addEventListener('click', () => {
+                document.getElementById('media-input').click();
             });
 
+            updatePlatformCheckboxes();
+        }
+
+        function setupFormEventListeners() {
             // Caption counter
             const caption = document.getElementById('caption');
             const charCount = document.getElementById('char-count');
@@ -392,36 +454,55 @@
 
             // Check absolute max file size
             if (sizeMB > MAX_FILE_SIZE_MB) {
-                alert(`Video too large! Max file size is ${MAX_FILE_SIZE_MB}MB.\n\nYour file: ${sizeMB.toFixed(2)}MB`);
+                alert(`File too large! Max size is ${MAX_FILE_SIZE_MB}MB.\n\nYour file: ${sizeMB.toFixed(2)}MB`);
                 return;
             }
 
-            // No more size limit! R2 handles large files for Instagram
-
             selectedFile = file;
-            const finalSizeMB = file.size / (1024 * 1024);
+            const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+            selectedMediaType = isImage ? 'image' : 'video';
 
             const uploadZone = document.getElementById('upload-zone');
-            const previewContainer = document.getElementById('video-preview-container');
-            const preview = document.getElementById('video-preview');
+            const videoPreviewContainer = document.getElementById('video-preview-container');
+            const imagePreviewContainer = document.getElementById('image-preview-container');
+            const videoPreview = document.getElementById('video-preview');
+            const imagePreview = document.getElementById('image-preview');
             const videoInfo = document.getElementById('video-info');
+            const imageInfo = document.getElementById('image-info');
+
+            // Hide both preview containers first
+            videoPreviewContainer.style.display = 'none';
+            imagePreviewContainer.style.display = 'none';
 
             uploadZone.classList.add('has-file');
-            uploadZone.innerHTML = `
-                <div class="upload-icon">✅</div>
-                <h3>${file.name}</h3>
-                <p>Click to change video</p>
-            `;
 
-            preview.src = URL.createObjectURL(file);
-            previewContainer.style.display = 'block';
+            if (isImage) {
+                // Handle image
+                uploadZone.innerHTML = `
+                    <div class="upload-icon">📷</div>
+                    <h3>${file.name}</h3>
+                    <p>Click to change image</p>
+                `;
+                imagePreview.src = URL.createObjectURL(file);
+                imagePreviewContainer.style.display = 'block';
+                imageInfo.textContent = `Size: ${sizeMB.toFixed(2)} MB`;
+            } else if (isVideo) {
+                // Handle video
+                uploadZone.innerHTML = `
+                    <div class="upload-icon">🎬</div>
+                    <h3>${file.name}</h3>
+                    <p>Click to change video</p>
+                `;
+                videoPreview.src = URL.createObjectURL(file);
+                videoPreviewContainer.style.display = 'block';
+                videoInfo.textContent = `Size: ${sizeMB.toFixed(2)} MB`;
 
-            videoInfo.textContent = `Size: ${finalSizeMB.toFixed(2)} MB`;
+                // Generate thumbnail when video loads
+                videoPreview.onloadeddata = () => generateThumbnail(videoPreview);
+            }
 
-            // Generate thumbnail when video loads
-            preview.onloadeddata = () => generateThumbnail(preview);
-
-            updatePlatformCheckboxes(); // Enable TikTok/Instagram now that we have video
+            updatePlatformCheckboxes();
         }
 
         // Generate thumbnail from video using canvas
@@ -520,17 +601,27 @@
                 }
             }
 
-            // Check if video is required (TikTok/Instagram need it, LinkedIn doesn't)
-            const needsVideo = selectedPlatforms.some(p => p === 'tiktok' || p === 'instagram');
-            if (!selectedFile && needsVideo && !isDraft) {
-                console.log('[VALIDATION] Video required but not provided');
-                alert('Please upload a video for TikTok/Instagram');
+            // Check media requirements
+            const needsTikTok = selectedPlatforms.includes('tiktok');
+            const needsInstagram = selectedPlatforms.includes('instagram');
+
+            // TikTok requires video (no images)
+            if (needsTikTok && (!selectedFile || selectedMediaType !== 'video') && !isDraft) {
+                console.log('[VALIDATION] TikTok requires video');
+                alert('TikTok requires a video. Please upload a video or deselect TikTok.');
+                return;
+            }
+
+            // Instagram requires some media (image or video)
+            if (needsInstagram && !selectedFile && !isDraft) {
+                console.log('[VALIDATION] Instagram requires media');
+                alert('Instagram requires an image or video.');
                 return;
             }
 
             if (!selectedFile && !caption && !isDraft) {
-                console.log('[VALIDATION] No video and no caption');
-                alert('Please add a caption or upload a video');
+                console.log('[VALIDATION] No media and no caption');
+                alert('Please add a caption or upload media');
                 return;
             }
 
@@ -547,12 +638,20 @@
             }
 
             try {
-                let videoUrl = null;
+                let mediaUrl = null;
                 let thumbnailUrl = null;
-                let metadata = {};
+                let metadata = {
+                    media_type: selectedMediaType, // 'image' or 'video' or null
+                };
 
-                const needsSupabaseVideo = selectedPlatforms.includes('instagram'); // Only Instagram needs Supabase now
-                const needsLinkedInVideo = selectedPlatforms.includes('linkedin') && selectedFile;
+                const isImage = selectedMediaType === 'image';
+                const isVideo = selectedMediaType === 'video';
+
+                // Instagram needs R2 for both images and videos
+                const needsR2Upload = selectedPlatforms.includes('instagram') && selectedFile;
+                // LinkedIn video upload (images handled differently)
+                const needsLinkedInVideo = selectedPlatforms.includes('linkedin') && selectedFile && isVideo;
+                // TikTok only supports video
                 const needsTikTokVideo = selectedPlatforms.includes('tiktok') && selectedFile;
 
                 // 1. Upload thumbnail (always, if we have video)
@@ -677,11 +776,12 @@
                     }
                 }
 
-                // 3. Upload video to R2 (for Instagram - no file size limit!)
-                if (selectedFile && needsSupabaseVideo) {
-                    console.log('[R2] Uploading video for Instagram...');
-                    publishBtn.textContent = 'Uploading video...';
-                    updatePlatformProgress('instagram', 'publishing', 'Uploading video...');
+                // 3. Upload media to R2 (for Instagram/Threads - handles images and videos)
+                if (selectedFile && needsR2Upload) {
+                    const mediaTypeLabel = isImage ? 'image' : 'video';
+                    console.log(`[R2] Uploading ${mediaTypeLabel} for Instagram...`);
+                    publishBtn.textContent = `Uploading ${mediaTypeLabel}...`;
+                    updatePlatformProgress('instagram', 'publishing', `Uploading ${mediaTypeLabel}...`);
 
                     const { data: { session } } = await supabaseClient.auth.getSession();
 
@@ -714,12 +814,12 @@
                     });
 
                     if (!uploadRes.ok) {
-                        throw new Error('Failed to upload video to R2');
+                        throw new Error(`Failed to upload ${mediaTypeLabel} to R2`);
                     }
 
-                    videoUrl = publicUrl;
+                    mediaUrl = publicUrl;
                     metadata.r2_key = key; // Store key for deletion after publish
-                    console.log('[R2] Video uploaded:', videoUrl);
+                    console.log(`[R2] ${mediaTypeLabel} uploaded:`, mediaUrl);
                 }
 
                 // 4. Create post record
@@ -727,7 +827,7 @@
                 console.log('[DB] Creating post record...');
                 const postData = {
                     user_id: currentUser.id,
-                    video_url: videoUrl,
+                    video_url: mediaUrl, // Now can be image or video URL
                     thumbnail_url: thumbnailUrl,
                     caption: caption,
                     platforms: selectedPlatforms,

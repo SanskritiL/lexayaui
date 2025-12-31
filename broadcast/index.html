@@ -23,10 +23,8 @@
         <!-- Member Badge (shown for paid users) -->
         <div id="member-badge" class="member-badge" style="display: none;">
             <div class="member-badge-content">
-                <span class="member-icon">✨</span>
                 <div class="member-info">
                     <span class="member-label">PRO MEMBER</span>
-                    <span class="member-email" id="member-email"></span>
                 </div>
                 <span class="member-status">Active</span>
             </div>
@@ -63,17 +61,17 @@
                 <h2>Quick Actions</h2>
                 <div class="actions-grid">
                     <a href="/broadcast/upload.html" class="action-card">
-                        <div class="action-icon">📤</div>
+                        <div class="action-icon new-post"><i class="fas fa-plus"></i></div>
                         <h3>New Post</h3>
                         <p>Upload and publish to multiple platforms</p>
                     </a>
                     <a href="/broadcast/scheduled.html" class="action-card">
-                        <div class="action-icon">📅</div>
+                        <div class="action-icon scheduled"><i class="fas fa-clock"></i></div>
                         <h3>Scheduled</h3>
                         <p>View and manage scheduled posts</p>
                     </a>
                     <a href="/broadcast/calendar.html" class="action-card">
-                        <div class="action-icon">📆</div>
+                        <div class="action-icon calendar"><i class="fas fa-calendar-check"></i></div>
                         <h3>Calendar</h3>
                         <p>Track your posting consistency</p>
                     </a>
@@ -175,7 +173,7 @@
             if (dashboard) dashboard.style.display = 'block';
 
             // Show member badge
-            showMemberBadge(currentUser.email);
+            showMemberBadge();
 
             // Load from cache first, then refresh in background
             await loadConnectedAccounts(oauthResult.success);
@@ -211,11 +209,9 @@
             return result;
         }
 
-        function showMemberBadge(email) {
+        function showMemberBadge() {
             const badge = document.getElementById('member-badge');
-            const emailEl = document.getElementById('member-email');
-            if (badge && emailEl) {
-                emailEl.textContent = email;
+            if (badge) {
                 badge.style.display = 'block';
             }
         }
@@ -784,17 +780,11 @@
 
         /* Member Badge */
         .member-badge {
-            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #8b5cf6 100%);
+            background: #1e40af;
             border-radius: 16px;
             padding: 1rem 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
-            animation: shimmer 3s ease-in-out infinite;
-        }
-
-        @keyframes shimmer {
-            0%, 100% { box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3); }
-            50% { box-shadow: 0 4px 30px rgba(139, 92, 246, 0.4); }
+            box-shadow: 0 4px 15px rgba(30, 64, 175, 0.25);
         }
 
         .member-badge-content {
@@ -803,21 +793,8 @@
             gap: 1rem;
         }
 
-        .member-icon {
-            font-size: 1.75rem;
-            animation: sparkle 2s ease-in-out infinite;
-        }
-
-        @keyframes sparkle {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
-
         .member-info {
             flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 0.125rem;
         }
 
         .member-label {
@@ -826,11 +803,6 @@
             font-size: 0.85rem;
             letter-spacing: 0.1em;
             text-transform: uppercase;
-        }
-
-        .member-email {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 0.9rem;
         }
 
         .member-status {
