@@ -51,7 +51,62 @@ module.exports = async function handler(req, res) {
         }
 
         console.log('[TIKTOK] Account found:', account.account_name);
-        const accessToken = account.access_token;
+        let accessToken = account.access_token;
+
+        // Check if token is expired and refresh if needed
+        const tokenExpiresAt = new Date(account.token_expires_at);
+        const now = new Date();
+        const isExpired = tokenExpiresAt <= now;
+        const isExpiringSoon = tokenExpiresAt <= new Date(now.getTime() + 5 * 60 * 1000); // 5 min buffer
+
+        if ((isExpired || isExpiringSoon) && account.refresh_token) {
+            console.log('[TIKTOK] Token expired or expiring soon, refreshing...');
+            try {
+                const refreshResponse = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        client_key: process.env.TIKTOK_CLIENT_KEY,
+                        client_secret: process.env.TIKTOK_CLIENT_SECRET,
+                        grant_type: 'refresh_token',
+                        refresh_token: account.refresh_token,
+                    }),
+                });
+
+                const refreshData = await refreshResponse.json();
+                console.log('[TIKTOK] Refresh response:', JSON.stringify(refreshData, null, 2));
+
+                if (refreshData.access_token) {
+                    accessToken = refreshData.access_token;
+                    const newExpiresAt = new Date(Date.now() + (refreshData.expires_in * 1000)).toISOString();
+
+                    // Update token in database
+                    await supabase
+                        .from('connected_accounts')
+                        .update({
+                            access_token: refreshData.access_token,
+                            refresh_token: refreshData.refresh_token || account.refresh_token,
+                            token_expires_at: newExpiresAt,
+                        })
+                        .eq('user_id', user.id)
+                        .eq('platform', 'tiktok');
+
+                    console.log('[TIKTOK] Token refreshed successfully!');
+                } else {
+                    console.error('[TIKTOK] Token refresh failed:', refreshData.error);
+                    return res.status(401).json({
+                        error: 'TikTok token expired. Please reconnect your TikTok account.',
+                        reconnect: true
+                    });
+                }
+            } catch (refreshError) {
+                console.error('[TIKTOK] Token refresh error:', refreshError.message);
+                return res.status(401).json({
+                    error: 'Failed to refresh TikTok token. Please reconnect your account.',
+                    reconnect: true
+                });
+            }
+        }
 
         // Initialize video upload with TikTok using FILE_UPLOAD source
         // This is for direct upload, not pull from URL
