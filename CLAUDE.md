@@ -43,6 +43,7 @@ lexayaui/
 │       ├── auth/
 │       │   └── [platform].js   # Unified OAuth handler (linkedin, instagram, tiktok, threads)
 │       ├── publish.js          # Publish to all platforms
+│       ├── analyze-hook.js     # AI viral hook analyzer (Gemini 1.5 Flash)
 │       ├── refresh-accounts.js # Refresh follower counts
 │       ├── tiktok/
 │       │   └── init-video.js   # TikTok direct video upload (with auto token refresh)
@@ -81,6 +82,7 @@ lexayaui/
 - `R2_SECRET_ACCESS_KEY` - Cloudflare R2 secret
 - `R2_BUCKET_NAME` - R2 bucket name (`lexaya-videos`)
 - `CRON_SECRET` - Secret for cron job authentication
+- `GOOGLE_API_KEY` - Gemini API key for viral hook analyzer
 
 ---
 
@@ -110,6 +112,27 @@ Multi-platform publishing tool at `/broadcast`. Upload once, publish to TikTok, 
 - Instagram uses `image_url` parameter for photos
 - LinkedIn uses Images API (initializeUpload → upload binary → create post)
 - Threads uses `IMAGE` media_type
+
+### Viral Hook Analyzer (Added Dec 31, 2025)
+AI-powered feature to analyze video hooks for viral potential.
+
+**How it works:**
+1. User uploads a video
+2. First frame is extracted as thumbnail (already done for all videos)
+3. User clicks "Analyze Hook" button below video preview
+4. Frame is sent to Gemini 1.5 Flash for analysis
+5. Modal shows: viral score (0-100), extracted text, strengths/weaknesses, suggestions, similar hooks
+
+**API Endpoint:** `POST /api/broadcast/analyze-hook`
+- Requires: `Authorization: Bearer {token}`, `{ frameBase64: string }`
+- Returns: `{ viral_score, extracted_text, analysis, suggestions, similar_hooks }`
+
+**Environment Variable Required:**
+- `GOOGLE_API_KEY` - Gemini API key from Google AI Studio
+
+**Cost:** ~$0.001-0.002 per analysis (very cheap)
+
+**Stateless design:** No database tables - viral hook examples are embedded in the Gemini prompt for comparison.
 
 ### Key Technical Details
 

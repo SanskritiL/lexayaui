@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Members - Lexaya</title>
+    <title>Dashboard - Lexaya</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -34,11 +34,6 @@
             gap: 1.5rem;
         }
 
-        .user-email {
-            color: var(--text-secondary);
-            font-size: 1.1rem;
-        }
-
         .logout-btn {
             padding: 0.5rem 1rem;
             background: transparent;
@@ -56,188 +51,95 @@
             color: white;
         }
 
-        .members-content {
+        .dashboard-content {
             max-width: 900px;
             margin: 0 auto;
             padding: 3rem 2rem;
         }
 
-        .welcome-box {
-            background: var(--bg-card);
-            padding: 2rem;
-            border: 3px solid var(--border);
-            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-            margin-bottom: 3rem;
+        .greeting-box {
             text-align: center;
+            margin-bottom: 3rem;
         }
 
-        .welcome-box h1 {
+        .greeting-box h1 {
             font-size: 2.5rem;
             color: var(--text-primary);
             margin-bottom: 0.5rem;
         }
 
-        .welcome-box p {
+        .greeting-box p {
             color: var(--text-secondary);
             font-size: 1.3rem;
         }
 
-        .content-section {
-            margin-bottom: 3rem;
-        }
-
-        .content-section h2 {
-            font-size: 2rem;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .content-section h2 i {
-            color: var(--text-secondary);
-        }
-
-        .content-grid {
+        .actions-grid {
             display: grid;
-            gap: 1.25rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
         }
 
-        .content-card {
+        .action-card {
             background: var(--bg);
-            padding: 1.75rem;
+            padding: 2rem;
             border: 3px solid var(--border);
             border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
             transition: all 0.3s ease;
-        }
-
-        .content-card:hover {
-            transform: translateX(5px);
-            box-shadow: -5px 5px 0 var(--border-light);
-        }
-
-        .content-card h3 {
-            font-size: 1.5rem;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .content-card p {
-            color: var(--text-secondary);
-            font-size: 1.15rem;
-            line-height: 1.6;
-        }
-
-        .content-card .meta {
-            margin-top: 1rem;
-            font-size: 1rem;
-            color: var(--text-muted);
-        }
-
-        .tag {
-            display: inline-block;
-            padding: 0.2rem 0.6rem;
-            background: var(--bg-card);
-            border: 2px solid var(--border-light);
-            border-radius: 10px;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-right: 0.5rem;
-        }
-
-        .resource-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-primary);
             text-decoration: none;
-            font-size: 1.1rem;
-            margin-top: 1rem;
-            transition: gap 0.3s ease;
-        }
-
-        .resource-link:hover {
-            gap: 0.75rem;
-        }
-
-        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             text-align: center;
-            padding: 3rem;
-            border: 3px dashed var(--border-light);
-            border-radius: 15px;
-            color: var(--text-muted);
-            font-size: 1.2rem;
+            cursor: pointer;
         }
 
-        .services-section {
-            background: var(--bg-card);
-            padding: 2.5rem;
-            border: 3px solid var(--border);
-            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-            margin-top: 3rem;
+        .action-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(30, 64, 175, 0.15);
+            border-color: var(--text-primary);
         }
 
-        .services-section h2 {
-            text-align: center;
-            margin-bottom: 0.5rem;
+        .action-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
         }
 
-        .services-section > p {
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
+        .action-icon i {
+            font-size: 1.75rem;
+            color: white;
         }
 
-        .services-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.25rem;
+        .action-icon.broadcast {
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
         }
 
-        .service-card {
-            background: var(--bg);
-            padding: 1.5rem;
-            border: 2px solid var(--border-light);
-            border-radius: 15px;
-            text-align: center;
+        .action-icon.blogs {
+            background: linear-gradient(135deg, #10b981, #059669);
         }
 
-        .service-card h3 {
+        .action-icon.hooks {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .action-icon.calendar {
+            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+        }
+
+        .action-card h3 {
             font-size: 1.4rem;
             color: var(--text-primary);
+            margin-bottom: 0.5rem;
         }
 
-        .service-card .price {
-            font-size: 1.8rem;
-            color: var(--text-primary);
-            font-weight: 700;
-            margin: 0.5rem 0;
-        }
-
-        .service-card p {
+        .action-card p {
             color: var(--text-secondary);
             font-size: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .buy-btn {
-            width: 100%;
-            padding: 0.7rem 1.2rem;
-            background: var(--text-primary);
-            color: white;
-            border: 2px solid var(--text-primary);
-            border-radius: 15px;
-            font-family: 'Inter', sans-serif;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .buy-btn:hover {
-            background: transparent;
-            color: var(--text-primary);
+            line-height: 1.5;
         }
 
         .loading {
@@ -260,8 +162,12 @@
                 gap: 0.75rem;
             }
 
-            .services-grid {
+            .actions-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .greeting-box h1 {
+                font-size: 2rem;
             }
         }
     </style>
@@ -275,117 +181,48 @@
                 <a href="/">Lexaya</a>
             </div>
             <div class="nav-right">
-                <span class="user-email" id="userEmail"></span>
                 <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
             </div>
         </nav>
 
-        <div class="members-content">
-            <div class="welcome-box">
-                <h1>Welcome to the inside!</h1>
-                <p>Here's everything I'm learning and building. Dig in.</p>
+        <div class="dashboard-content">
+            <div class="greeting-box">
+                <h1>What would you like to do today?</h1>
+                <p>Pick an option to get started</p>
             </div>
 
-            <!-- Tips & Learnings -->
-            <div class="content-section">
-                <h2><i class="fas fa-lightbulb"></i> Tips & Learnings</h2>
-                <div class="content-grid">
-                    <div class="content-card">
-                        <h3>How I landed my first UGC client</h3>
-                        <p>Cold DMs don't work the way most people do them. Here's the approach that actually got me responses and my first paying client.</p>
-                        <div class="meta">
-                            <span class="tag">Getting Started</span>
-                            <span class="tag">Outreach</span>
-                        </div>
+            <div class="actions-grid">
+                <a href="/broadcast/" class="action-card">
+                    <div class="action-icon broadcast">
+                        <i class="fas fa-share-nodes"></i>
                     </div>
-                    <div class="content-card">
-                        <h3>The editing trick that saves me hours</h3>
-                        <p>I used to spend 3-4 hours editing a single video. Now it's under an hour. Here's the workflow change that made the difference.</p>
-                        <div class="meta">
-                            <span class="tag">Editing</span>
-                            <span class="tag">Workflow</span>
-                        </div>
-                    </div>
-                    <div class="content-card">
-                        <h3>Pricing mistakes I made (so you don't have to)</h3>
-                        <p>I undercharged for my first 5 projects. Here's how I figured out what to actually charge and how to communicate it.</p>
-                        <div class="meta">
-                            <span class="tag">Pricing</span>
-                            <span class="tag">Business</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    <h3>Broadcast Videos</h3>
+                    <p>Post to TikTok, Instagram, LinkedIn, and Threads in one click</p>
+                </a>
 
-            <!-- Behind the Scenes -->
-            <div class="content-section">
-                <h2><i class="fas fa-video"></i> Behind the Scenes</h2>
-                <div class="content-grid">
-                    <div class="content-card">
-                        <h3>My current setup (2024)</h3>
-                        <p>Phone, lighting, audio - everything I use to shoot UGC. Spoiler: you don't need expensive gear to start.</p>
-                        <div class="meta">
-                            <span class="tag">Gear</span>
-                            <span class="tag">Setup</span>
-                        </div>
+                <a href="/blog/" class="action-card">
+                    <div class="action-icon blogs">
+                        <i class="fas fa-book-open"></i>
                     </div>
-                    <div class="content-card">
-                        <h3>How I script a UGC video</h3>
-                        <p>My actual process from brief to final script. Includes the template I use for every project.</p>
-                        <div class="meta">
-                            <span class="tag">Process</span>
-                            <span class="tag">Scripting</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    <h3>Read UGC Blogs</h3>
+                    <p>Tips, strategies, and lessons from my UGC journey</p>
+                </a>
 
-            <!-- Resources -->
-            <div class="content-section">
-                <h2><i class="fas fa-folder-open"></i> Resources & Templates</h2>
-                <div class="content-grid">
-                    <div class="content-card">
-                        <h3>UGC Script Template</h3>
-                        <p>The exact template I use for every UGC video. Hook, problem, solution, CTA - all laid out.</p>
-                        <a href="/resources/ugc-script-template.pdf" class="resource-link" download>Download <i class="fas fa-arrow-right"></i></a>
+                <a href="/hooks/" class="action-card">
+                    <div class="action-icon hooks">
+                        <i class="fas fa-fire"></i>
                     </div>
-                    <div class="content-card">
-                        <h3>Client Onboarding Checklist</h3>
-                        <p>Questions I ask every client before starting. Makes the whole process smoother.</p>
-                        <a href="/resources/client-checklist.pdf" class="resource-link" download>Download <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                    <div class="content-card">
-                        <h3>My Tool Stack</h3>
-                        <p>Every app and tool I use daily - editing, organization, invoicing, all of it.</p>
-                        <a href="/resources/tool-stack.pdf" class="resource-link" download>Download <i class="fas fa-arrow-right"></i></a>
-                    </div>
-                </div>
-            </div>
+                    <h3>Top Viral Hooks</h3>
+                    <p>See the best performing hooks this month</p>
+                </a>
 
-            <!-- Services -->
-            <div class="services-section">
-                <h2><i class="fas fa-sparkles"></i> Work With Me</h2>
-                <p>Need UGC or marketing videos? Here's how we can work together.</p>
-                <div class="services-grid">
-                    <div class="service-card">
-                        <h3>Free Resource</h3>
-                        <div class="price">Free</div>
-                        <p>Get started with a free digital resource</p>
-                        <button class="buy-btn" onclick="checkout('freeDigital')">Download Free</button>
+                <a href="/broadcast/calendar.html" class="action-card">
+                    <div class="action-icon calendar">
+                        <i class="fas fa-calendar-check"></i>
                     </div>
-                    <div class="service-card">
-                        <h3>5 Video Bundle</h3>
-                        <div class="price">$495</div>
-                        <p>5 UGC videos at $99 each</p>
-                        <button class="buy-btn" onclick="checkout('videoBundle5')">Get Started</button>
-                    </div>
-                    <div class="service-card">
-                        <h3>Monthly Bundle</h3>
-                        <div class="price">$1,980</div>
-                        <p>20 videos/month at $99 each</p>
-                        <button class="buy-btn" onclick="checkout('videoBundle20')">Get Started</button>
-                    </div>
-                </div>
+                    <h3>Your Calendar</h3>
+                    <p>Track your posting schedule and progress</p>
+                </a>
             </div>
         </div>
     </div>
@@ -393,8 +230,6 @@
     <script src="js/config.js"></script>
     <script src="js/supabase.js"></script>
     <script>
-        let currentUser = null;
-
         // Check for auth errors in URL hash
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         if (hashParams.get('error')) {
@@ -411,41 +246,9 @@
                 return;
             }
 
-            currentUser = user;
-            document.getElementById('userEmail').textContent = user.email;
             document.getElementById('loading').style.display = 'none';
             document.getElementById('members').style.display = 'block';
         })();
-
-        async function checkout(productKey) {
-            const priceId = CONFIG.PRODUCTS[productKey];
-
-            if (!priceId || priceId.startsWith('price_XXXXX')) {
-                alert('Payments coming soon! Email me at hello@lexaya.io');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/create-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        priceId: priceId,
-                        userEmail: currentUser.email,
-                        userId: currentUser.id
-                    })
-                });
-
-                const { url, error } = await response.json();
-                if (error) {
-                    alert('Error: ' + error);
-                    return;
-                }
-                window.location.href = url;
-            } catch (err) {
-                alert('Email me at hello@lexaya.io to get started!');
-            }
-        }
 
         async function handleLogout() {
             await auth.signOut();

@@ -46,10 +46,20 @@
                     </div>
                     <!-- Video Preview -->
                     <div id="video-preview-container" style="display: none; margin-top: 1rem;">
-                        <video id="video-preview" class="video-preview" controls></video>
+                        <video id="video-preview" class="video-preview" controls style="max-height: 400px; width: auto; max-width: 100%;"></video>
                         <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
                             <p id="video-info" style="color: var(--text-light); font-size: 0.9rem; margin: 0;"></p>
                             <button type="button" id="remove-media" class="btn btn-secondary btn-small">Remove</button>
+                        </div>
+                        <!-- Hook Analyzer Button -->
+                        <div id="hook-analyzer-container" style="margin-top: 1rem;">
+                            <button type="button" id="analyze-hook-btn" class="btn btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                Analyze Hook
+                            </button>
+                            <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem; text-align: center;">
+                                Get AI-powered suggestions to make your hook more viral
+                            </p>
                         </div>
                     </div>
                     <!-- Image Preview -->
@@ -163,6 +173,66 @@
                 </div>
                 <div id="modal-actions" class="modal-actions" style="display: none;">
                     <a href="./" class="btn btn-primary">Back to Dashboard</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hook Analysis Modal -->
+        <div id="hook-analysis-modal" class="modal" style="display: none;">
+            <div class="modal-content hook-analysis-modal">
+                <button type="button" class="modal-close" id="close-analysis-modal">&times;</button>
+
+                <div class="modal-header">
+                    <h2>Hook Analysis</h2>
+                    <p class="modal-subtitle">AI-powered viral potential assessment</p>
+                </div>
+
+                <!-- Viral Score -->
+                <div class="viral-score-container">
+                    <div class="viral-score-ring">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="score-bg" cx="50" cy="50" r="45"/>
+                            <circle class="score-progress" id="score-circle" cx="50" cy="50" r="45"/>
+                        </svg>
+                        <div class="score-value" id="viral-score-value">--</div>
+                    </div>
+                    <p class="score-label" id="score-label">Viral Score</p>
+                </div>
+
+                <!-- Extracted Text -->
+                <div class="analysis-section" id="extracted-text-section">
+                    <h3><i class="fa-solid fa-closed-captioning"></i> Detected Hook Text</h3>
+                    <div class="extracted-text" id="extracted-text-display">
+                        <em>Analyzing...</em>
+                    </div>
+                </div>
+
+                <!-- Strengths & Weaknesses -->
+                <div class="analysis-row">
+                    <div class="analysis-section strengths">
+                        <h3><i class="fa-solid fa-check-circle"></i> What's Working</h3>
+                        <ul id="strengths-list"></ul>
+                    </div>
+                    <div class="analysis-section weaknesses">
+                        <h3><i class="fa-solid fa-exclamation-circle"></i> Could Improve</h3>
+                        <ul id="weaknesses-list"></ul>
+                    </div>
+                </div>
+
+                <!-- Suggestions -->
+                <div class="analysis-section suggestions">
+                    <h3><i class="fa-solid fa-lightbulb"></i> Suggestions</h3>
+                    <ul id="suggestions-list"></ul>
+                </div>
+
+                <!-- Similar Viral Hooks -->
+                <div class="analysis-section similar-hooks" id="similar-hooks-section" style="display: none;">
+                    <h3><i class="fa-solid fa-fire"></i> Similar Viral Hooks</h3>
+                    <div class="similar-hooks-grid" id="similar-hooks-grid"></div>
+                </div>
+
+                <div class="modal-actions" style="display: block; margin-top: 1.5rem;">
+                    <button type="button" class="btn btn-primary" id="close-analysis-btn" style="width: 100%;">Got it</button>
                 </div>
             </div>
         </div>
@@ -1046,6 +1116,188 @@
 
             return response.json();
         }
+
+        // ========== HOOK ANALYZER ==========
+        let analysisInProgress = false;
+
+        // Analyze hook handler
+        document.getElementById('analyze-hook-btn')?.addEventListener('click', async () => {
+            if (analysisInProgress) return;
+
+            // Make sure we have a thumbnail
+            if (!videoThumbnailBlob) {
+                alert('Please wait for the video to load, then try again.');
+                return;
+            }
+
+            analysisInProgress = true;
+            const btn = document.getElementById('analyze-hook-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+
+            // Show modal with loading state
+            showAnalysisLoading();
+
+            try {
+                // Convert thumbnail blob to base64
+                const base64 = await blobToBase64(videoThumbnailBlob);
+
+                // Get session for auth
+                const { data: { session } } = await supabaseClient.auth.getSession();
+
+                // Call analyze API
+                const response = await fetch('/api/broadcast/analyze-hook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`
+                    },
+                    body: JSON.stringify({ frameBase64: base64 })
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || 'Analysis failed');
+                }
+
+                const result = await response.json();
+                showAnalysisResult(result);
+
+            } catch (error) {
+                console.error('[ANALYZE] Error:', error);
+                showAnalysisError(error.message);
+            } finally {
+                analysisInProgress = false;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Analyze Hook';
+            }
+        });
+
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function showAnalysisLoading() {
+            const modal = document.getElementById('hook-analysis-modal');
+
+            // Reset to loading state
+            document.getElementById('viral-score-value').textContent = '--';
+            document.getElementById('score-circle').style.strokeDashoffset = '283';
+            document.getElementById('score-label').textContent = 'Analyzing...';
+            document.getElementById('extracted-text-display').innerHTML = '<em>Detecting text...</em>';
+            document.getElementById('strengths-list').innerHTML = '<li>Analyzing...</li>';
+            document.getElementById('weaknesses-list').innerHTML = '<li>Analyzing...</li>';
+            document.getElementById('suggestions-list').innerHTML = '<li>Generating suggestions...</li>';
+            document.getElementById('similar-hooks-section').style.display = 'none';
+
+            modal.style.display = 'flex';
+        }
+
+        function showAnalysisResult(result) {
+            // Viral score with animation
+            const scoreValue = document.getElementById('viral-score-value');
+            const scoreCircle = document.getElementById('score-circle');
+            const scoreLabel = document.getElementById('score-label');
+
+            scoreValue.textContent = result.viral_score;
+            scoreLabel.textContent = 'Viral Score';
+
+            // Animate circle (283 is full circumference)
+            const offset = 283 - (283 * result.viral_score / 100);
+            scoreCircle.style.strokeDashoffset = offset;
+
+            // Color based on score
+            if (result.viral_score >= 70) {
+                scoreCircle.style.stroke = '#16a34a';
+                scoreValue.style.color = '#16a34a';
+            } else if (result.viral_score >= 40) {
+                scoreCircle.style.stroke = '#f59e0b';
+                scoreValue.style.color = '#f59e0b';
+            } else {
+                scoreCircle.style.stroke = '#ef4444';
+                scoreValue.style.color = '#ef4444';
+            }
+
+            // Extracted text
+            const textDisplay = document.getElementById('extracted-text-display');
+            if (result.extracted_text && result.extracted_text.trim()) {
+                textDisplay.innerHTML = `"${result.extracted_text}"`;
+            } else {
+                textDisplay.innerHTML = '<em>No text detected in hook</em>';
+            }
+
+            // Strengths
+            const strengthsList = document.getElementById('strengths-list');
+            strengthsList.innerHTML = (result.analysis?.strengths || [])
+                .map(s => `<li>${s}</li>`).join('') || '<li>--</li>';
+
+            // Weaknesses
+            const weaknessesList = document.getElementById('weaknesses-list');
+            weaknessesList.innerHTML = (result.analysis?.weaknesses || [])
+                .map(w => `<li>${w}</li>`).join('') || '<li>--</li>';
+
+            // Suggestions
+            const suggestionsList = document.getElementById('suggestions-list');
+            suggestionsList.innerHTML = (result.suggestions || [])
+                .map(s => `<li>${s}</li>`).join('') || '<li>No suggestions</li>';
+
+            // Similar hooks
+            const hooksSection = document.getElementById('similar-hooks-section');
+            const hooksGrid = document.getElementById('similar-hooks-grid');
+
+            if (result.similar_hooks && result.similar_hooks.length > 0) {
+                hooksSection.style.display = 'block';
+                hooksGrid.innerHTML = result.similar_hooks.map(hook => `
+                    <div class="similar-hook-card">
+                        <div class="hook-text">"${hook.hook_text}"</div>
+                        <div class="hook-meta">
+                            <span class="hook-category">${hook.category}</span>
+                            <span class="hook-views">${formatViews(hook.avg_views)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                hooksSection.style.display = 'none';
+            }
+        }
+
+        function showAnalysisError(message) {
+            document.getElementById('viral-score-value').textContent = '!';
+            document.getElementById('viral-score-value').style.color = '#ef4444';
+            document.getElementById('score-label').textContent = 'Analysis failed';
+            document.getElementById('extracted-text-display').innerHTML = `<em style="color: #ef4444;">${message}</em>`;
+            document.getElementById('strengths-list').innerHTML = '';
+            document.getElementById('weaknesses-list').innerHTML = '';
+            document.getElementById('suggestions-list').innerHTML = '<li>Please try again later</li>';
+        }
+
+        function formatViews(views) {
+            if (!views) return '';
+            if (views >= 1000000) return (views / 1000000).toFixed(1) + 'M avg views';
+            if (views >= 1000) return (views / 1000).toFixed(0) + 'K avg views';
+            return views + ' avg views';
+        }
+
+        // Close modal handlers
+        document.getElementById('close-analysis-modal')?.addEventListener('click', () => {
+            document.getElementById('hook-analysis-modal').style.display = 'none';
+        });
+
+        document.getElementById('close-analysis-btn')?.addEventListener('click', () => {
+            document.getElementById('hook-analysis-modal').style.display = 'none';
+        });
+
+        // Close on outside click
+        document.getElementById('hook-analysis-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'hook-analysis-modal') {
+                document.getElementById('hook-analysis-modal').style.display = 'none';
+            }
+        });
     </script>
 
     <style>
@@ -1224,6 +1476,185 @@
         }
         .modal-actions .btn {
             width: 100%;
+        }
+
+        /* Hook Analysis Modal Styles */
+        .hook-analysis-modal {
+            max-width: 520px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #9ca3af;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+        .modal-close:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        /* Viral Score Ring */
+        .viral-score-container {
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+        .viral-score-ring {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto;
+            position: relative;
+        }
+        .viral-score-ring svg {
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+        }
+        .score-bg {
+            fill: none;
+            stroke: #e5e7eb;
+            stroke-width: 8;
+        }
+        .score-progress {
+            fill: none;
+            stroke: #1e40af;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 283;
+            stroke-dashoffset: 283;
+            transition: stroke-dashoffset 1s ease-out, stroke 0.3s;
+        }
+        .score-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e40af;
+            transition: color 0.3s;
+        }
+        .score-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 0.5rem;
+        }
+
+        /* Analysis Sections */
+        .analysis-section {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .analysis-section h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin: 0 0 0.75rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #374151;
+        }
+        .analysis-section h3 i {
+            font-size: 0.9rem;
+        }
+        .analysis-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .strengths h3 i { color: #16a34a; }
+        .weaknesses h3 i { color: #f59e0b; }
+        .suggestions h3 i { color: #3b82f6; }
+        .similar-hooks h3 i { color: #ef4444; }
+
+        .analysis-section ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .analysis-section li {
+            font-size: 0.85rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e5e7eb;
+            color: #4b5563;
+        }
+        .analysis-section li:last-child {
+            border-bottom: none;
+        }
+        .extracted-text {
+            font-size: 1rem;
+            font-weight: 500;
+            padding: 0.75rem;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            color: #1f2937;
+        }
+
+        /* Similar Hooks Grid */
+        .similar-hooks-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .similar-hook-card {
+            padding: 0.75rem;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+        }
+        .similar-hook-card .hook-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: #1f2937;
+        }
+        .similar-hook-card .hook-meta {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .similar-hook-card .hook-category {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            background: #eff6ff;
+            color: #1e40af;
+            border-radius: 4px;
+            text-transform: capitalize;
+        }
+        .similar-hook-card .hook-views {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        @media (max-width: 640px) {
+            .analysis-row {
+                grid-template-columns: 1fr;
+            }
+            .hook-analysis-modal {
+                max-width: 95%;
+                padding: 1.5rem;
+            }
         }
     </style>
 </body>

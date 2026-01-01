@@ -25,12 +25,9 @@
             <div class="pricing-card">
                 <div class="pricing-header">
                     <h2>Broadcast Pro</h2>
-                    <div class="trial-badge" style="background: #dcfce7; color: #166534; padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; margin-bottom: 0.75rem; display: inline-block;">
-                        7 Days Free
-                    </div>
                     <div class="price">
                         <span class="amount">$14.99</span>
-                        <span class="period">/month after trial</span>
+                        <span class="period">/month</span>
                     </div>
                 </div>
 
@@ -55,10 +52,10 @@
                     <!-- Subscribe button -->
                     <div id="subscribe-section" style="display: none;">
                         <button id="subscribe-btn" class="btn btn-primary" style="width: 100%;">
-                            Start 7-Day Free Trial
+                            Subscribe Now
                         </button>
                         <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.75rem; text-align: center;">
-                            No charge for 7 days. Cancel anytime.
+                            Cancel anytime. No questions asked.
                         </p>
                     </div>
 
@@ -77,10 +74,6 @@
             <!-- FAQ -->
             <section class="faq-section">
                 <h3>Questions?</h3>
-                <div class="faq-item">
-                    <strong>How does the free trial work?</strong>
-                    <p>You get 7 days free. We'll remind you before your trial ends. Cancel anytime before to avoid charges.</p>
-                </div>
                 <div class="faq-item">
                     <strong>Can I cancel anytime?</strong>
                     <p>Yes, cancel with one click. No questions asked.</p>
@@ -153,7 +146,6 @@
                         userId: currentUser.id,
                         productKey: 'broadcast',
                         mode: 'subscription',
-                        trialDays: 7,
                         successUrl: window.location.origin + '/broadcast/?subscribed=true'
                     })
                 });
@@ -168,7 +160,7 @@
             } catch (error) {
                 alert('Error: ' + error.message);
                 btn.disabled = false;
-                btn.textContent = 'Start Free Trial';
+                btn.textContent = 'Subscribe Now';
             }
         });
     </script>
