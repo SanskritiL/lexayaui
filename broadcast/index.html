@@ -99,9 +99,10 @@
             tiktok: '<i class="fa-brands fa-tiktok"></i>',
             instagram: '<i class="fa-brands fa-instagram"></i>',
             linkedin: '<i class="fa-brands fa-linkedin"></i>',
-            threads: '<i class="fa-brands fa-threads"></i>'
+            threads: '<i class="fa-brands fa-threads"></i>',
+            youtube: '<i class="fa-brands fa-youtube"></i>'
         };
-        const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn', threads: 'Threads' };
+        const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn', threads: 'Threads', youtube: 'YouTube' };
         const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
         let currentUser = null;
         let currentSession = null;
@@ -325,12 +326,13 @@
         }
 
         function renderAccounts(grid, accounts) {
-            const platforms = ['linkedin', 'instagram', 'tiktok', 'threads'];
+            const platforms = ['linkedin', 'instagram', 'tiktok', 'threads', 'youtube'];
             const platformColors = {
                 linkedin: '#0A66C2',
                 instagram: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
                 tiktok: '#000000',
-                threads: '#000000'
+                threads: '#000000',
+                youtube: '#FF0000'
             };
 
             const html = platforms.map(platform => {

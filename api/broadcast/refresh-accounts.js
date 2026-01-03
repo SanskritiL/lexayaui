@@ -54,6 +54,9 @@ export default async function handler(req, res) {
                 case 'twitter':
                     updatedMetadata = await refreshTwitter(account, updatedMetadata);
                     break;
+                case 'youtube':
+                    updatedMetadata = await refreshYouTube(account, updatedMetadata);
+                    break;
             }
 
             // Update in database
@@ -197,6 +200,39 @@ async function refreshTwitter(account, metadata) {
         }
     } catch (err) {
         console.log('[RefreshAccounts] Twitter error:', err.message);
+    }
+
+    return metadata;
+}
+
+async function refreshYouTube(account, metadata) {
+    const accessToken = account.access_token;
+    const channelId = account.platform_user_id;
+    if (!accessToken || !channelId) return metadata;
+
+    try {
+        // Fetch YouTube channel info
+        const channelRes = await fetch(
+            `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}`,
+            { headers: { 'Authorization': `Bearer ${accessToken}` } }
+        );
+
+        if (channelRes.ok) {
+            const channelData = await channelRes.json();
+            const channel = channelData.items?.[0];
+            if (channel) {
+                metadata.channel_title = channel.snippet.title || metadata.channel_title;
+                metadata.display_name = channel.snippet.title || metadata.display_name;
+                metadata.profile_picture = channel.snippet.thumbnails?.default?.url || metadata.profile_picture;
+                metadata.subscribers_count = parseInt(channel.statistics?.subscriberCount) || 0;
+                metadata.video_count = parseInt(channel.statistics?.videoCount) || 0;
+                metadata.view_count = parseInt(channel.statistics?.viewCount) || 0;
+
+                console.log('[RefreshAccounts] YouTube refreshed:', metadata.subscribers_count, 'subscribers');
+            }
+        }
+    } catch (err) {
+        console.log('[RefreshAccounts] YouTube error:', err.message);
     }
 
     return metadata;

@@ -123,6 +123,14 @@
                             </label>
                             <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
                         </div>
+                        <div data-platform="youtube" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
+                            <input type="checkbox" id="platform-youtube" name="platforms" value="youtube" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <label for="platform-youtube" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
+                                <span style="font-size: 1.5rem; color: #FF0000;"><i class="fa-brands fa-youtube"></i></span>
+                                <span style="font-weight: 500;">YouTube Shorts</span>
+                            </label>
+                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
+                        </div>
                     </div>
                     <p id="no-accounts-warning" style="margin-top: 1rem; color: var(--warning);">
                         No accounts connected. <a href="connect.html">Connect an account</a> to start posting.
@@ -313,7 +321,7 @@
         }
 
         function updatePlatformCheckboxes() {
-            const platforms = ['tiktok', 'instagram', 'linkedin', 'threads'];
+            const platforms = ['tiktok', 'instagram', 'linkedin', 'threads', 'youtube'];
             const warning = document.getElementById('no-accounts-warning');
             const hasMedia = !!selectedFile;
             const hasVideo = hasMedia && selectedMediaType === 'video';
@@ -332,8 +340,8 @@
                 if (account) {
                     hasAnyConnected = true;
 
-                    // TikTok requires video (no image support)
-                    if (platform === 'tiktok') {
+                    // TikTok and YouTube require video (no image support)
+                    if (platform === 'tiktok' || platform === 'youtube') {
                         if (hasImage) {
                             input.disabled = true;
                             input.checked = false;
@@ -682,6 +690,14 @@
                 return;
             }
 
+            // YouTube Shorts requires video (no images)
+            const needsYouTube = selectedPlatforms.includes('youtube');
+            if (needsYouTube && (!selectedFile || selectedMediaType !== 'video') && !isDraft) {
+                console.log('[VALIDATION] YouTube requires video');
+                alert('YouTube Shorts requires a video. Please upload a video or deselect YouTube.');
+                return;
+            }
+
             // Instagram requires some media (image or video)
             if (needsInstagram && !selectedFile && !isDraft) {
                 console.log('[VALIDATION] Instagram requires media');
@@ -717,10 +733,13 @@
                 const isImage = selectedMediaType === 'image';
                 const isVideo = selectedMediaType === 'video';
 
-                // Instagram needs R2 for both images and videos
-                const needsR2Upload = selectedPlatforms.includes('instagram') && selectedFile;
-                // LinkedIn video upload (images handled differently)
-                const needsLinkedInVideo = selectedPlatforms.includes('linkedin') && selectedFile && isVideo;
+                // Instagram, LinkedIn, Threads, and YouTube need R2 for media
+                // LinkedIn: server-side video upload (browser CORS blocks direct upload)
+                // Threads: uses media URLs for API
+                // YouTube: server-side video upload
+                const needsR2Upload = (selectedPlatforms.includes('instagram') || selectedPlatforms.includes('linkedin') || selectedPlatforms.includes('threads') || selectedPlatforms.includes('youtube')) && selectedFile;
+                // LinkedIn video is now handled server-side via R2, so we skip browser upload
+                const needsLinkedInVideo = false; // Disabled - now using server-side upload
                 // TikTok only supports video
                 const needsTikTokVideo = selectedPlatforms.includes('tiktok') && selectedFile;
 

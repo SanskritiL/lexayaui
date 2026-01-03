@@ -1068,6 +1068,17 @@ footer {
     white-space: nowrap;
 }
 
+.hook-card .resource-badge {
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: white;
+    border: none;
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+}
+
+.hook-card {
+    cursor: default;
+}
+
 @media (max-width: 768px) {
     .resources-grid {
         grid-template-columns: 1fr;

@@ -139,6 +139,11 @@ module.exports = async function handler(req, res) {
                         result = await publishToThreads(post, account);
                         console.log('[PUBLISH] Threads result:', result);
                         break;
+                    case 'youtube':
+                        console.log('[PUBLISH] Calling publishToYouTube...');
+                        result = await publishToYouTube(post, account);
+                        console.log('[PUBLISH] YouTube result:', result);
+                        break;
                     default:
                         result = { status: 'error', error: 'Unknown platform' };
                 }
@@ -291,6 +296,12 @@ async function publishToLinkedIn(post, account) {
         return await createLinkedInVideoPost(headers, authorUrn, post, linkedinVideoUrn);
     }
 
+    // Check if we have a video to upload (server-side upload from R2)
+    if (mediaType === 'video' && post.video_url) {
+        console.log('[LINKEDIN] Video detected, uploading to LinkedIn server-side...');
+        return await uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access_token);
+    }
+
     // Check if we have an image to upload
     if (mediaType === 'image' && post.video_url) {
         console.log('[LINKEDIN] Image detected, uploading to LinkedIn...');
@@ -348,6 +359,143 @@ async function createLinkedInVideoPost(headers, authorUrn, post, videoUrn) {
         post_id: postId,
         url: `https://www.linkedin.com/feed/update/${postId}`,
     };
+}
+
+// Upload video to LinkedIn server-side and create post
+async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, accessToken) {
+    console.log('[LINKEDIN] Server-side video upload starting...');
+    console.log('[LINKEDIN] Video URL:', post.video_url);
+
+    try {
+        // Step 1: Download video from R2
+        console.log('[LINKEDIN] Step 1: Downloading video from R2...');
+        const videoResponse = await fetch(post.video_url);
+        if (!videoResponse.ok) {
+            throw new Error('Failed to download video from storage');
+        }
+        const videoBuffer = await videoResponse.arrayBuffer();
+        const fileSizeBytes = videoBuffer.byteLength;
+        console.log('[LINKEDIN] Video size:', (fileSizeBytes / 1024 / 1024).toFixed(2), 'MB');
+
+        // Step 2: Initialize video upload with LinkedIn
+        console.log('[LINKEDIN] Step 2: Initializing video upload...');
+        const initBody = {
+            initializeUploadRequest: {
+                owner: authorUrn,
+                fileSizeBytes: fileSizeBytes,
+                uploadCaptions: false,
+                uploadThumbnail: false,
+            },
+        };
+
+        const initResponse = await fetch('https://api.linkedin.com/rest/videos?action=initializeUpload', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(initBody),
+        });
+
+        if (!initResponse.ok) {
+            const errorText = await initResponse.text();
+            console.error('[LINKEDIN] Video init error:', errorText);
+            throw new Error('Failed to initialize LinkedIn video upload: ' + errorText);
+        }
+
+        const initData = await initResponse.json();
+        const uploadInstructions = initData.value?.uploadInstructions;
+        const videoUrn = initData.value?.video;
+        console.log('[LINKEDIN] Got video URN:', videoUrn);
+        console.log('[LINKEDIN] Upload instructions count:', uploadInstructions?.length);
+
+        if (!uploadInstructions || uploadInstructions.length === 0) {
+            throw new Error('No upload instructions received from LinkedIn');
+        }
+
+        // Step 3: Upload video (handle single or chunked upload)
+        console.log('[LINKEDIN] Step 3: Uploading video to LinkedIn...');
+
+        if (uploadInstructions.length === 1) {
+            // Single upload
+            const uploadUrl = uploadInstructions[0].uploadUrl;
+            const uploadResponse = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/octet-stream',
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                body: Buffer.from(videoBuffer),
+            });
+
+            if (!uploadResponse.ok) {
+                const errorText = await uploadResponse.text();
+                console.error('[LINKEDIN] Video upload error:', errorText);
+                throw new Error('Failed to upload video to LinkedIn: ' + errorText);
+            }
+            console.log('[LINKEDIN] Single-part upload complete!');
+        } else {
+            // Chunked upload - must collect ETags for finalize
+            console.log('[LINKEDIN] Using chunked upload...');
+            const videoBytes = Buffer.from(videoBuffer);
+            const uploadedPartIds = [];
+
+            for (const instruction of uploadInstructions) {
+                const { uploadUrl, firstByte, lastByte } = instruction;
+                const chunk = videoBytes.slice(firstByte, lastByte + 1);
+                console.log(`[LINKEDIN] Uploading chunk: bytes ${firstByte}-${lastByte} (${chunk.length} bytes)`);
+
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        'Authorization': `Bearer ${accessToken}`,
+                    },
+                    body: chunk,
+                });
+
+                if (!uploadResponse.ok) {
+                    const errorText = await uploadResponse.text();
+                    console.error('[LINKEDIN] Chunk upload error:', errorText);
+                    throw new Error(`Failed to upload chunk to LinkedIn: ${errorText}`);
+                }
+
+                // Collect ETag for finalize request
+                const etag = uploadResponse.headers.get('etag');
+                if (etag) {
+                    uploadedPartIds.push(etag.replace(/"/g, '')); // Remove quotes from ETag
+                    console.log(`[LINKEDIN] Chunk uploaded, ETag: ${etag}`);
+                }
+            }
+            console.log('[LINKEDIN] Chunked upload complete! Parts:', uploadedPartIds.length);
+
+            // Step 4: Finalize the upload with ETags
+            console.log('[LINKEDIN] Step 4: Finalizing upload...');
+            const finalizeResponse = await fetch('https://api.linkedin.com/rest/videos?action=finalizeUpload', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({
+                    finalizeUploadRequest: {
+                        video: videoUrn,
+                        uploadToken: '',
+                        uploadedPartIds: uploadedPartIds,
+                    },
+                }),
+            });
+
+            if (!finalizeResponse.ok) {
+                const errorText = await finalizeResponse.text();
+                console.error('[LINKEDIN] Finalize error:', errorText);
+                throw new Error('Failed to finalize LinkedIn video upload: ' + errorText);
+            }
+            console.log('[LINKEDIN] Upload finalized!');
+        }
+
+        // Step 5: Create post with video
+        console.log('[LINKEDIN] Step 5: Creating post with video...');
+        return await createLinkedInVideoPost(headers, authorUrn, post, videoUrn);
+
+    } catch (error) {
+        console.error('[LINKEDIN] Server-side video upload error:', error.message);
+        throw error;
+    }
 }
 
 // Create LinkedIn post with image
@@ -1025,5 +1173,171 @@ async function publishToThreads(post, account) {
             status: 'error',
             error: error.message,
         };
+    }
+}
+
+// ============== YOUTUBE SHORTS ==============
+async function publishToYouTube(post, account) {
+    console.log('[YOUTUBE] Starting publish...');
+    const mediaType = post.metadata?.media_type;
+    console.log('[YOUTUBE] Post:', { id: post.id, caption: post.caption?.substring(0, 50), media_url: !!post.video_url, media_type: mediaType });
+
+    // YouTube only supports video
+    if (mediaType !== 'video' || !post.video_url) {
+        return {
+            status: 'error',
+            error: 'YouTube Shorts requires a video',
+        };
+    }
+
+    let { access_token, refresh_token } = account;
+
+    try {
+        // Check if token is expired and refresh if needed
+        const tokenExpiry = new Date(account.token_expires_at);
+        if (tokenExpiry <= new Date()) {
+            console.log('[YOUTUBE] Token expired, refreshing...');
+            const refreshed = await refreshYouTubeToken(refresh_token);
+            if (refreshed.error) {
+                return { status: 'error', error: 'Token expired. Please reconnect YouTube.' };
+            }
+            access_token = refreshed.access_token;
+
+            // Update token in database
+            await supabase
+                .from('connected_accounts')
+                .update({
+                    access_token: refreshed.access_token,
+                    token_expires_at: new Date(Date.now() + (refreshed.expires_in * 1000)).toISOString(),
+                })
+                .eq('id', account.id);
+        }
+
+        // Step 1: Download video from R2
+        console.log('[YOUTUBE] Step 1: Downloading video from R2...');
+        const videoResponse = await fetch(post.video_url);
+        if (!videoResponse.ok) {
+            throw new Error('Failed to download video from storage');
+        }
+        const videoBuffer = await videoResponse.arrayBuffer();
+        const videoBytes = Buffer.from(videoBuffer);
+        console.log('[YOUTUBE] Video size:', (videoBytes.length / 1024 / 1024).toFixed(2), 'MB');
+
+        // Prepare metadata - add #Shorts to make it a Short
+        let description = post.caption || '';
+        if (!description.toLowerCase().includes('#shorts')) {
+            description = description + '\n\n#Shorts';
+        }
+
+        // Extract title from caption (first line or first 100 chars)
+        let title = post.caption?.split('\n')[0]?.substring(0, 100) || 'Short video';
+        if (title.length > 100) {
+            title = title.substring(0, 97) + '...';
+        }
+
+        const videoMetadata = {
+            snippet: {
+                title: title,
+                description: description,
+                categoryId: '22', // People & Blogs
+            },
+            status: {
+                privacyStatus: 'public',
+                selfDeclaredMadeForKids: false,
+            },
+        };
+
+        // Step 2: Initialize resumable upload
+        console.log('[YOUTUBE] Step 2: Initializing resumable upload...');
+        const initResponse = await fetch(
+            'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${access_token}`,
+                    'Content-Type': 'application/json',
+                    'X-Upload-Content-Length': videoBytes.length.toString(),
+                    'X-Upload-Content-Type': 'video/*',
+                },
+                body: JSON.stringify(videoMetadata),
+            }
+        );
+
+        if (!initResponse.ok) {
+            const errorText = await initResponse.text();
+            console.error('[YOUTUBE] Init error:', errorText);
+            throw new Error('Failed to initialize YouTube upload: ' + errorText);
+        }
+
+        const uploadUrl = initResponse.headers.get('location');
+        if (!uploadUrl) {
+            throw new Error('No upload URL received from YouTube');
+        }
+        console.log('[YOUTUBE] Got resumable upload URL');
+
+        // Step 3: Upload video bytes
+        console.log('[YOUTUBE] Step 3: Uploading video...');
+        const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'video/*',
+                'Content-Length': videoBytes.length.toString(),
+            },
+            body: videoBytes,
+        });
+
+        if (!uploadResponse.ok) {
+            const errorText = await uploadResponse.text();
+            console.error('[YOUTUBE] Upload error:', errorText);
+            throw new Error('Failed to upload video to YouTube: ' + errorText);
+        }
+
+        const videoData = await uploadResponse.json();
+        console.log('[YOUTUBE] Video uploaded! ID:', videoData.id);
+
+        return {
+            status: 'success',
+            post_id: videoData.id,
+            url: `https://youtube.com/shorts/${videoData.id}`,
+        };
+
+    } catch (error) {
+        console.error('[YOUTUBE] ❌ Error:', error.message);
+        return {
+            status: 'error',
+            error: error.message,
+        };
+    }
+}
+
+async function refreshYouTubeToken(refreshToken) {
+    const YOUTUBE_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID;
+    const YOUTUBE_CLIENT_SECRET = process.env.YOUTUBE_CLIENT_SECRET;
+
+    try {
+        const response = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: YOUTUBE_CLIENT_ID,
+                client_secret: YOUTUBE_CLIENT_SECRET,
+                refresh_token: refreshToken,
+                grant_type: 'refresh_token',
+            }),
+        });
+
+        const data = await response.json();
+        if (data.error) {
+            console.error('[YOUTUBE] Token refresh error:', data);
+            return { error: data.error };
+        }
+
+        return {
+            access_token: data.access_token,
+            expires_in: data.expires_in,
+        };
+    } catch (error) {
+        console.error('[YOUTUBE] Token refresh failed:', error.message);
+        return { error: error.message };
     }
 }

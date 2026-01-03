@@ -116,6 +116,27 @@
                     </div>
                 </div>
 
+                <!-- YouTube -->
+                <div class="connect-card" id="youtube-card" data-platform="youtube">
+                    <div class="card-header">
+                        <div class="platform-icon youtube">
+                            <i class="fa-brands fa-youtube"></i>
+                        </div>
+                        <div class="platform-info">
+                            <h3>YouTube Shorts</h3>
+                            <p class="platform-desc">Upload vertical short videos</p>
+                        </div>
+                    </div>
+                    <div class="card-body" id="youtube-body">
+                        <div class="disconnected-state">
+                            <p>Connect your YouTube channel to post Shorts</p>
+                            <button id="youtube-btn" class="btn btn-primary">
+                                <i class="fa-brands fa-youtube"></i> Connect YouTube
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- Info Section -->
@@ -421,6 +442,11 @@
                     icon: 'fa-threads',
                     name: 'Threads',
                     desc: 'Connect your Threads account'
+                },
+                youtube: {
+                    icon: 'fa-youtube',
+                    name: 'YouTube',
+                    desc: 'Connect your YouTube channel to post Shorts'
                 }
             };
             const config = platformConfig[platform];
@@ -435,7 +461,7 @@
         }
 
         function updateUI() {
-            const platforms = ['linkedin', 'tiktok', 'instagram', 'threads'];
+            const platforms = ['linkedin', 'tiktok', 'instagram', 'threads', 'youtube'];
 
             platforms.forEach(platform => {
                 const account = connectedAccounts.find(a => a.platform === platform);
@@ -492,6 +518,15 @@
                 }
             });
 
+            document.getElementById('youtube-btn').addEventListener('click', () => {
+                const account = connectedAccounts.find(a => a.platform === 'youtube');
+                if (account) {
+                    disconnectAccount('youtube');
+                } else {
+                    connectYouTube();
+                }
+            });
+
         }
 
         function connectLinkedIn() {
@@ -512,6 +547,11 @@
         function connectThreads() {
             const state = currentSession.access_token;
             window.location.href = `/api/broadcast/auth/threads?state=${encodeURIComponent(state)}`;
+        }
+
+        function connectYouTube() {
+            const state = currentSession.access_token;
+            window.location.href = `/api/broadcast/auth/youtube?state=${encodeURIComponent(state)}`;
         }
 
         async function disconnectAccount(platform) {
@@ -673,6 +713,7 @@
         .platform-icon.tiktok { background: #000000; }
         .platform-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
         .platform-icon.threads { background: #000000; }
+        .platform-icon.youtube { background: #FF0000; }
 
         .platform-info h3 {
             margin: 0 0 0.125rem 0;

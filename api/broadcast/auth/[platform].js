@@ -20,6 +20,8 @@ module.exports = async function handler(req, res) {
             return handleTwitter(req, res);
         case 'threads':
             return handleThreads(req, res);
+        case 'youtube':
+            return handleYouTube(req, res);
         default:
             return res.status(400).json({ error: 'Unknown platform: ' + platform });
     }
@@ -307,7 +309,7 @@ async function handleTikTok(req, res) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent('TikTok not configured'));
         }
 
-        const scopes = 'user.info.basic,video.upload';
+        const scopes = 'user.info.basic,user.info.stats,video.upload';
         const authUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
         authUrl.searchParams.set('client_key', TIKTOK_CLIENT_KEY);
         authUrl.searchParams.set('response_type', 'code');
@@ -383,7 +385,7 @@ async function handleTikTok(req, res) {
                 access_token: access_token,
                 refresh_token: refresh_token,
                 token_expires_at: tokenExpiresAt,
-                scopes: scope ? scope.split(',') : ['user.info.basic', 'video.upload'],
+                scopes: scope ? scope.split(',') : ['user.info.basic', 'user.info.stats', 'video.upload'],
                 metadata: {
                     profile_picture: userInfo.avatar_url,
                     display_name: userInfo.display_name,
@@ -703,6 +705,154 @@ async function handleThreads(req, res) {
 
     } catch (error) {
         console.error('Threads OAuth Error:', error);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
+    }
+}
+
+// ============== YOUTUBE ==============
+async function handleYouTube(req, res) {
+    const YOUTUBE_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID;
+    const YOUTUBE_CLIENT_SECRET = process.env.YOUTUBE_CLIENT_SECRET;
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+    console.log('[YouTube] ENV CHECK:', {
+        hasClientId: !!YOUTUBE_CLIENT_ID,
+        hasClientSecret: !!YOUTUBE_CLIENT_SECRET,
+        clientIdLength: YOUTUBE_CLIENT_ID?.length,
+        clientIdStart: YOUTUBE_CLIENT_ID?.substring(0, 10)
+    });
+
+    const { code, state, error: oauthError, error_description } = req.query;
+
+    const isLocalhost = req.headers.host?.includes('localhost');
+    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
+    const redirectUri = `${baseUrl}/api/broadcast/auth/youtube`;
+
+    // Step 1: Redirect to Google OAuth
+    if (!code) {
+        if (!YOUTUBE_CLIENT_ID || !YOUTUBE_CLIENT_SECRET) {
+            console.log('[YouTube] Missing env vars!');
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('YouTube not configured'));
+        }
+
+        const scopes = [
+            'https://www.googleapis.com/auth/youtube.upload',
+            'https://www.googleapis.com/auth/youtube.readonly',
+            'https://www.googleapis.com/auth/userinfo.profile'
+        ].join(' ');
+
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+        authUrl.searchParams.set('client_id', YOUTUBE_CLIENT_ID);
+        authUrl.searchParams.set('redirect_uri', redirectUri);
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('scope', scopes);
+        authUrl.searchParams.set('access_type', 'offline');
+        authUrl.searchParams.set('prompt', 'consent');
+        authUrl.searchParams.set('state', state || '');
+
+        console.log('[YouTube] Redirecting to Google OAuth...');
+        return res.redirect(authUrl.toString());
+    }
+
+    // Handle OAuth error
+    if (oauthError) {
+        console.error('[YouTube] OAuth error:', oauthError, error_description);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error_description || oauthError)}`);
+    }
+
+    // Step 2: Exchange code for tokens
+    try {
+        console.log('[YouTube] Exchanging code for tokens...');
+
+        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: YOUTUBE_CLIENT_ID,
+                client_secret: YOUTUBE_CLIENT_SECRET,
+                code: code,
+                grant_type: 'authorization_code',
+                redirect_uri: redirectUri,
+            }),
+        });
+
+        const tokenData = await tokenResponse.json();
+        console.log('[YouTube] Token response status:', tokenResponse.status);
+
+        if (tokenData.error) {
+            console.error('[YouTube] Token error:', tokenData);
+            return res.redirect(`/broadcast/?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
+        }
+
+        const { access_token, refresh_token, expires_in } = tokenData;
+
+        // Step 3: Get YouTube channel info
+        console.log('[YouTube] Fetching channel info...');
+        const channelResponse = await fetch(
+            'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
+            { headers: { 'Authorization': `Bearer ${access_token}` } }
+        );
+
+        const channelData = await channelResponse.json();
+        console.log('[YouTube] Channel response:', channelResponse.status);
+
+        if (!channelData.items || channelData.items.length === 0) {
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('No YouTube channel found for this account'));
+        }
+
+        const channel = channelData.items[0];
+        const channelId = channel.id;
+        const channelTitle = channel.snippet.title;
+        const channelThumbnail = channel.snippet.thumbnails?.default?.url;
+        const subscriberCount = channel.statistics?.subscriberCount;
+        const videoCount = channel.statistics?.videoCount;
+
+        console.log('[YouTube] Channel:', channelTitle, 'Subscribers:', subscriberCount);
+
+        // Step 4: Verify user and save to database
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+        // Get user from state (contains Supabase access token)
+        const { data: { user }, error: authError } = await supabase.auth.getUser(state);
+        if (authError || !user) {
+            console.error('[YouTube] User verification failed:', authError);
+            return res.redirect('/broadcast/?error=User session expired. Please try again.');
+        }
+
+        const tokenExpiresAt = new Date(Date.now() + (expires_in * 1000)).toISOString();
+
+        const { error: saveError } = await supabase
+            .from('connected_accounts')
+            .upsert({
+                user_id: user.id,
+                platform: 'youtube',
+                platform_user_id: channelId,
+                account_name: channelTitle,
+                access_token: access_token,
+                refresh_token: refresh_token,
+                token_expires_at: tokenExpiresAt,
+                scopes: ['youtube.upload', 'youtube.readonly'],
+                metadata: {
+                    channel_id: channelId,
+                    channel_title: channelTitle,
+                    profile_picture: channelThumbnail,
+                    display_name: channelTitle,
+                    subscribers_count: parseInt(subscriberCount) || 0,
+                    video_count: parseInt(videoCount) || 0,
+                },
+            }, { onConflict: 'user_id,platform' });
+
+        if (saveError) {
+            console.error('[YouTube] Save error:', saveError);
+            return res.redirect('/broadcast/?error=Failed to save account');
+        }
+
+        console.log('[YouTube] Successfully connected!');
+        return res.redirect('/broadcast/?success=true&platform=youtube');
+
+    } catch (error) {
+        console.error('YouTube OAuth Error:', error);
         return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }
