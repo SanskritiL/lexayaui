@@ -342,7 +342,7 @@
                 if (isConnected) {
                     const metadata = account.metadata || {};
                     const profilePic = metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url;
-                    const followers = metadata.followers_count || metadata.follower_count;
+                    const followers = metadata.followers_count || metadata.follower_count || metadata.subscribers_count;
                     const following = metadata.following_count || metadata.friends_count;
                     const username = account.account_name || metadata.username || metadata.display_name;
                     const displayName = metadata.display_name || metadata.name || username;
@@ -378,7 +378,7 @@
                                         ${formattedFollowers ? `
                                             <div class="stat-item">
                                                 <span class="stat-number">${formattedFollowers}</span>
-                                                <span class="stat-text">followers</span>
+                                                <span class="stat-text">${platform === 'youtube' ? 'subscribers' : 'followers'}</span>
                                             </div>
                                         ` : ''}
                                         ${formattedFollowing ? `

@@ -716,13 +716,6 @@ async function handleYouTube(req, res) {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
-    console.log('[YouTube] ENV CHECK:', {
-        hasClientId: !!YOUTUBE_CLIENT_ID,
-        hasClientSecret: !!YOUTUBE_CLIENT_SECRET,
-        clientIdLength: YOUTUBE_CLIENT_ID?.length,
-        clientIdStart: YOUTUBE_CLIENT_ID?.substring(0, 10)
-    });
-
     const { code, state, error: oauthError, error_description } = req.query;
 
     const isLocalhost = req.headers.host?.includes('localhost');
@@ -732,7 +725,6 @@ async function handleYouTube(req, res) {
     // Step 1: Redirect to Google OAuth
     if (!code) {
         if (!YOUTUBE_CLIENT_ID || !YOUTUBE_CLIENT_SECRET) {
-            console.log('[YouTube] Missing env vars!');
             return res.redirect('/broadcast/?error=' + encodeURIComponent('YouTube not configured'));
         }
 
@@ -751,7 +743,6 @@ async function handleYouTube(req, res) {
         authUrl.searchParams.set('prompt', 'consent');
         authUrl.searchParams.set('state', state || '');
 
-        console.log('[YouTube] Redirecting to Google OAuth...');
         return res.redirect(authUrl.toString());
     }
 
@@ -763,8 +754,6 @@ async function handleYouTube(req, res) {
 
     // Step 2: Exchange code for tokens
     try {
-        console.log('[YouTube] Exchanging code for tokens...');
-
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -778,7 +767,6 @@ async function handleYouTube(req, res) {
         });
 
         const tokenData = await tokenResponse.json();
-        console.log('[YouTube] Token response status:', tokenResponse.status);
 
         if (tokenData.error) {
             console.error('[YouTube] Token error:', tokenData);
@@ -788,14 +776,12 @@ async function handleYouTube(req, res) {
         const { access_token, refresh_token, expires_in } = tokenData;
 
         // Step 3: Get YouTube channel info
-        console.log('[YouTube] Fetching channel info...');
         const channelResponse = await fetch(
             'https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true',
             { headers: { 'Authorization': `Bearer ${access_token}` } }
         );
 
         const channelData = await channelResponse.json();
-        console.log('[YouTube] Channel response:', channelResponse.status);
 
         if (!channelData.items || channelData.items.length === 0) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent('No YouTube channel found for this account'));
@@ -807,8 +793,6 @@ async function handleYouTube(req, res) {
         const channelThumbnail = channel.snippet.thumbnails?.default?.url;
         const subscriberCount = channel.statistics?.subscriberCount;
         const videoCount = channel.statistics?.videoCount;
-
-        console.log('[YouTube] Channel:', channelTitle, 'Subscribers:', subscriberCount);
 
         // Step 4: Verify user and save to database
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -848,7 +832,6 @@ async function handleYouTube(req, res) {
             return res.redirect('/broadcast/?error=Failed to save account');
         }
 
-        console.log('[YouTube] Successfully connected!');
         return res.redirect('/broadcast/?success=true&platform=youtube');
 
     } catch (error) {

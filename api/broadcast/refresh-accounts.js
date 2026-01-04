@@ -57,6 +57,9 @@ export default async function handler(req, res) {
                 case 'youtube':
                     updatedMetadata = await refreshYouTube(account, updatedMetadata);
                     break;
+                case 'threads':
+                    updatedMetadata = await refreshThreads(account, updatedMetadata);
+                    break;
             }
 
             // Update in database
@@ -233,6 +236,44 @@ async function refreshYouTube(account, metadata) {
         }
     } catch (err) {
         console.log('[RefreshAccounts] YouTube error:', err.message);
+    }
+
+    return metadata;
+}
+
+async function refreshThreads(account, metadata) {
+    const accessToken = account.access_token;
+    if (!accessToken) return metadata;
+
+    try {
+        // Fetch Threads follower count via insights API
+        const insightsRes = await fetch(
+            `https://graph.threads.net/v1.0/me/threads_insights?metric=followers_count&access_token=${accessToken}`
+        );
+
+        if (insightsRes.ok) {
+            const insightsData = await insightsRes.json();
+            const followersMetric = insightsData.data?.find(m => m.name === 'followers_count');
+            if (followersMetric?.total_value?.value) {
+                metadata.followers_count = followersMetric.total_value.value;
+                console.log('[RefreshAccounts] Threads refreshed:', metadata.followers_count, 'followers');
+            }
+        }
+
+        // Also try to get profile info
+        const profileRes = await fetch(
+            `https://graph.threads.net/v1.0/me?fields=id,username,threads_profile_picture_url,threads_biography&access_token=${accessToken}`
+        );
+
+        if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            metadata.username = profileData.username || metadata.username;
+            metadata.display_name = profileData.username || metadata.display_name;
+            metadata.profile_picture = profileData.threads_profile_picture_url || metadata.profile_picture;
+            metadata.bio = profileData.threads_biography || metadata.bio;
+        }
+    } catch (err) {
+        console.log('[RefreshAccounts] Threads error:', err.message);
     }
 
     return metadata;
