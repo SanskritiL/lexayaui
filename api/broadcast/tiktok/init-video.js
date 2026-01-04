@@ -111,25 +111,30 @@ module.exports = async function handler(req, res) {
         // Initialize video upload with TikTok using FILE_UPLOAD source
         // This is for direct upload, not pull from URL
         console.log('[TIKTOK] Initializing video upload...');
+        console.log('[TIKTOK] File size:', fileSizeBytes, 'bytes =', (fileSizeBytes / 1024 / 1024).toFixed(2), 'MB');
 
         // TikTok chunk size requirements: min 5MB, max 64MB
-        const MIN_CHUNK_SIZE = 5 * 1024 * 1024;  // 5MB
-        const MAX_CHUNK_SIZE = 64 * 1024 * 1024; // 64MB
+        // Use 10MB chunks as a safe default for large files
+        const MIN_CHUNK_SIZE = 5 * 1024 * 1024;   // 5MB
+        const MAX_CHUNK_SIZE = 64 * 1024 * 1024;  // 64MB
+        const DEFAULT_CHUNK_SIZE = 10 * 1024 * 1024; // 10MB - safe middle ground
 
-        // Calculate optimal chunk size
-        let calculatedChunkSize = chunkSize || fileSizeBytes;
-        let calculatedChunkCount = totalChunkCount || 1;
+        let calculatedChunkSize;
+        let calculatedChunkCount;
 
-        if (fileSizeBytes > MAX_CHUNK_SIZE) {
-            // Need to split into chunks
-            calculatedChunkSize = MAX_CHUNK_SIZE;
-            calculatedChunkCount = Math.ceil(fileSizeBytes / calculatedChunkSize);
-            console.log(`[TIKTOK] Large file, using ${calculatedChunkCount} chunks of ${(calculatedChunkSize / 1024 / 1024).toFixed(1)}MB`);
-        } else if (fileSizeBytes < MIN_CHUNK_SIZE) {
-            // Small files still need valid chunk size (use file size)
+        if (fileSizeBytes <= MAX_CHUNK_SIZE) {
+            // Single chunk upload - use file size as chunk size
             calculatedChunkSize = fileSizeBytes;
             calculatedChunkCount = 1;
+            console.log('[TIKTOK] Small file, single chunk upload');
+        } else {
+            // Multi-chunk upload - use 10MB chunks
+            calculatedChunkSize = DEFAULT_CHUNK_SIZE;
+            calculatedChunkCount = Math.ceil(fileSizeBytes / calculatedChunkSize);
+            console.log(`[TIKTOK] Large file, using ${calculatedChunkCount} chunks of ${(calculatedChunkSize / 1024 / 1024).toFixed(1)}MB`);
         }
+
+        console.log('[TIKTOK] Chunk size:', calculatedChunkSize, 'Count:', calculatedChunkCount);
 
         const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
             method: 'POST',
