@@ -112,6 +112,25 @@ module.exports = async function handler(req, res) {
         // This is for direct upload, not pull from URL
         console.log('[TIKTOK] Initializing video upload...');
 
+        // TikTok chunk size requirements: min 5MB, max 64MB
+        const MIN_CHUNK_SIZE = 5 * 1024 * 1024;  // 5MB
+        const MAX_CHUNK_SIZE = 64 * 1024 * 1024; // 64MB
+
+        // Calculate optimal chunk size
+        let calculatedChunkSize = chunkSize || fileSizeBytes;
+        let calculatedChunkCount = totalChunkCount || 1;
+
+        if (fileSizeBytes > MAX_CHUNK_SIZE) {
+            // Need to split into chunks
+            calculatedChunkSize = MAX_CHUNK_SIZE;
+            calculatedChunkCount = Math.ceil(fileSizeBytes / calculatedChunkSize);
+            console.log(`[TIKTOK] Large file, using ${calculatedChunkCount} chunks of ${(calculatedChunkSize / 1024 / 1024).toFixed(1)}MB`);
+        } else if (fileSizeBytes < MIN_CHUNK_SIZE) {
+            // Small files still need valid chunk size (use file size)
+            calculatedChunkSize = fileSizeBytes;
+            calculatedChunkCount = 1;
+        }
+
         const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
             method: 'POST',
             headers: {
@@ -122,8 +141,8 @@ module.exports = async function handler(req, res) {
                 source_info: {
                     source: 'FILE_UPLOAD',
                     video_size: fileSizeBytes,
-                    chunk_size: chunkSize || fileSizeBytes, // Single chunk for simplicity
-                    total_chunk_count: totalChunkCount || 1,
+                    chunk_size: calculatedChunkSize,
+                    total_chunk_count: calculatedChunkCount,
                 },
             }),
         });

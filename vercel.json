@@ -1,6 +1,14 @@
 {
   "version": 2,
   "cleanUrls": true,
+  "functions": {
+    "api/broadcast/publish.js": {
+      "maxDuration": 60
+    },
+    "api/broadcast/tiktok/init-video.js": {
+      "maxDuration": 60
+    }
+  },
   "crons": [
     {
       "path": "/api/broadcast/cron/process-scheduled",

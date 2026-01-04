@@ -99,68 +99,71 @@ module.exports = async function handler(req, res) {
             });
         }
 
-        // Publish to each platform
-        console.log('[PUBLISH] Starting publish to platforms:', platforms);
+        // Publish to each platform IN PARALLEL
+        console.log('[PUBLISH] Starting PARALLEL publish to platforms:', platforms);
         const results = {};
         let hasSuccess = false;
         let hasFailure = false;
 
-        for (const platform of platforms) {
-            console.log(`[PUBLISH] Processing platform: ${platform}`);
+        // Create publish promises for all platforms
+        const publishPromises = platforms.map(async (platform) => {
+            console.log(`[PUBLISH] Starting ${platform}...`);
             const account = accounts.find(a => a.platform === platform);
-            console.log(`[PUBLISH] Found account for ${platform}:`, !!account);
+
+            if (!account) {
+                return { platform, result: { status: 'error', error: 'Account not connected' } };
+            }
 
             try {
                 let result;
-
                 switch (platform) {
                     case 'linkedin':
-                        console.log('[PUBLISH] Calling publishToLinkedIn...');
                         result = await publishToLinkedIn(post, account);
-                        console.log('[PUBLISH] LinkedIn result:', result);
                         break;
                     case 'tiktok':
-                        console.log('[PUBLISH] Calling publishToTikTok...');
                         result = await publishToTikTok(post, account);
-                        console.log('[PUBLISH] TikTok result:', result);
                         break;
                     case 'instagram':
-                        console.log('[PUBLISH] Calling publishToInstagram...');
                         result = await publishToInstagram(post, account);
-                        console.log('[PUBLISH] Instagram result:', result);
                         break;
                     case 'twitter':
-                        console.log('[PUBLISH] Calling publishToTwitter...');
                         result = await publishToTwitter(post, account);
-                        console.log('[PUBLISH] Twitter result:', result);
                         break;
                     case 'threads':
-                        console.log('[PUBLISH] Calling publishToThreads...');
                         result = await publishToThreads(post, account);
-                        console.log('[PUBLISH] Threads result:', result);
                         break;
                     case 'youtube':
-                        console.log('[PUBLISH] Calling publishToYouTube...');
-                        result = await publishToYouTube(post, account);
-                        console.log('[PUBLISH] YouTube result:', result);
+                        result = await publishToYouTube(post, account, supabase);
                         break;
                     default:
                         result = { status: 'error', error: 'Unknown platform' };
                 }
+                console.log(`[PUBLISH] ${platform} completed:`, result.status);
+                return { platform, result };
+            } catch (error) {
+                console.error(`[PUBLISH] ❌ ${platform} error:`, error.message);
+                return { platform, result: { status: 'error', error: error.message } };
+            }
+        });
 
+        // Wait for all platforms to complete (or fail)
+        const publishResults = await Promise.allSettled(publishPromises);
+
+        // Process results
+        for (const settled of publishResults) {
+            if (settled.status === 'fulfilled') {
+                const { platform, result } = settled.value;
                 results[platform] = result;
-
                 if (result.status === 'success') {
                     hasSuccess = true;
                     console.log(`[PUBLISH] ✅ ${platform} succeeded`);
                 } else {
                     hasFailure = true;
-                    console.log(`[PUBLISH] ⚠️ ${platform} status:`, result.status);
+                    console.log(`[PUBLISH] ⚠️ ${platform}:`, result.status, result.error || '');
                 }
-            } catch (error) {
-                console.error(`[PUBLISH] ❌ Error publishing to ${platform}:`, error.message);
-                console.error(`[PUBLISH] ❌ Stack:`, error.stack);
-                results[platform] = { status: 'error', error: error.message };
+            } else {
+                // Promise rejected (shouldn't happen with try/catch, but just in case)
+                console.error(`[PUBLISH] Promise rejected:`, settled.reason);
                 hasFailure = true;
             }
         }
@@ -1177,7 +1180,7 @@ async function publishToThreads(post, account) {
 }
 
 // ============== YOUTUBE SHORTS ==============
-async function publishToYouTube(post, account) {
+async function publishToYouTube(post, account, supabase) {
     console.log('[YOUTUBE] Starting publish...');
     const mediaType = post.metadata?.media_type;
     console.log('[YOUTUBE] Post:', { id: post.id, caption: post.caption?.substring(0, 50), media_url: !!post.video_url, media_type: mediaType });
