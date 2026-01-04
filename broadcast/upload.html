@@ -948,29 +948,93 @@
                     // Update each platform to "Publishing..." state
                     selectedPlatforms.forEach(p => updatePlatformProgress(p, 'publishing', 'Publishing...'));
 
-                    console.log('Publishing to platforms:', selectedPlatforms);
-                    const publishResult = await publishToAllPlatforms(post.id, selectedPlatforms);
-                    console.log('Publish result:', publishResult);
+                    // Subscribe to real-time updates for this post
+                    const postId = post.id;
+                    let realtimeChannel = null;
+                    let isCompleted = false;
 
-                    // Update each platform's status based on results
-                    let successCount = 0;
-                    const totalCount = selectedPlatforms.length;
+                    const handleRealtimeUpdate = (payload) => {
+                        console.log('[REALTIME] Post updated:', payload);
+                        const updatedPost = payload.new;
+                        const platformResults = updatedPost.platform_results || {};
 
-                    for (const [platform, result] of Object.entries(publishResult.results || {})) {
-                        if (result.status === 'success') {
-                            successCount++;
-                            const successMsg = result.url ? 'Posted!' : (result.note || 'Success!');
-                            updatePlatformProgress(platform, 'success', successMsg);
-                        } else {
-                            const errorMsg = result.error || 'Failed';
-                            updatePlatformProgress(platform, 'failed', errorMsg);
+                        // Update UI for each platform that has results
+                        let successCount = 0;
+                        let completedCount = 0;
+
+                        for (const [platform, result] of Object.entries(platformResults)) {
+                            completedCount++;
+                            if (result.status === 'success') {
+                                successCount++;
+                                const successMsg = result.url ? 'Posted!' : (result.note || 'Success!');
+                                updatePlatformProgress(platform, 'success', successMsg);
+                            } else if (result.status === 'error') {
+                                updatePlatformProgress(platform, 'failed', result.error || 'Failed');
+                            } else if (result.status === 'pending') {
+                                updatePlatformProgress(platform, 'publishing', result.note || 'Processing...');
+                            }
                         }
-                    }
 
-                    // Complete the modal
-                    completePublishingModal(publishResult.status, successCount, totalCount);
+                        // Check if all platforms are done
+                        if (completedCount >= selectedPlatforms.length && !isCompleted) {
+                            isCompleted = true;
+                            const status = updatedPost.status || (successCount > 0 ? 'partial' : 'failed');
+                            completePublishingModal(status, successCount, selectedPlatforms.length);
 
-                    console.log('PUBLISH COMPLETE:', publishResult);
+                            // Unsubscribe
+                            if (realtimeChannel) {
+                                supabaseClient.removeChannel(realtimeChannel);
+                            }
+                        }
+                    };
+
+                    // Subscribe to changes on this specific post
+                    realtimeChannel = supabaseClient
+                        .channel(`post-${postId}`)
+                        .on('postgres_changes', {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'posts',
+                            filter: `id=eq.${postId}`,
+                        }, handleRealtimeUpdate)
+                        .subscribe();
+
+                    console.log('Publishing to platforms:', selectedPlatforms);
+
+                    // Start the publish (don't await - let realtime handle updates)
+                    publishToAllPlatforms(post.id, selectedPlatforms)
+                        .then(publishResult => {
+                            console.log('Publish API completed:', publishResult);
+                            // Final update in case realtime missed something
+                            if (!isCompleted) {
+                                isCompleted = true;
+                                let successCount = 0;
+                                for (const [platform, result] of Object.entries(publishResult.results || {})) {
+                                    if (result.status === 'success') {
+                                        successCount++;
+                                        updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : 'Success!');
+                                    } else {
+                                        updatePlatformProgress(platform, 'failed', result.error || 'Failed');
+                                    }
+                                }
+                                completePublishingModal(publishResult.status, successCount, selectedPlatforms.length);
+                                if (realtimeChannel) {
+                                    supabaseClient.removeChannel(realtimeChannel);
+                                }
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Publish error:', err);
+                            if (!isCompleted) {
+                                isCompleted = true;
+                                selectedPlatforms.forEach(p => updatePlatformProgress(p, 'failed', 'Error'));
+                                completePublishingModal('failed', 0, selectedPlatforms.length);
+                                if (realtimeChannel) {
+                                    supabaseClient.removeChannel(realtimeChannel);
+                                }
+                            }
+                        });
+
                     return;
                 }
 

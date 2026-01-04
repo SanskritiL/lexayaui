@@ -99,19 +99,43 @@ module.exports = async function handler(req, res) {
             });
         }
 
-        // Publish to each platform IN PARALLEL
+        // Publish to each platform IN PARALLEL with real-time progress updates
         console.log('[PUBLISH] Starting PARALLEL publish to platforms:', platforms);
         const results = {};
         let hasSuccess = false;
         let hasFailure = false;
 
-        // Create publish promises for all platforms
+        // Helper to update post with current progress
+        async function updateProgress(platformResults) {
+            const successCount = Object.values(platformResults).filter(r => r.status === 'success').length;
+            const errorCount = Object.values(platformResults).filter(r => r.status === 'error').length;
+            const pendingCount = platforms.length - Object.keys(platformResults).length;
+
+            let status = 'publishing';
+            if (pendingCount === 0) {
+                status = errorCount === 0 ? 'published' : (successCount > 0 ? 'partial' : 'failed');
+            }
+
+            await supabase
+                .from('posts')
+                .update({
+                    status: status,
+                    platform_results: platformResults,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', post.id);
+        }
+
+        // Create publish promises - each updates DB when done
         const publishPromises = platforms.map(async (platform) => {
             console.log(`[PUBLISH] Starting ${platform}...`);
             const account = accounts.find(a => a.platform === platform);
 
             if (!account) {
-                return { platform, result: { status: 'error', error: 'Account not connected' } };
+                const result = { status: 'error', error: 'Account not connected' };
+                results[platform] = result;
+                await updateProgress(results);
+                return { platform, result };
             }
 
             try {
@@ -138,32 +162,29 @@ module.exports = async function handler(req, res) {
                     default:
                         result = { status: 'error', error: 'Unknown platform' };
                 }
+
+                // Update results and save to DB immediately
+                results[platform] = result;
+                await updateProgress(results);
                 console.log(`[PUBLISH] ${platform} completed:`, result.status);
                 return { platform, result };
             } catch (error) {
                 console.error(`[PUBLISH] ❌ ${platform} error:`, error.message);
-                return { platform, result: { status: 'error', error: error.message } };
+                const result = { status: 'error', error: error.message };
+                results[platform] = result;
+                await updateProgress(results);
+                return { platform, result };
             }
         });
 
-        // Wait for all platforms to complete (or fail)
-        const publishResults = await Promise.allSettled(publishPromises);
+        // Wait for all platforms to complete
+        await Promise.allSettled(publishPromises);
 
-        // Process results
-        for (const settled of publishResults) {
-            if (settled.status === 'fulfilled') {
-                const { platform, result } = settled.value;
-                results[platform] = result;
-                if (result.status === 'success') {
-                    hasSuccess = true;
-                    console.log(`[PUBLISH] ✅ ${platform} succeeded`);
-                } else {
-                    hasFailure = true;
-                    console.log(`[PUBLISH] ⚠️ ${platform}:`, result.status, result.error || '');
-                }
+        // Calculate final status
+        for (const [platform, result] of Object.entries(results)) {
+            if (result.status === 'success') {
+                hasSuccess = true;
             } else {
-                // Promise rejected (shouldn't happen with try/catch, but just in case)
-                console.error(`[PUBLISH] Promise rejected:`, settled.reason);
                 hasFailure = true;
             }
         }
