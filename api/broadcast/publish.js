@@ -754,11 +754,11 @@ async function publishToInstagram(post, account) {
     const containerId = containerData.id;
     console.log('[INSTAGRAM] ✅ Container created! ID:', containerId);
 
-    // Step 2: Wait for processing (poll status)
+    // Step 2: Wait for processing (poll status) - wait up to 50 seconds
     console.log('[INSTAGRAM] Step 2: Polling for processing status...');
     let isReady = false;
     let attempts = 0;
-    const maxAttempts = 30; // 30 seconds max wait
+    const maxAttempts = 50; // 50 seconds max wait (function has 60s timeout)
     let lastStatus = '';
 
     while (!isReady && attempts < maxAttempts) {
@@ -789,12 +789,8 @@ async function publishToInstagram(post, account) {
     }
 
     if (!isReady) {
-        console.log('[INSTAGRAM] ⏳ Still processing after 30 seconds...');
-        return {
-            status: 'pending',
-            container_id: containerId,
-            note: 'Media is still processing. It will be published automatically when ready.',
-        };
+        console.log('[INSTAGRAM] ⏳ Still processing after 50 seconds - video too large or Instagram slow');
+        throw new Error('Instagram is taking too long to process. Try a shorter/smaller video.')
     }
 
     // Step 3: Publish the container

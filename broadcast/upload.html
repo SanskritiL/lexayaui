@@ -968,10 +968,12 @@
                                 successCount++;
                                 const successMsg = result.url ? 'Posted!' : (result.note || 'Success!');
                                 updatePlatformProgress(platform, 'success', successMsg);
+                            } else if (result.status === 'pending') {
+                                // Pending = still processing, will auto-publish (Instagram)
+                                successCount++;
+                                updatePlatformProgress(platform, 'success', result.note || 'Processing...');
                             } else if (result.status === 'error') {
                                 updatePlatformProgress(platform, 'failed', result.error || 'Failed');
-                            } else if (result.status === 'pending') {
-                                updatePlatformProgress(platform, 'publishing', result.note || 'Processing...');
                             }
                         }
 
@@ -1013,6 +1015,10 @@
                                     if (result.status === 'success') {
                                         successCount++;
                                         updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : 'Success!');
+                                    } else if (result.status === 'pending') {
+                                        // Pending means still processing (Instagram does this)
+                                        successCount++; // Count as success since it will auto-publish
+                                        updatePlatformProgress(platform, 'success', result.note || 'Processing...');
                                     } else {
                                         updatePlatformProgress(platform, 'failed', result.error || 'Failed');
                                     }
