@@ -228,6 +228,14 @@ body {
     background: linear-gradient(135deg, #10b981, #059669);
 }
 
+.action-icon.automations {
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+}
+
+.action-icon.media-kit {
+    background: linear-gradient(135deg, #06b6d4, #0891b2);
+}
+
 .action-card h3 {
     font-size: 1.1rem;
     font-weight: 600;

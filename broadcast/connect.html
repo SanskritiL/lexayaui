@@ -292,8 +292,8 @@
 
             connectedAccounts = accounts || [];
 
-            // If cache is stale, try to refresh follower counts from APIs
-            if (connectedAccounts.length > 0 && (forceRefresh || isCacheStale(cachedData))) {
+            // Refresh follower counts from APIs if forced or first load
+            if (connectedAccounts.length > 0 && forceRefresh) {
                 await refreshAccountStats();
             }
 

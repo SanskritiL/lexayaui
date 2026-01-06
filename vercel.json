@@ -1,6 +1,9 @@
 {
   "version": 2,
   "cleanUrls": true,
+  "rewrites": [
+    { "source": "/kit/:token", "destination": "/kit/index.html" }
+  ],
   "functions": {
     "api/broadcast/publish.js": {
       "maxDuration": 60

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DM Automations - Lexaya</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/broadcast/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Automation-specific styles */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+        }
+
+        .stat-card.highlight {
+            border-color: var(--success);
+            background: #f0fdf4;
+        }
+
+        .stat-card.highlight .stat-value {
+            color: #16a34a;
+        }
+
+        .rules-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .rule-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .rule-card:hover {
+            border-color: var(--primary);
+        }
+
+        .rule-card.inactive {
+            opacity: 0.6;
+        }
+
+        .rule-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .rule-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .rule-name {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .rule-meta {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .rule-keywords {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .keyword-tag {
+            background: #eff6ff;
+            color: var(--primary);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .rule-stats {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .rule-dms {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .rule-dms-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .rule-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .toggle-btn {
+            width: 50px;
+            height: 28px;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            background: #e2e8f0;
+        }
+
+        .toggle-btn.active {
+            background: var(--success);
+        }
+
+        .toggle-btn::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            top: 3px;
+            left: 3px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .toggle-btn.active::after {
+            left: 25px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .icon-btn.danger:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .rate-limit-bar {
+            background: #e2e8f0;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .rate-limit-fill {
+            height: 100%;
+            background: var(--success);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .rate-limit-fill.warning {
+            background: var(--warning);
+        }
+
+        .rate-limit-fill.danger {
+            background: var(--error);
+        }
+
+        .beta-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #ec4899, #8b5cf6);
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .setup-notice {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .setup-notice i {
+            font-size: 1.5rem;
+            color: #d97706;
+        }
+
+        .setup-notice-content {
+            flex: 1;
+        }
+
+        .setup-notice h4 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .setup-notice p {
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        @media (max-width: 640px) {
+            .rule-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .rule-stats {
+                text-align: left;
+            }
+
+            .rule-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <a href="/broadcast/" class="logo"><i class="fas fa-arrow-left"></i> Dashboard</a>
+            <h1>DM Automations <span class="beta-badge">BETA</span></h1>
+            <p class="tagline">Send DMs automatically when users comment keywords</p>
+        </header>
+
+        <!-- Auth Check -->
+        <div id="auth-required" class="auth-required" style="display: none;">
+            <div class="card">
+                <h2>Login Required</h2>
+                <p>Please login to manage automations</p>
+                <a href="/login.html?redirect=/broadcast/automations.html" class="btn btn-primary">Login with Email</a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main id="main-content" style="display: none;">
+            <!-- Setup Notice (shown if Instagram not connected or permissions missing) -->
+            <div id="setup-notice" class="setup-notice" style="display: none;">
+                <i class="fas fa-exclamation-triangle"></i>
+                <div class="setup-notice-content">
+                    <h4>Instagram Connection Required</h4>
+                    <p id="setup-notice-text">Connect your Instagram account with messaging permissions to enable DM automations.</p>
+                </div>
+                <a href="/broadcast/connect.html" class="btn btn-primary btn-small">Connect Instagram</a>
+            </div>
+
+            <!-- Stats -->
+            <section class="section">
+                <div class="stats-grid">
+                    <div class="stat-card highlight">
+                        <div class="stat-value" id="stat-dms-today">0</div>
+                        <div class="stat-label">DMs Today</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-dms-week">0</div>
+                        <div class="stat-label">This Week</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-dms-total">0</div>
+                        <div class="stat-label">All Time</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-active-rules">0</div>
+                        <div class="stat-label">Active Rules</div>
+                    </div>
+                </div>
+
+                <!-- Rate Limit -->
+                <div style="max-width: 300px; margin: 0 auto 2rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-light);">
+                        <span>Hourly Rate Limit</span>
+                        <span><span id="rate-used">0</span>/200 DMs</span>
+                    </div>
+                    <div class="rate-limit-bar">
+                        <div id="rate-limit-fill" class="rate-limit-fill" style="width: 0%"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Automation Rules -->
+            <section class="section">
+                <div class="section-header">
+                    <h2>Automation Rules</h2>
+                    <a href="/broadcast/automation-create.html" class="btn btn-primary btn-small">
+                        <i class="fas fa-plus"></i> New Automation
+                    </a>
+                </div>
+
+                <div id="rules-list" class="rules-list">
+                    <div class="loading">Loading automations...</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Config
+        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let currentSession = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            currentUser = user;
+            currentSession = session;
+
+            const authRequired = document.getElementById('auth-required');
+            const mainContent = document.getElementById('main-content');
+
+            if (!currentUser) {
+                authRequired.style.display = 'flex';
+                mainContent.style.display = 'none';
+                return;
+            }
+
+            authRequired.style.display = 'none';
+            mainContent.style.display = 'block';
+
+            // Check Instagram connection
+            await checkInstagramConnection();
+
+            // Load stats and rules
+            await Promise.all([loadStats(), loadRules()]);
+        });
+
+        async function checkInstagramConnection() {
+            const { data: accounts } = await supabaseClient
+                .from('connected_accounts')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('platform', 'instagram');
+
+            const notice = document.getElementById('setup-notice');
+            const noticeText = document.getElementById('setup-notice-text');
+
+            if (!accounts || accounts.length === 0) {
+                notice.style.display = 'flex';
+                noticeText.textContent = 'Connect your Instagram account to enable DM automations.';
+            } else {
+                const account = accounts[0];
+                const scopes = account.scopes || [];
+                const hasMessagingScopes = scopes.includes('instagram_manage_messages') ||
+                                          scopes.includes('instagram_manage_comments');
+
+                if (!hasMessagingScopes) {
+                    notice.style.display = 'flex';
+                    noticeText.textContent = 'Your Instagram needs messaging permissions. Please reconnect to enable DM automations.';
+                } else {
+                    notice.style.display = 'none';
+                }
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/broadcast/automation/stats', {
+                    headers: {
+                        'Authorization': `Bearer ${currentSession.access_token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load stats');
+
+                const data = await response.json();
+                const stats = data.stats;
+
+                // Update stat cards
+                document.getElementById('stat-dms-today').textContent = stats.dms.today;
+                document.getElementById('stat-dms-week').textContent = stats.dms.week;
+                document.getElementById('stat-dms-total').textContent = stats.dms.total;
+                document.getElementById('stat-active-rules').textContent = stats.rules.active;
+
+                // Update rate limit bar
+                const rateUsed = stats.rate_limit.used_last_hour;
+                const ratePercent = Math.min(100, (rateUsed / 200) * 100);
+                document.getElementById('rate-used').textContent = rateUsed;
+
+                const rateFill = document.getElementById('rate-limit-fill');
+                rateFill.style.width = ratePercent + '%';
+                rateFill.className = 'rate-limit-fill';
+                if (ratePercent >= 90) rateFill.classList.add('danger');
+                else if (ratePercent >= 70) rateFill.classList.add('warning');
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadRules() {
+            const rulesList = document.getElementById('rules-list');
+
+            try {
+                const response = await fetch('/api/broadcast/automation/rules', {
+                    headers: {
+                        'Authorization': `Bearer ${currentSession.access_token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load rules');
+
+                const data = await response.json();
+                const rules = data.rules || [];
+
+                if (rules.length === 0) {
+                    rulesList.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No Automations Yet</h3>
+                            <p>Create your first automation to start sending DMs automatically when users comment keywords on your posts.</p>
+                            <a href="/broadcast/automation-create.html" class="btn btn-primary" style="margin-top: 1rem;">
+                                <i class="fas fa-plus"></i> Create Automation
+                            </a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                rulesList.innerHTML = rules.map(rule => `
+                    <div class="rule-card ${rule.is_active ? '' : 'inactive'}" data-id="${rule.id}">
+                        <div class="rule-icon">
+                            <i class="fas fa-comment-dots"></i>
+                        </div>
+                        <div class="rule-info">
+                            <div class="rule-name">${escapeHtml(rule.name)}</div>
+                            <div class="rule-keywords">
+                                ${rule.trigger_keywords.slice(0, 5).map(kw => `<span class="keyword-tag">${escapeHtml(kw)}</span>`).join('')}
+                                ${rule.trigger_keywords.length > 5 ? `<span class="keyword-tag">+${rule.trigger_keywords.length - 5}</span>` : ''}
+                            </div>
+                            <div class="rule-meta">
+                                <span><i class="fas fa-clock"></i> ${rule.dm_delay_seconds > 0 ? `${rule.dm_delay_seconds}s delay` : 'Instant'}</span>
+                                <span><i class="fas fa-bullseye"></i> ${rule.trigger_scope === 'all' ? 'All posts' : 'Specific posts'}</span>
+                            </div>
+                        </div>
+                        <div class="rule-stats">
+                            <div class="rule-dms">${rule.stats?.dms_total || 0}</div>
+                            <div class="rule-dms-label">DMs sent</div>
+                        </div>
+                        <div class="rule-actions">
+                            <button class="toggle-btn ${rule.is_active ? 'active' : ''}" onclick="toggleRule('${rule.id}', ${!rule.is_active})" title="${rule.is_active ? 'Disable' : 'Enable'}"></button>
+                            <button class="icon-btn" onclick="editRule('${rule.id}')" title="Edit">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="icon-btn danger" onclick="deleteRule('${rule.id}')" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error loading rules:', error);
+                rulesList.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Error Loading Automations</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function toggleRule(ruleId, newState) {
+            try {
+                const response = await fetch(`/api/broadcast/automation/rules/${ruleId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${currentSession.access_token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ is_active: newState })
+                });
+
+                if (!response.ok) throw new Error('Failed to update rule');
+
+                // Reload to reflect changes
+                await Promise.all([loadStats(), loadRules()]);
+
+            } catch (error) {
+                console.error('Error toggling rule:', error);
+                alert('Failed to update automation: ' + error.message);
+            }
+        }
+
+        function editRule(ruleId) {
+            window.location.href = `/broadcast/automation-create.html?edit=${ruleId}`;
+        }
+
+        async function deleteRule(ruleId) {
+            if (!confirm('Are you sure you want to delete this automation? This cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/broadcast/automation/rules/${ruleId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${currentSession.access_token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to delete rule');
+
+                // Reload to reflect changes
+                await Promise.all([loadStats(), loadRules()]);
+
+            } catch (error) {
+                console.error('Error deleting rule:', error);
+                alert('Failed to delete automation: ' + error.message);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

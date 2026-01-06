@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Automation - Lexaya</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/broadcast/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .builder-card {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .builder-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .builder-card h3 .step-num {
+            width: 28px;
+            height: 28px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .keywords-input-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            min-height: 48px;
+            cursor: text;
+        }
+
+        .keywords-input-wrapper:focus-within {
+            border-color: var(--primary);
+        }
+
+        .keyword-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: #eff6ff;
+            color: var(--primary);
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .keyword-chip button {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            padding: 0;
+            font-size: 1rem;
+            line-height: 1;
+            opacity: 0.7;
+        }
+
+        .keyword-chip button:hover {
+            opacity: 1;
+        }
+
+        .keywords-input {
+            border: none;
+            outline: none;
+            flex: 1;
+            min-width: 100px;
+            font-size: 1rem;
+            font-family: inherit;
+            padding: 0.25rem;
+        }
+
+        .keywords-hint {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .radio-option:hover {
+            border-color: var(--primary);
+        }
+
+        .radio-option.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .radio-option input {
+            display: none;
+        }
+
+        .radio-dot {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .radio-option.selected .radio-dot {
+            border-color: var(--primary);
+        }
+
+        .radio-option.selected .radio-dot::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .dm-template-wrapper {
+            position: relative;
+        }
+
+        .dm-template {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .char-count {
+            position: absolute;
+            bottom: 0.75rem;
+            right: 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .char-count.warning {
+            color: var(--warning);
+        }
+
+        .char-count.danger {
+            color: var(--error);
+        }
+
+        .variables-section {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px dashed var(--border);
+        }
+
+        .variables-section h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .variable-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            align-items: center;
+        }
+
+        .variable-row input {
+            flex: 1;
+        }
+
+        .variable-row .var-key {
+            max-width: 120px;
+            font-family: monospace;
+        }
+
+        .btn-add-var {
+            background: none;
+            border: 2px dashed var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+
+        .btn-add-var:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .delay-select {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .delay-option {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .delay-option:hover {
+            border-color: var(--primary);
+        }
+
+        .delay-option.selected {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .preview-section {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .preview-section h4 {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .preview-message {
+            background: white;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            border: 1px solid var(--border);
+            white-space: pre-wrap;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 2px dashed var(--border);
+        }
+
+        .btn-cancel {
+            color: var(--text-light);
+            text-decoration: none;
+        }
+
+        .btn-cancel:hover {
+            color: var(--text);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <a href="/broadcast/automations.html" class="logo"><i class="fas fa-arrow-left"></i> Automations</a>
+            <h1 id="page-title">Create Automation</h1>
+            <p class="tagline">Set up keyword-triggered DM responses</p>
+        </header>
+
+        <!-- Auth Check -->
+        <div id="auth-required" class="auth-required" style="display: none;">
+            <div class="card">
+                <h2>Login Required</h2>
+                <p>Please login to create automations</p>
+                <a href="/login.html?redirect=/broadcast/automation-create.html" class="btn btn-primary">Login with Email</a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main id="main-content" style="display: none;">
+            <form id="automation-form">
+                <!-- Step 1: Name -->
+                <div class="builder-card">
+                    <div class="form-group">
+                        <label for="name">Automation Name</label>
+                        <input type="text" id="name" placeholder="e.g., Free Guide DM" required>
+                    </div>
+                </div>
+
+                <!-- Step 2: Trigger -->
+                <div class="builder-card">
+                    <h3><span class="step-num">1</span> Trigger</h3>
+
+                    <div class="form-group">
+                        <label>When someone comments on:</label>
+                        <div class="radio-group">
+                            <label class="radio-option selected" data-value="all">
+                                <input type="radio" name="trigger_scope" value="all" checked>
+                                <span class="radio-dot"></span>
+                                <span>Any post</span>
+                            </label>
+                            <label class="radio-option" data-value="specific">
+                                <input type="radio" name="trigger_scope" value="specific">
+                                <span class="radio-dot"></span>
+                                <span>Specific posts</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Containing these keywords:</label>
+                        <div class="keywords-input-wrapper" id="keywords-wrapper">
+                            <input type="text" class="keywords-input" id="keyword-input" placeholder="Type a keyword and press Enter">
+                        </div>
+                        <p class="keywords-hint">Press Enter or comma to add a keyword. Keywords are case-insensitive.</p>
+                    </div>
+                </div>
+
+                <!-- Step 3: Action -->
+                <div class="builder-card">
+                    <h3><span class="step-num">2</span> Action</h3>
+
+                    <div class="form-group">
+                        <label for="dm_template">DM Message</label>
+                        <div class="dm-template-wrapper">
+                            <textarea id="dm_template" class="dm-template" placeholder="Thanks for your interest! Here's your free guide: {{link}}" required></textarea>
+                            <span class="char-count" id="char-count">0/1000</span>
+                        </div>
+                        <p class="keywords-hint">Use {{variable}} syntax to insert dynamic values</p>
+                    </div>
+
+                    <div class="variables-section">
+                        <h4>Variables</h4>
+                        <div id="variables-list">
+                            <div class="variable-row">
+                                <input type="text" class="var-key" placeholder="link" data-var-key>
+                                <input type="text" placeholder="https://example.com/guide" data-var-value>
+                                <button type="button" class="icon-btn danger" onclick="removeVariable(this)">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-add-var" onclick="addVariable()">
+                            <i class="fas fa-plus"></i> Add Variable
+                        </button>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 1.5rem;">
+                        <label>Send DM after:</label>
+                        <div class="delay-select">
+                            <button type="button" class="delay-option selected" data-delay="0">Immediately</button>
+                            <button type="button" class="delay-option" data-delay="30">30 sec</button>
+                            <button type="button" class="delay-option" data-delay="60">1 min</button>
+                            <button type="button" class="delay-option" data-delay="300">5 min</button>
+                        </div>
+                    </div>
+
+                    <!-- Preview -->
+                    <div class="preview-section">
+                        <h4>Preview</h4>
+                        <div class="preview-message" id="preview-message">
+                            Your message preview will appear here...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <a href="/broadcast/automations.html" class="btn-cancel">Cancel</a>
+                    <button type="submit" class="btn btn-primary" id="submit-btn">
+                        <i class="fas fa-check"></i> Create Automation
+                    </button>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <script>
+        // Config
+        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let currentSession = null;
+        let editingRuleId = null;
+        let keywords = [];
+        let selectedDelay = 0;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            currentUser = user;
+            currentSession = session;
+
+            const authRequired = document.getElementById('auth-required');
+            const mainContent = document.getElementById('main-content');
+
+            if (!currentUser) {
+                authRequired.style.display = 'flex';
+                mainContent.style.display = 'none';
+                return;
+            }
+
+            authRequired.style.display = 'none';
+            mainContent.style.display = 'block';
+
+            // Check if editing existing rule
+            const urlParams = new URLSearchParams(window.location.search);
+            editingRuleId = urlParams.get('edit');
+
+            if (editingRuleId) {
+                document.getElementById('page-title').textContent = 'Edit Automation';
+                document.getElementById('submit-btn').innerHTML = '<i class="fas fa-check"></i> Save Changes';
+                await loadExistingRule(editingRuleId);
+            }
+
+            // Setup event listeners
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Keywords input
+            const keywordInput = document.getElementById('keyword-input');
+            keywordInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addKeyword(keywordInput.value);
+                    keywordInput.value = '';
+                }
+            });
+
+            // Click on wrapper focuses input
+            document.getElementById('keywords-wrapper').addEventListener('click', () => {
+                keywordInput.focus();
+            });
+
+            // Radio buttons
+            document.querySelectorAll('.radio-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.radio-option').forEach(o => o.classList.remove('selected'));
+                    option.classList.add('selected');
+                    option.querySelector('input').checked = true;
+                });
+            });
+
+            // Delay buttons
+            document.querySelectorAll('.delay-option').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.delay-option').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    selectedDelay = parseInt(btn.dataset.delay);
+                });
+            });
+
+            // DM template
+            const dmTemplate = document.getElementById('dm_template');
+            dmTemplate.addEventListener('input', updatePreview);
+
+            // Variable inputs
+            document.getElementById('variables-list').addEventListener('input', updatePreview);
+
+            // Form submit
+            document.getElementById('automation-form').addEventListener('submit', handleSubmit);
+        }
+
+        function addKeyword(value) {
+            const keyword = value.trim().toUpperCase();
+            if (!keyword || keywords.includes(keyword)) return;
+
+            keywords.push(keyword);
+            renderKeywords();
+        }
+
+        function removeKeyword(keyword) {
+            keywords = keywords.filter(k => k !== keyword);
+            renderKeywords();
+        }
+
+        function renderKeywords() {
+            const wrapper = document.getElementById('keywords-wrapper');
+            const input = document.getElementById('keyword-input');
+
+            // Remove existing chips
+            wrapper.querySelectorAll('.keyword-chip').forEach(chip => chip.remove());
+
+            // Add chips before input
+            keywords.forEach(keyword => {
+                const chip = document.createElement('span');
+                chip.className = 'keyword-chip';
+                chip.innerHTML = `
+                    ${escapeHtml(keyword)}
+                    <button type="button" onclick="removeKeyword('${escapeHtml(keyword)}')">&times;</button>
+                `;
+                wrapper.insertBefore(chip, input);
+            });
+        }
+
+        function addVariable() {
+            const list = document.getElementById('variables-list');
+            const row = document.createElement('div');
+            row.className = 'variable-row';
+            row.innerHTML = `
+                <input type="text" class="var-key" placeholder="variable" data-var-key>
+                <input type="text" placeholder="value" data-var-value>
+                <button type="button" class="icon-btn danger" onclick="removeVariable(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
+            list.appendChild(row);
+        }
+
+        function removeVariable(btn) {
+            const list = document.getElementById('variables-list');
+            if (list.children.length > 1) {
+                btn.closest('.variable-row').remove();
+                updatePreview();
+            }
+        }
+
+        function getVariables() {
+            const variables = {};
+            document.querySelectorAll('.variable-row').forEach(row => {
+                const key = row.querySelector('[data-var-key]').value.trim();
+                const value = row.querySelector('[data-var-value]').value.trim();
+                if (key) {
+                    variables[key] = value;
+                }
+            });
+            return variables;
+        }
+
+        function updatePreview() {
+            const template = document.getElementById('dm_template').value;
+            const variables = getVariables();
+
+            let preview = template;
+            for (const [key, value] of Object.entries(variables)) {
+                preview = preview.replace(new RegExp(`{{${key}}}`, 'g'), value || `[${key}]`);
+            }
+
+            document.getElementById('preview-message').textContent = preview || 'Your message preview will appear here...';
+
+            // Update char count
+            const charCount = document.getElementById('char-count');
+            const length = template.length;
+            charCount.textContent = `${length}/1000`;
+            charCount.className = 'char-count';
+            if (length > 1000) charCount.classList.add('danger');
+            else if (length > 800) charCount.classList.add('warning');
+        }
+
+        async function loadExistingRule(ruleId) {
+            try {
+                const response = await fetch(`/api/broadcast/automation/rules/${ruleId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${currentSession.access_token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load rule');
+
+                const data = await response.json();
+                const rule = data.rule;
+
+                // Populate form
+                document.getElementById('name').value = rule.name;
+                document.getElementById('dm_template').value = rule.dm_template;
+
+                // Keywords
+                keywords = rule.trigger_keywords || [];
+                renderKeywords();
+
+                // Trigger scope
+                document.querySelectorAll('.radio-option').forEach(option => {
+                    option.classList.remove('selected');
+                    if (option.dataset.value === rule.trigger_scope) {
+                        option.classList.add('selected');
+                        option.querySelector('input').checked = true;
+                    }
+                });
+
+                // Delay
+                selectedDelay = rule.dm_delay_seconds || 0;
+                document.querySelectorAll('.delay-option').forEach(btn => {
+                    btn.classList.remove('selected');
+                    if (parseInt(btn.dataset.delay) === selectedDelay) {
+                        btn.classList.add('selected');
+                    }
+                });
+
+                // Variables
+                const variables = rule.variables || {};
+                const varList = document.getElementById('variables-list');
+                varList.innerHTML = '';
+                const varEntries = Object.entries(variables);
+
+                if (varEntries.length === 0) {
+                    addVariable();
+                } else {
+                    varEntries.forEach(([key, value]) => {
+                        const row = document.createElement('div');
+                        row.className = 'variable-row';
+                        row.innerHTML = `
+                            <input type="text" class="var-key" placeholder="variable" data-var-key value="${escapeHtml(key)}">
+                            <input type="text" placeholder="value" data-var-value value="${escapeHtml(value)}">
+                            <button type="button" class="icon-btn danger" onclick="removeVariable(this)">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        `;
+                        varList.appendChild(row);
+                    });
+                }
+
+                updatePreview();
+
+            } catch (error) {
+                console.error('Error loading rule:', error);
+                alert('Failed to load automation: ' + error.message);
+            }
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+            try {
+                const name = document.getElementById('name').value.trim();
+                const dmTemplate = document.getElementById('dm_template').value.trim();
+                const triggerScope = document.querySelector('input[name="trigger_scope"]:checked').value;
+                const variables = getVariables();
+
+                // Validation
+                if (!name) throw new Error('Please enter an automation name');
+                if (keywords.length === 0) throw new Error('Please add at least one trigger keyword');
+                if (!dmTemplate) throw new Error('Please enter a DM message');
+                if (dmTemplate.length > 1000) throw new Error('DM message is too long (max 1000 characters)');
+
+                const payload = {
+                    name,
+                    trigger_keywords: keywords,
+                    trigger_scope: triggerScope,
+                    dm_template: dmTemplate,
+                    dm_delay_seconds: selectedDelay,
+                    variables,
+                };
+
+                const url = editingRuleId
+                    ? `/api/broadcast/automation/rules/${editingRuleId}`
+                    : '/api/broadcast/automation/rules';
+
+                const method = editingRuleId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method,
+                    headers: {
+                        'Authorization': `Bearer ${currentSession.access_token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to save automation');
+                }
+
+                // Success! Redirect to automations list
+                window.location.href = '/broadcast/automations.html';
+
+            } catch (error) {
+                console.error('Error saving automation:', error);
+                alert(error.message);
+
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = editingRuleId
+                    ? '<i class="fas fa-check"></i> Save Changes'
+                    : '<i class="fas fa-check"></i> Create Automation';
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Kit - Broadcast</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="/broadcast/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <a href="./" class="logo"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
+            <h1>Media Kit</h1>
+            <p class="tagline">Create a shareable card for brands</p>
+        </header>
+
+        <div id="auth-required" class="auth-required" style="display: none;">
+            <div class="card">
+                <h2>Login Required</h2>
+                <p>Please login to create your media kit</p>
+                <a href="/login.html?redirect=/broadcast/media-kit.html" class="btn btn-primary">Login with Email</a>
+            </div>
+        </div>
+
+        <main id="main-content" style="display: none;">
+            <div class="kit-editor">
+                <!-- Left: Controls -->
+                <div class="editor-controls">
+                    <section class="control-section">
+                        <h3><i class="fas fa-user"></i> Profile</h3>
+                        <div class="form-group">
+                            <label for="display-name">Display Name</label>
+                            <input type="text" id="display-name" placeholder="Your name">
+                        </div>
+                        <div class="form-group">
+                            <label for="tagline">Tagline</label>
+                            <input type="text" id="tagline" placeholder="e.g. UGC Creator">
+                        </div>
+                    </section>
+
+                    <section class="control-section">
+                        <h3><i class="fas fa-chart-simple"></i> Follower Counts</h3>
+                        <p class="help-text">Enter username + follower count for each platform</p>
+                        <div id="platforms-list" class="platforms-list">
+                            <!-- Platform inputs populated by JS -->
+                        </div>
+                    </section>
+
+                    <section class="control-section">
+                        <h3><i class="fas fa-briefcase"></i> Brands Worked With</h3>
+                        <div id="brands-list" class="brands-list"></div>
+                        <div class="add-brand">
+                            <input type="text" id="new-brand-name" placeholder="Brand name">
+                            <input type="text" id="new-brand-domain" placeholder="domain.com">
+                            <button class="btn btn-small btn-secondary" onclick="addBrand()">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="control-section">
+                        <h3><i class="fas fa-share-nodes"></i> Share</h3>
+                        <div class="share-url-box">
+                            <input type="text" id="share-url" readonly>
+                            <button class="btn-icon" onclick="copyShareLink()" title="Copy link">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div class="share-actions">
+                            <button class="btn btn-primary" onclick="downloadAsPNG()">
+                                <i class="fas fa-download"></i> Download PNG
+                            </button>
+                            <button class="btn btn-secondary" onclick="openPublicView()">
+                                <i class="fas fa-external-link-alt"></i> View
+                            </button>
+                        </div>
+                        <button class="btn-text" onclick="regenerateToken()">
+                            <i class="fas fa-refresh"></i> New link
+                        </button>
+                    </section>
+
+                    <button class="btn btn-primary btn-save" onclick="saveKit()">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+
+                <!-- Right: Preview -->
+                <div class="editor-preview">
+                    <h3>Preview</h3>
+                    <div class="preview-wrapper">
+                        <div id="media-kit-preview" class="media-kit-preview">
+                            <div class="kit-card">
+                                <div class="kit-profile">
+                                    <div class="kit-avatar-wrapper">
+                                        <div class="kit-avatar-ring"></div>
+                                        <div id="kit-avatar" class="kit-avatar">L</div>
+                                    </div>
+                                    <h2 id="kit-name" class="kit-name">Creator</h2>
+                                    <p id="kit-tagline" class="kit-tagline">UGC Creator</p>
+                                </div>
+
+                                <div id="kit-stats" class="kit-stats"></div>
+
+                                <div class="kit-brands">
+                                    <p class="kit-brands-label">Brands I've worked with</p>
+                                    <div id="kit-brands-grid" class="kit-brands-grid"></div>
+                                </div>
+
+                                <div class="kit-footer">
+                                    <span class="kit-site">lexaya.io</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toast" class="toast" style="display: none;"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentUser = null;
+        let currentSession = null;
+        let kitData = null;
+        let manualFollowers = {};
+        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
+
+        const platformIcons = {
+            instagram: 'fa-instagram',
+            tiktok: 'fa-tiktok',
+            linkedin: 'fa-linkedin',
+            youtube: 'fa-youtube',
+            threads: 'fa-threads'
+        };
+
+        const platformNames = {
+            instagram: 'Instagram',
+            tiktok: 'TikTok',
+            linkedin: 'LinkedIn',
+            youtube: 'YouTube',
+            threads: 'Threads'
+        };
+
+        const platformUrls = {
+            instagram: (u) => `https://instagram.com/${u}`,
+            tiktok: (u) => `https://tiktok.com/@${u}`,
+            linkedin: (u) => `https://linkedin.com/in/${u}`,
+            youtube: (u) => `https://youtube.com/@${u}`,
+            threads: (u) => `https://threads.net/@${u}`
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const [userRes, sessionRes] = await Promise.all([
+                supabaseClient.auth.getUser(),
+                supabaseClient.auth.getSession()
+            ]);
+            currentUser = userRes.data.user;
+            currentSession = sessionRes.data.session;
+
+            if (!currentUser) {
+                document.getElementById('auth-required').style.display = 'flex';
+                document.getElementById('main-content').style.display = 'none';
+                return;
+            }
+
+            // Media Kit is free for all logged-in users (no subscription required)
+            document.getElementById('auth-required').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+
+            await loadKit();
+            setupLivePreview();
+        });
+
+        async function loadKit() {
+            try {
+                const response = await fetch('/api/broadcast/media-kit', {
+                    headers: { 'Authorization': `Bearer ${currentSession.access_token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load kit');
+
+                kitData = await response.json();
+                manualFollowers = kitData.manual_followers || {};
+            } catch (err) {
+                console.error('Error loading kit:', err);
+                // Initialize with defaults if API fails
+                kitData = {
+                    display_name: 'Creator',
+                    tagline: 'UGC Creator',
+                    brands: [],
+                    platforms: [],
+                    share_token: 'preview',
+                    manual_usernames: {}
+                };
+                manualFollowers = {};
+                showToast('Enter your info to create your media kit', 'success');
+            }
+
+            populateForm();
+            updatePreview();
+        }
+
+        function populateForm() {
+            document.getElementById('display-name').value = kitData.display_name || '';
+            document.getElementById('tagline').value = kitData.tagline || '';
+            document.getElementById('share-url').value = `https://lexaya.io/kit/${kitData.share_token}`;
+
+            renderPlatforms();
+            renderBrands();
+        }
+
+        function renderPlatforms() {
+            const container = document.getElementById('platforms-list');
+            container.innerHTML = '';
+
+            // Always show all 5 platforms
+            const allPlatforms = ['instagram', 'tiktok', 'linkedin', 'youtube', 'threads'];
+
+            allPlatforms.forEach(platform => {
+                const connectedAccount = (kitData.platforms || []).find(p => p.name === platform);
+                const apiCount = connectedAccount?.followers_api || 0;
+                const manualCount = manualFollowers[platform];
+                const displayCount = manualCount !== undefined ? manualCount : apiCount;
+
+                const username = connectedAccount?.username || kitData.manual_usernames?.[platform] || '';
+
+                const div = document.createElement('div');
+                div.className = 'platform-input-row';
+                div.innerHTML = `
+                    <div class="platform-icon-small ${platform}">
+                        <i class="fa-brands ${platformIcons[platform] || 'fa-globe'}"></i>
+                    </div>
+                    <div class="platform-input-info">
+                        <span class="platform-name">${platformNames[platform] || platform}</span>
+                    </div>
+                    <input type="text" class="username-input" data-platform="${platform}"
+                           value="${username}" placeholder="@username">
+                    <input type="number" class="follower-input" data-platform="${platform}"
+                           value="${displayCount || ''}" placeholder="0" min="0">
+                `;
+                container.appendChild(div);
+
+                // Add event listeners for live updates
+                div.querySelector('.follower-input').addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    manualFollowers[platform] = value;
+                    updatePreview();
+                });
+
+                div.querySelector('.username-input').addEventListener('input', (e) => {
+                    if (!kitData.manual_usernames) kitData.manual_usernames = {};
+                    kitData.manual_usernames[platform] = e.target.value.replace('@', '');
+                    updatePreview();
+                });
+            });
+        }
+
+        function renderBrands() {
+            const container = document.getElementById('brands-list');
+            const brands = kitData.brands || [];
+
+            if (brands.length === 0) {
+                container.innerHTML = '<p class="empty-text">No brands added yet</p>';
+                return;
+            }
+
+            container.innerHTML = brands.map((brand, index) => `
+                <div class="brand-item-editor">
+                    ${brand.domain ? `<img src="https://logo.clearbit.com/${brand.domain}" alt="${brand.name}" class="brand-logo-small" onerror="this.style.display='none'">` : ''}
+                    <span class="brand-name">${brand.name}</span>
+                    <button class="btn-remove" onclick="removeBrand(${index})"><i class="fas fa-times"></i></button>
+                </div>
+            `).join('');
+        }
+
+        function addBrand() {
+            const name = document.getElementById('new-brand-name').value.trim();
+            const domain = document.getElementById('new-brand-domain').value.trim();
+
+            if (!name) {
+                showToast('Enter a brand name', 'error');
+                return;
+            }
+
+            if (!kitData.brands) kitData.brands = [];
+            kitData.brands.push({ name, domain: domain || null });
+
+            document.getElementById('new-brand-name').value = '';
+            document.getElementById('new-brand-domain').value = '';
+
+            renderBrands();
+            updatePreview();
+        }
+
+        function removeBrand(index) {
+            kitData.brands.splice(index, 1);
+            renderBrands();
+            updatePreview();
+        }
+
+        function setupLivePreview() {
+            document.getElementById('display-name').addEventListener('input', updatePreview);
+            document.getElementById('tagline').addEventListener('input', updatePreview);
+        }
+
+        function updatePreview() {
+            const name = document.getElementById('display-name').value || 'Creator';
+            const tagline = document.getElementById('tagline').value || 'UGC Creator';
+
+            document.getElementById('kit-name').textContent = name;
+            document.getElementById('kit-tagline').textContent = tagline;
+            document.getElementById('kit-avatar').textContent = name[0].toUpperCase();
+
+            // Stats - always show all 5 platforms
+            const statsContainer = document.getElementById('kit-stats');
+            statsContainer.innerHTML = '';
+
+            const allPlatforms = ['instagram', 'tiktok', 'linkedin', 'youtube', 'threads'];
+            allPlatforms.forEach(platform => {
+                // Read directly from input fields
+                const followerInput = document.querySelector(`.follower-input[data-platform="${platform}"]`);
+                const usernameInput = document.querySelector(`.username-input[data-platform="${platform}"]`);
+
+                const count = followerInput ? parseInt(followerInput.value) || 0 : (manualFollowers[platform] || 0);
+                const username = usernameInput ? usernameInput.value.replace('@', '') : (kitData.manual_usernames?.[platform] || '');
+
+                const profileUrl = username && platformUrls[platform] ? platformUrls[platform](username) : null;
+                const hasData = count > 0;
+
+                const div = document.createElement('div');
+                div.className = 'kit-stat' + (profileUrl ? ' clickable' : '') + (!hasData ? ' empty' : '');
+                if (profileUrl) {
+                    div.onclick = () => window.open(profileUrl, '_blank');
+                    div.title = `Visit ${platformNames[platform]} profile`;
+                }
+                div.innerHTML = `
+                    <div class="kit-stat-icon ${platform}">
+                        <i class="fa-brands ${platformIcons[platform] || 'fa-globe'}"></i>
+                    </div>
+                    <div class="kit-stat-value">${hasData ? formatFollowers(count) : '-'}</div>
+                    <div class="kit-stat-label">${platform === 'youtube' ? 'Subs' : 'Followers'}</div>
+                `;
+                statsContainer.appendChild(div);
+            });
+
+            // Brands
+            const brandsGrid = document.getElementById('kit-brands-grid');
+            brandsGrid.innerHTML = (kitData?.brands || []).map(brand => `
+                <div class="kit-brand">
+                    ${brand.domain ? `<img src="https://logo.clearbit.com/${brand.domain}" alt="${brand.name}" class="kit-brand-logo" onerror="this.style.display='none'">` : ''}
+                    <span>${brand.name}</span>
+                </div>
+            `).join('');
+        }
+
+        async function saveKit() {
+            const name = document.getElementById('display-name').value.trim();
+            const tagline = document.getElementById('tagline').value.trim();
+
+            try {
+                const response = await fetch('/api/broadcast/media-kit', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentSession.access_token}`
+                    },
+                    body: JSON.stringify({
+                        display_name: name,
+                        tagline: tagline,
+                        brands: kitData.brands,
+                        manual_followers: manualFollowers,
+                        manual_usernames: kitData.manual_usernames || {}
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to save');
+                showToast('Saved!', 'success');
+            } catch (err) {
+                console.error('Error saving:', err);
+                showToast('Failed to save', 'error');
+            }
+        }
+
+        async function downloadAsPNG() {
+            const preview = document.getElementById('media-kit-preview');
+            preview.classList.add('capture-mode');
+
+            try {
+                const canvas = await html2canvas(preview, {
+                    backgroundColor: '#ffffff',
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: false
+                });
+
+                const link = document.createElement('a');
+                link.download = 'media-kit.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast('Downloaded!', 'success');
+            } catch (err) {
+                console.error('Error:', err);
+                showToast('Failed to download', 'error');
+            }
+
+            preview.classList.remove('capture-mode');
+        }
+
+        function copyShareLink() {
+            navigator.clipboard.writeText(document.getElementById('share-url').value);
+            showToast('Link copied!', 'success');
+        }
+
+        function openPublicView() {
+            window.open(document.getElementById('share-url').value, '_blank');
+        }
+
+        async function regenerateToken() {
+            if (!confirm('Generate a new link? Old link will stop working.')) return;
+
+            try {
+                const response = await fetch('/api/broadcast/media-kit?action=regenerate-token', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${currentSession.access_token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed');
+                const data = await response.json();
+                document.getElementById('share-url').value = `https://lexaya.io/kit/${data.share_token}`;
+                kitData.share_token = data.share_token;
+                showToast('New link generated!', 'success');
+            } catch (err) {
+                showToast('Failed', 'error');
+            }
+        }
+
+        function formatFollowers(count) {
+            if (!count) return '0';
+            if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+            if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+            return count.toString();
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 2500);
+        }
+    </script>
+
+    <style>
+        .kit-editor {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .kit-editor { grid-template-columns: 1fr; }
+            .editor-preview { order: -1; }
+        }
+
+        .editor-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .control-section {
+            background: white;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+        }
+
+        .control-section h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+        }
+
+        .help-text {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 0.75rem;
+        }
+
+        .form-group { margin-bottom: 0.75rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Platforms */
+        .platforms-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .platform-input-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .platform-icon-small {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .platform-icon-small.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+        .platform-icon-small.tiktok { background: #000; }
+        .platform-icon-small.linkedin { background: #0A66C2; }
+        .platform-icon-small.youtube { background: #FF0000; }
+        .platform-icon-small.threads { background: #000; }
+
+        .platform-input-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .platform-input-info .platform-name {
+            display: block;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+
+        .api-hint {
+            font-size: 0.7rem;
+            color: var(--text-light);
+        }
+
+        .username-input {
+            flex: 1;
+            min-width: 80px;
+            padding: 0.4rem 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .follower-input {
+            width: 70px;
+            padding: 0.4rem 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            text-align: right;
+        }
+
+        .username-input:focus,
+        .follower-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Brands */
+        .brands-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .brand-item-editor {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            background: #f8fafc;
+            border-radius: 6px;
+        }
+
+        .brand-logo-small {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        .brand-item-editor .brand-name {
+            flex: 1;
+            font-size: 0.85rem;
+        }
+
+        .btn-remove {
+            background: none;
+            border: none;
+            color: #dc2626;
+            cursor: pointer;
+            padding: 0.2rem;
+            opacity: 0.5;
+        }
+        .btn-remove:hover { opacity: 1; }
+
+        .add-brand {
+            display: flex;
+            gap: 0.4rem;
+        }
+
+        .add-brand input {
+            flex: 1;
+            min-width: 0;
+            padding: 0.4rem 0.6rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        /* Share */
+        .share-url-box {
+            display: flex;
+            gap: 0.4rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .share-url-box input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            background: #f8fafc;
+        }
+
+        .btn-icon {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            width: 36px;
+            cursor: pointer;
+        }
+        .btn-icon:hover { background: var(--secondary); }
+
+        .share-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .share-actions .btn {
+            flex: 1;
+            justify-content: center;
+            font-size: 0.8rem;
+            padding: 0.5rem;
+        }
+
+        .btn-text {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .btn-text:hover { color: var(--primary); }
+
+        .btn-save {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .empty-text {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        /* Preview */
+        .editor-preview {
+            position: sticky;
+            top: 2rem;
+        }
+
+        .editor-preview h3 {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-bottom: 0.75rem;
+            text-align: center;
+        }
+
+        .preview-wrapper {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .media-kit-preview {
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .kit-card {
+            background: white;
+            border: 3px solid var(--primary);
+            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
+            padding: 1.5rem 1.25rem;
+            box-shadow: 0 15px 40px rgba(30, 64, 175, 0.12);
+        }
+
+        .kit-profile {
+            text-align: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .kit-avatar-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 0.5rem;
+        }
+
+        .kit-avatar-ring {
+            position: absolute;
+            top: -5px; left: -5px; right: -5px; bottom: -5px;
+            border: 2px dashed var(--secondary);
+            border-radius: 50%;
+            animation: spin 20s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .kit-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+            border: 3px solid var(--primary);
+        }
+
+        .kit-name {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.1rem;
+        }
+
+        .kit-tagline {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .kit-stats {
+            display: flex;
+            justify-content: center;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.25rem;
+        }
+
+        .kit-stat {
+            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.6rem 0.8rem;
+            text-align: center;
+            min-width: 65px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .kit-stat.clickable {
+            cursor: pointer;
+        }
+
+        .kit-stat.clickable:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 64, 175, 0.15);
+        }
+
+        .kit-stat.empty {
+            opacity: 0.7;
+            border-style: dashed;
+        }
+
+        .kit-stat.empty .kit-stat-value {
+            color: var(--text-light);
+        }
+
+        .kit-stat-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.3rem;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .kit-stat-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+        .kit-stat-icon.tiktok { background: #000; }
+        .kit-stat-icon.linkedin { background: #0A66C2; }
+        .kit-stat-icon.youtube { background: #FF0000; }
+        .kit-stat-icon.threads { background: #000; }
+
+        .kit-stat-value {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 0.1rem;
+        }
+
+        .kit-stat-label {
+            font-size: 0.55rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+        }
+
+        .kit-brands { margin-bottom: 0.75rem; }
+
+        .kit-brands-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-light);
+            text-align: center;
+            margin-bottom: 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .kit-brands-label::before,
+        .kit-brands-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border);
+        }
+
+        .kit-brands-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .kit-brand {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 0.25rem 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+
+        .kit-brand-logo {
+            width: 12px;
+            height: 12px;
+            object-fit: contain;
+        }
+
+        .kit-footer {
+            text-align: center;
+            padding-top: 0.75rem;
+            border-top: 2px dashed var(--border);
+        }
+
+        .kit-site {
+            font-size: 0.75rem;
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        .capture-mode * {
+            animation: none !important;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            z-index: 1000;
+        }
+
+        .toast.success { background: #22c55e; color: white; }
+        .toast.error { background: #ef4444; color: white; }
+    </style>
+</body>
+</html>

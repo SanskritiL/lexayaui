@@ -156,7 +156,18 @@ async function handleInstagram(req, res) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent('Facebook App not configured'));
         }
 
-        const scopes = ['instagram_basic', 'instagram_content_publish', 'pages_show_list', 'pages_read_engagement', 'pages_manage_metadata', 'business_management'].join(',');
+        // Scopes for publishing + DM automation
+        const scopes = [
+            'instagram_basic',
+            'instagram_content_publish',
+            'instagram_manage_comments',    // For reading comments (DM automation)
+            'instagram_manage_messages',    // For sending DMs (DM automation)
+            'pages_show_list',
+            'pages_read_engagement',
+            'pages_manage_metadata',
+            'pages_messaging',              // For webhook subscriptions
+            'business_management'
+        ].join(',');
         const authUrl = new URL('https://www.facebook.com/v18.0/dialog/oauth');
         authUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
@@ -266,7 +277,7 @@ async function handleInstagram(req, res) {
                 access_token: pageAccessToken,
                 refresh_token: null,
                 token_expires_at: tokenExpiresAt,
-                scopes: ['instagram_basic', 'instagram_content_publish'],
+                scopes: ['instagram_basic', 'instagram_content_publish', 'instagram_manage_comments', 'instagram_manage_messages', 'pages_messaging'],
                 metadata: {
                     profile_picture: instagramAccount.profile_picture_url,
                     ig_user_id: instagramAccount.id,
