@@ -243,22 +243,7 @@
                 return;
             }
 
-            // Admin bypass - skip subscription check
-            if (!ADMIN_EMAILS.includes(currentUser.email)) {
-                const { data: subscription } = await supabaseClient
-                    .from('subscriptions')
-                    .select('*')
-                    .eq('customer_email', currentUser.email)
-                    .eq('product_key', 'broadcast')
-                    .eq('status', 'active')
-                    .single();
-
-                if (!subscription) {
-                    window.location.href = '/broadcast/pricing.html';
-                    return;
-                }
-            }
-
+            // Connect accounts is free for all logged-in users (for media kit)
             document.getElementById('auth-required').style.display = 'none';
             document.getElementById('connect-main').style.display = 'block';
 
