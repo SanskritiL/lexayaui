@@ -45,6 +45,36 @@
                     </section>
 
                     <section class="control-section">
+                        <h3><i class="fas fa-palette"></i> Theme</h3>
+                        <div class="theme-selector" id="theme-selector">
+                            <button class="theme-option active" data-theme="classic" title="Classic Blue">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #1e40af, #3b82f6);"></div>
+                                <span>Classic</span>
+                            </button>
+                            <button class="theme-option" data-theme="dark" title="Dark Mode">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #1f2937, #374151);"></div>
+                                <span>Dark</span>
+                            </button>
+                            <button class="theme-option" data-theme="sunset" title="Sunset">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #f59e0b, #ef4444);"></div>
+                                <span>Sunset</span>
+                            </button>
+                            <button class="theme-option" data-theme="ocean" title="Ocean">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #06b6d4, #8b5cf6);"></div>
+                                <span>Ocean</span>
+                            </button>
+                            <button class="theme-option" data-theme="forest" title="Forest">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #10b981, #059669);"></div>
+                                <span>Forest</span>
+                            </button>
+                            <button class="theme-option" data-theme="rose" title="Rose">
+                                <div class="theme-preview" style="background: linear-gradient(135deg, #ec4899, #f43f5e);"></div>
+                                <span>Rose</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="control-section">
                         <h3><i class="fas fa-chart-simple"></i> Follower Counts</h3>
                         <p class="help-text">Enter username + follower count for each platform</p>
                         <div id="platforms-list" class="platforms-list">
@@ -61,6 +91,54 @@
                             <button class="btn btn-small btn-secondary" onclick="addBrand()">
                                 <i class="fas fa-plus"></i>
                             </button>
+                        </div>
+                    </section>
+
+                    <section class="control-section">
+                        <h3><i class="fa-brands fa-instagram"></i> Instagram Insights</h3>
+                        <p class="help-text">Pull analytics from your Instagram account</p>
+                        <button class="btn btn-secondary btn-full" id="fetch-insights-btn" onclick="fetchInstagramInsights()">
+                            <i class="fas fa-chart-line"></i> Fetch Insights
+                        </button>
+                        <div id="insights-container" class="insights-container" style="display: none;">
+                            <div class="insights-loading" id="insights-loading">
+                                <div class="spinner-small"></div>
+                                <span>Fetching analytics...</span>
+                            </div>
+                            <div id="insights-data" style="display: none;">
+                                <div class="insight-group">
+                                    <h4>Last 30 Days</h4>
+                                    <div class="insight-stats">
+                                        <div class="insight-stat">
+                                            <span class="insight-value" id="ins-reach">-</span>
+                                            <span class="insight-label">Reach</span>
+                                        </div>
+                                        <div class="insight-stat">
+                                            <span class="insight-value" id="ins-impressions">-</span>
+                                            <span class="insight-label">Impressions</span>
+                                        </div>
+                                        <div class="insight-stat">
+                                            <span class="insight-value" id="ins-profile-views">-</span>
+                                            <span class="insight-label">Profile Views</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="insight-group">
+                                    <h4>Audience</h4>
+                                    <div class="gender-bar" id="gender-bar">
+                                        <div class="gender-male" id="gender-male"></div>
+                                        <div class="gender-female" id="gender-female"></div>
+                                    </div>
+                                    <div class="gender-labels">
+                                        <span><i class="fas fa-mars"></i> <span id="male-pct">0%</span></span>
+                                        <span><i class="fas fa-venus"></i> <span id="female-pct">0%</span></span>
+                                    </div>
+                                </div>
+                                <div class="insight-group">
+                                    <h4>Top Countries</h4>
+                                    <div id="top-countries" class="top-list"></div>
+                                </div>
+                            </div>
                         </div>
                     </section>
 
@@ -93,9 +171,9 @@
                 <!-- Right: Preview -->
                 <div class="editor-preview">
                     <h3>Preview</h3>
-                    <div class="preview-wrapper">
+                    <div class="preview-wrapper" id="preview-wrapper">
                         <div id="media-kit-preview" class="media-kit-preview">
-                            <div class="kit-card">
+                            <div class="kit-card" id="kit-card">
                                 <div class="kit-profile">
                                     <div class="kit-avatar-wrapper">
                                         <div class="kit-avatar-ring"></div>
@@ -180,6 +258,7 @@
 
             await loadKit();
             setupLivePreview();
+            setupThemeSelector();
         });
 
         async function loadKit() {
@@ -309,9 +388,49 @@
             updatePreview();
         }
 
+        let currentTheme = 'classic';
+
         function setupLivePreview() {
             document.getElementById('display-name').addEventListener('input', updatePreview);
             document.getElementById('tagline').addEventListener('input', updatePreview);
+        }
+
+        function setupThemeSelector() {
+            const selector = document.getElementById('theme-selector');
+            const kitCard = document.getElementById('kit-card');
+
+            // Load saved theme
+            if (kitData?.theme) {
+                currentTheme = kitData.theme;
+                document.querySelectorAll('.theme-option').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theme === currentTheme);
+                });
+            }
+
+            // Apply initial theme
+            applyTheme(currentTheme);
+
+            // Theme click handlers
+            selector.addEventListener('click', (e) => {
+                const btn = e.target.closest('.theme-option');
+                if (!btn) return;
+
+                const theme = btn.dataset.theme;
+                currentTheme = theme;
+
+                // Update button states
+                document.querySelectorAll('.theme-option').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Apply theme
+                applyTheme(theme);
+            });
+        }
+
+        function applyTheme(theme) {
+            const kitCard = document.getElementById('kit-card');
+            // Remove all theme classes
+            kitCard.className = 'kit-card theme-' + theme;
         }
 
         function updatePreview() {
@@ -458,6 +577,89 @@
             toast.className = `toast ${type}`;
             toast.style.display = 'block';
             setTimeout(() => { toast.style.display = 'none'; }, 2500);
+        }
+
+        async function fetchInstagramInsights() {
+            const container = document.getElementById('insights-container');
+            const loading = document.getElementById('insights-loading');
+            const dataDiv = document.getElementById('insights-data');
+            const btn = document.getElementById('fetch-insights-btn');
+
+            container.style.display = 'block';
+            loading.style.display = 'flex';
+            dataDiv.style.display = 'none';
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching...';
+
+            try {
+                const response = await fetch('/api/broadcast/instagram-insights', {
+                    headers: { 'Authorization': `Bearer ${currentSession.access_token}` }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch insights');
+                }
+
+                // Display metrics
+                if (data.metrics) {
+                    document.getElementById('ins-reach').textContent = formatNumber(data.metrics.reach);
+                    document.getElementById('ins-impressions').textContent = formatNumber(data.metrics.impressions);
+                    document.getElementById('ins-profile-views').textContent = formatNumber(data.metrics.profile_views);
+                }
+
+                // Display gender breakdown
+                if (data.audience?.gender) {
+                    const male = data.audience.gender.male || 0;
+                    const female = data.audience.gender.female || 0;
+                    document.getElementById('gender-male').style.width = male + '%';
+                    document.getElementById('gender-female').style.width = female + '%';
+                    document.getElementById('male-pct').textContent = male + '%';
+                    document.getElementById('female-pct').textContent = female + '%';
+                }
+
+                // Display top countries
+                if (data.audience?.top_countries) {
+                    const countriesHtml = data.audience.top_countries.map(c => `
+                        <div class="top-item">
+                            <span class="top-name">${getCountryFlag(c.country)} ${c.country}</span>
+                            <span class="top-count">${formatNumber(c.count)}</span>
+                        </div>
+                    `).join('');
+                    document.getElementById('top-countries').innerHTML = countriesHtml || '<p class="empty-text">No data</p>';
+                }
+
+                loading.style.display = 'none';
+                dataDiv.style.display = 'block';
+                showToast('Insights loaded!', 'success');
+
+            } catch (error) {
+                console.error('Insights error:', error);
+                loading.style.display = 'none';
+                container.style.display = 'none';
+                showToast(error.message || 'Failed to fetch insights', 'error');
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-chart-line"></i> Fetch Insights';
+        }
+
+        function formatNumber(num) {
+            if (!num) return '0';
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toLocaleString();
+        }
+
+        function getCountryFlag(countryCode) {
+            const flags = {
+                'US': '🇺🇸', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺', 'DE': '🇩🇪',
+                'FR': '🇫🇷', 'IN': '🇮🇳', 'BR': '🇧🇷', 'MX': '🇲🇽', 'ES': '🇪🇸',
+                'IT': '🇮🇹', 'NL': '🇳🇱', 'JP': '🇯🇵', 'KR': '🇰🇷', 'PH': '🇵🇭',
+                'ID': '🇮🇩', 'NP': '🇳🇵', 'PK': '🇵🇰', 'NG': '🇳🇬', 'ZA': '🇿🇦'
+            };
+            return flags[countryCode] || '🌍';
         }
     </script>
 
@@ -933,6 +1135,252 @@
 
         .toast.success { background: #22c55e; color: white; }
         .toast.error { background: #ef4444; color: white; }
+
+        /* Instagram Insights */
+        .btn-full {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .insights-container {
+            margin-top: 0.75rem;
+        }
+
+        .insights-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            color: var(--text-light);
+            font-size: 0.85rem;
+        }
+
+        .spinner-small {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .insight-group {
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px dashed var(--border);
+        }
+
+        .insight-group:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .insight-group h4 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+
+        .insight-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .insight-stat {
+            text-align: center;
+            padding: 0.5rem;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .insight-value {
+            display: block;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .insight-label {
+            font-size: 0.65rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+        }
+
+        .gender-bar {
+            display: flex;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            background: #e5e7eb;
+            margin-bottom: 0.35rem;
+        }
+
+        .gender-male {
+            background: linear-gradient(90deg, #3b82f6, #1e40af);
+            transition: width 0.5s ease;
+        }
+
+        .gender-female {
+            background: linear-gradient(90deg, #ec4899, #be185d);
+            transition: width 0.5s ease;
+        }
+
+        .gender-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .gender-labels i {
+            margin-right: 0.25rem;
+        }
+
+        .gender-labels span:first-child i { color: #3b82f6; }
+        .gender-labels span:last-child i { color: #ec4899; }
+
+        .top-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .top-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.35rem 0.5rem;
+            background: #f8fafc;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .top-name {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .top-count {
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Theme Selector */
+        .theme-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .theme-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.5rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .theme-option:hover {
+            border-color: var(--primary);
+        }
+
+        .theme-option.active {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .theme-preview {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            border: 2px solid rgba(0,0,0,0.1);
+        }
+
+        .theme-option span {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--text-light);
+        }
+
+        .theme-option.active span {
+            color: var(--primary);
+        }
+
+        /* Theme Styles for Kit Card */
+        .kit-card.theme-classic {
+            background: white;
+            border-color: #1e40af;
+        }
+        .kit-card.theme-classic .kit-name,
+        .kit-card.theme-classic .kit-stat-value { color: #1e40af; }
+        .kit-card.theme-classic .kit-avatar { background: linear-gradient(135deg, #1e40af, #3b82f6); border-color: #1e40af; }
+
+        .kit-card.theme-dark {
+            background: #1f2937;
+            border-color: #4b5563;
+        }
+        .kit-card.theme-dark .kit-name { color: #f9fafb; }
+        .kit-card.theme-dark .kit-tagline,
+        .kit-card.theme-dark .kit-stat-label,
+        .kit-card.theme-dark .kit-brands-label { color: #9ca3af; }
+        .kit-card.theme-dark .kit-stat-value { color: #f9fafb; }
+        .kit-card.theme-dark .kit-stat { background: #374151; border-color: #4b5563; }
+        .kit-card.theme-dark .kit-brand { background: #374151; border-color: #4b5563; color: #f9fafb; }
+        .kit-card.theme-dark .kit-avatar { background: linear-gradient(135deg, #4b5563, #6b7280); border-color: #6b7280; }
+        .kit-card.theme-dark .kit-footer { border-color: #4b5563; }
+        .kit-card.theme-dark .kit-site { color: #9ca3af; }
+        .kit-card.theme-dark .kit-avatar-ring { border-color: #6b7280; }
+
+        .kit-card.theme-sunset {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border-color: #f59e0b;
+        }
+        .kit-card.theme-sunset .kit-name,
+        .kit-card.theme-sunset .kit-stat-value { color: #b45309; }
+        .kit-card.theme-sunset .kit-avatar { background: linear-gradient(135deg, #f59e0b, #ef4444); border-color: #f59e0b; }
+        .kit-card.theme-sunset .kit-avatar-ring { border-color: #fbbf24; }
+        .kit-card.theme-sunset .kit-site { color: #d97706; }
+
+        .kit-card.theme-ocean {
+            background: linear-gradient(135deg, #ecfeff, #e0f2fe);
+            border-color: #06b6d4;
+        }
+        .kit-card.theme-ocean .kit-name,
+        .kit-card.theme-ocean .kit-stat-value { color: #0891b2; }
+        .kit-card.theme-ocean .kit-avatar { background: linear-gradient(135deg, #06b6d4, #8b5cf6); border-color: #06b6d4; }
+        .kit-card.theme-ocean .kit-avatar-ring { border-color: #22d3ee; }
+        .kit-card.theme-ocean .kit-site { color: #0891b2; }
+
+        .kit-card.theme-forest {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border-color: #10b981;
+        }
+        .kit-card.theme-forest .kit-name,
+        .kit-card.theme-forest .kit-stat-value { color: #047857; }
+        .kit-card.theme-forest .kit-avatar { background: linear-gradient(135deg, #10b981, #059669); border-color: #10b981; }
+        .kit-card.theme-forest .kit-avatar-ring { border-color: #34d399; }
+        .kit-card.theme-forest .kit-site { color: #059669; }
+
+        .kit-card.theme-rose {
+            background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+            border-color: #ec4899;
+        }
+        .kit-card.theme-rose .kit-name,
+        .kit-card.theme-rose .kit-stat-value { color: #be185d; }
+        .kit-card.theme-rose .kit-avatar { background: linear-gradient(135deg, #ec4899, #f43f5e); border-color: #ec4899; }
+        .kit-card.theme-rose .kit-avatar-ring { border-color: #f472b6; }
+        .kit-card.theme-rose .kit-site { color: #db2777; }
     </style>
 </body>
 </html>

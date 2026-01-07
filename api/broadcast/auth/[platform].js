@@ -156,12 +156,13 @@ async function handleInstagram(req, res) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent('Facebook App not configured'));
         }
 
-        // Scopes for publishing + DM automation
+        // Scopes for publishing + DM automation + insights
         const scopes = [
             'instagram_basic',
             'instagram_content_publish',
             'instagram_manage_comments',    // For reading comments (DM automation)
             'instagram_manage_messages',    // For sending DMs (DM automation)
+            'instagram_manage_insights',    // For audience analytics & metrics
             'pages_show_list',
             'pages_read_engagement',
             'pages_manage_metadata',
