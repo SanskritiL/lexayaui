@@ -592,7 +592,8 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching...';
 
             try {
-                const response = await fetch('/api/broadcast/instagram-insights', {
+                const response = await fetch('/api/broadcast/media-kit?action=insights', {
+                    method: 'POST',
                     headers: { 'Authorization': `Bearer ${currentSession.access_token}` }
                 });
 
