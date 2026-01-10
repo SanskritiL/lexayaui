@@ -1,11 +1,17 @@
-// Publish to All Platforms API
-// Handles publishing a post to multiple platforms
+// Publish to All Platforms API (Consolidated)
+// Handles publishing posts AND video uploads to R2
+// ?action=upload - Get presigned URL for R2 upload (POST) or delete video (DELETE)
+// No action param - Publish post to platforms (POST)
 
 const { createClient } = require('@supabase/supabase-js');
-const { S3Client, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
-// R2 client for cleanup
+// R2 Configuration
 const R2_ACCOUNT_ID = '20ed24d883ada4e35ecd4e48ae90ab27';
+const R2_BUCKET = process.env.R2_BUCKET_NAME || 'lexaya-videos';
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-d8491ccfbb3a45e2bb038d9ae60a1957.r2.dev';
+
 const r2Client = new S3Client({
     region: 'auto',
     endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -17,14 +23,29 @@ const r2Client = new S3Client({
 
 module.exports = async function handler(req, res) {
     console.log('========== PUBLISH API START ==========');
+    console.log('[REQUEST] Method:', req.method, 'Action:', req.query.action);
+
+    // CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+    }
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // Handle upload actions (video upload/delete to R2)
+    if (req.query.action === 'upload') {
+        return handleUploadAction(req, res, supabase);
+    }
+
+    // Regular publish flow
     console.log('[ENV] SUPABASE_URL:', SUPABASE_URL ? 'SET' : 'NOT SET');
     console.log('[ENV] SUPABASE_SERVICE_KEY:', SUPABASE_SERVICE_KEY ? 'SET' : 'NOT SET');
-    console.log('[REQUEST] Method:', req.method);
     console.log('[REQUEST] Body:', JSON.stringify(req.body));
 
     if (req.method !== 'POST') {
@@ -1360,4 +1381,106 @@ async function refreshYouTubeToken(refreshToken) {
         console.error('[YOUTUBE] Token refresh failed:', error.message);
         return { error: error.message };
     }
+}
+
+// ============== VIDEO UPLOAD TO R2 ==============
+// Handles presigned URL generation and video deletion
+async function handleUploadAction(req, res, supabase) {
+    console.log('[UPLOAD] Handling upload action, method:', req.method);
+
+    // Check R2 configuration
+    if (!process.env.R2_ACCESS_KEY_ID || !process.env.R2_SECRET_ACCESS_KEY) {
+        console.error('[UPLOAD] R2 credentials missing');
+        return res.status(500).json({ error: 'R2 credentials not configured' });
+    }
+
+    // Verify auth
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Missing authorization' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+        console.log('[UPLOAD] Token verification failed:', authError?.message);
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+    console.log('[UPLOAD] User verified:', user.id);
+
+    // DELETE - Remove video from R2
+    if (req.method === 'DELETE') {
+        try {
+            const { key } = req.body;
+
+            if (!key) {
+                return res.status(400).json({ error: 'Missing key' });
+            }
+
+            // Security: Only allow deleting files in user's folder
+            if (!key.startsWith(`${user.id}/`)) {
+                return res.status(403).json({ error: 'Not authorized to delete this file' });
+            }
+
+            console.log('[UPLOAD] Deleting:', key);
+
+            await r2Client.send(new DeleteObjectCommand({
+                Bucket: R2_BUCKET,
+                Key: key,
+            }));
+
+            console.log('[UPLOAD] Deleted successfully:', key);
+            return res.status(200).json({ success: true, deleted: key });
+
+        } catch (error) {
+            console.error('[UPLOAD] Delete error:', error);
+            return res.status(500).json({ error: error.message });
+        }
+    }
+
+    // POST - Get presigned upload URL
+    if (req.method === 'POST') {
+        console.log('[UPLOAD] Processing upload URL request...');
+        try {
+            const { fileName, contentType } = req.body;
+            console.log('[UPLOAD] fileName:', fileName, 'contentType:', contentType);
+
+            if (!fileName || !contentType) {
+                return res.status(400).json({ error: 'Missing fileName or contentType' });
+            }
+
+            // Generate unique file path
+            const timestamp = Date.now();
+            const safeName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const key = `${user.id}/${timestamp}_${safeName}`;
+
+            console.log('[UPLOAD] Generated key:', key);
+
+            // Generate presigned URL for direct upload
+            const command = new PutObjectCommand({
+                Bucket: R2_BUCKET,
+                Key: key,
+                ContentType: contentType,
+            });
+
+            const uploadUrl = await getSignedUrl(r2Client, command, { expiresIn: 3600 });
+            console.log('[UPLOAD] Signed URL generated');
+
+            const publicUrl = `${R2_PUBLIC_URL}/${key}`;
+
+            return res.status(200).json({
+                uploadUrl,
+                key,
+                publicUrl,
+                bucket: R2_BUCKET
+            });
+
+        } catch (error) {
+            console.error('[UPLOAD] Error:', error.message);
+            return res.status(500).json({ error: error.message });
+        }
+    }
+
+    return res.status(405).json({ error: 'Method not allowed for upload action' });
 }

@@ -704,7 +704,7 @@
                         const { data: { session } } = await supabaseClient.auth.getSession();
 
                         // Init upload
-                        const initRes = await fetch('/api/broadcast/linkedin/init-video', {
+                        const initRes = await fetch('/api/broadcast/init-video?platform=linkedin', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -752,7 +752,7 @@
                         const { data: { session } } = await supabaseClient.auth.getSession();
 
                         // Init upload
-                        const initRes = await fetch('/api/broadcast/tiktok/init-video', {
+                        const initRes = await fetch('/api/broadcast/init-video?platform=tiktok', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -806,7 +806,7 @@
                     const { data: { session } } = await supabaseClient.auth.getSession();
 
                     // Get presigned upload URL from our API
-                    const presignRes = await fetch('/api/upload-video', {
+                    const presignRes = await fetch('/api/broadcast/publish?action=upload', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

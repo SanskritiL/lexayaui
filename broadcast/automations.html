@@ -530,7 +530,7 @@
 
         async function toggleRule(ruleId, newState) {
             try {
-                const response = await fetch(`/api/broadcast/automation/rules/${ruleId}`, {
+                const response = await fetch(`/api/broadcast/automation/rules?id=${ruleId}`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${currentSession.access_token}`,
@@ -560,7 +560,7 @@
             }
 
             try {
-                const response = await fetch(`/api/broadcast/automation/rules/${ruleId}`, {
+                const response = await fetch(`/api/broadcast/automation/rules?id=${ruleId}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${currentSession.access_token}`

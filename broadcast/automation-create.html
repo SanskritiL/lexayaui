@@ -579,7 +579,7 @@
 
         async function loadExistingRule(ruleId) {
             try {
-                const response = await fetch(`/api/broadcast/automation/rules/${ruleId}`, {
+                const response = await fetch(`/api/broadcast/automation/rules?id=${ruleId}`, {
                     headers: {
                         'Authorization': `Bearer ${currentSession.access_token}`
                     }
@@ -676,7 +676,7 @@
                 };
 
                 const url = editingRuleId
-                    ? `/api/broadcast/automation/rules/${editingRuleId}`
+                    ? `/api/broadcast/automation/rules?id=${editingRuleId}`
                     : '/api/broadcast/automation/rules';
 
                 const method = editingRuleId ? 'PUT' : 'POST';
