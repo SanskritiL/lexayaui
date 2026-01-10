@@ -8,7 +8,7 @@
     "api/broadcast/publish.js": {
       "maxDuration": 60
     },
-    "api/broadcast/tiktok/init-video.js": {
+    "api/broadcast/init-video.js": {
       "maxDuration": 60
     }
   },
