@@ -3,85 +3,462 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Posting Calendar - Lexaya</title>
+    <title>Posting Calendar - Yak Station</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --yak-pink: #f8d7da;
+            --yak-cream: #fff5f5;
+            --yak-warm: #e8b4b8;
+            --yak-dark: #6d4c5c;
+            --yak-accent: #d4838f;
+            --yak-success: #7cb87c;
+            --yak-streak: #f59e0b;
+        }
+
+        body {
+            background: linear-gradient(135deg, #fff9f9 0%, #fff5f5 50%, #fef0f0 100%);
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* Header */
+        .yak-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .yak-header a {
+            color: var(--yak-accent);
+            text-decoration: none;
+            font-size: 1.5rem;
+            transition: transform 0.2s;
+        }
+
+        .yak-header a:hover {
+            transform: translateX(-3px);
+        }
+
+        .yak-header h1 {
+            margin: 0;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1.25rem;
+            color: var(--yak-dark);
+        }
+
+        /* Yak Mascot Banner */
+        .yak-banner {
+            background: linear-gradient(135deg, #fff 0%, #fff9f9 100%);
+            border-radius: 20px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 2px solid var(--yak-pink);
+            box-shadow: 0 4px 20px rgba(212, 131, 143, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .yak-banner::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 150px;
+            height: 150px;
+            background: radial-gradient(circle, var(--yak-pink) 0%, transparent 70%);
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .yak-banner-img {
+            width: 70px;
+            height: 70px;
+            object-fit: contain;
+            flex-shrink: 0;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+            transition: transform 0.3s ease;
+        }
+
+        .yak-banner-img:hover {
+            transform: scale(1.05) rotate(-3deg);
+        }
+
+        .yak-banner-content {
+            flex: 1;
+        }
+
+        .yak-banner-message {
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--yak-dark);
+            margin: 0 0 0.25rem 0;
+        }
+
+        .yak-banner-sub {
+            font-size: 0.8rem;
+            color: #8b7082;
+            margin: 0;
+        }
+
+        /* Stats Cards */
+        .stats-row {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .stat-card {
+            flex: 1;
+            border-radius: 16px;
+            padding: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            border: 2px solid transparent;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-card.streak {
+            background: linear-gradient(135deg, #fff5eb, #fed7aa);
+            border-color: #fdba74;
+        }
+
+        .stat-card.total {
+            background: linear-gradient(135deg, var(--yak-cream), var(--yak-pink));
+            border-color: var(--yak-warm);
+        }
+
+        .stat-icon {
+            font-size: 1.75rem;
+            line-height: 1;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            font-family: 'Quicksand', sans-serif;
+        }
+
+        .stat-card.streak .stat-value { color: #c2410c; }
+        .stat-card.total .stat-value { color: var(--yak-accent); }
+
+        .stat-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-card.streak .stat-label { color: #9a3412; }
+        .stat-card.total .stat-label { color: var(--yak-dark); }
+
+        /* Calendar Container */
+        .calendar-container {
+            background: white;
+            border-radius: 20px;
+            padding: 1rem;
+            border: 2px solid var(--yak-pink);
+            box-shadow: 0 4px 20px rgba(212, 131, 143, 0.1);
+        }
+
+        /* Month Navigation */
+        .month-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+
+        .month-nav button {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--yak-pink);
+            background: white;
+            color: var(--yak-accent);
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .month-nav button:hover {
+            background: var(--yak-cream);
+            border-color: var(--yak-accent);
+            transform: scale(1.05);
+        }
+
+        .month-nav h2 {
+            margin: 0;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--yak-dark);
+        }
+
+        /* Day Headers */
+        .day-headers {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            margin-bottom: 6px;
+        }
+
+        .day-header {
+            text-align: center;
+            font-size: 0.7rem;
+            color: var(--yak-accent);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        /* Calendar Days */
+        .calendar-days {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            cursor: default;
+            position: relative;
+        }
+
+        .calendar-day.empty {
+            background: transparent;
+        }
+
+        .calendar-day.normal {
+            background: #fafafa;
+            color: #64748b;
+        }
+
+        .calendar-day.normal:hover {
+            background: var(--yak-cream);
+        }
+
+        .calendar-day.posted {
+            background: linear-gradient(135deg, var(--yak-success), #6aa66a);
+            color: white;
+            box-shadow: 0 2px 8px rgba(124, 184, 124, 0.4);
+        }
+
+        .calendar-day.posted::after {
+            content: '✓';
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            font-size: 0.5rem;
+        }
+
+        .calendar-day.today {
+            background: linear-gradient(135deg, var(--yak-accent), #c77080);
+            color: white;
+            box-shadow: 0 2px 10px rgba(212, 131, 143, 0.5);
+            font-weight: 700;
+        }
+
+        .calendar-day.today.posted {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            box-shadow: 0 2px 10px rgba(245, 158, 11, 0.5);
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-top: 0.75rem;
+            font-size: 0.75rem;
+            color: #8b7082;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 5px;
+        }
+
+        .legend-dot.posted {
+            background: linear-gradient(135deg, var(--yak-success), #6aa66a);
+        }
+
+        .legend-dot.today {
+            background: linear-gradient(135deg, var(--yak-accent), #c77080);
+        }
+
+        /* CTA Button */
+        .cta-button {
+            display: block;
+            width: 100%;
+            margin-top: 1rem;
+            padding: 0.875rem;
+            background: linear-gradient(135deg, var(--yak-accent), #c77080);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(212, 131, 143, 0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 131, 143, 0.4);
+        }
+
+        /* Yak bounce animation */
+        @keyframes yak-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .yak-bouncing {
+            animation: yak-bounce 0.5s ease-in-out;
+        }
+
+        /* Streak celebration */
+        @keyframes streak-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 20px 5px rgba(245, 158, 11, 0.2); }
+        }
+
+        .stat-card.streak.celebrating {
+            animation: streak-glow 1.5s ease-in-out infinite;
+        }
+
+        /* Auth required */
+        #auth-required {
+            text-align: center;
+            padding: 3rem 1rem;
+        }
+
+        #auth-required h2 {
+            font-family: 'Quicksand', sans-serif;
+            color: var(--yak-dark);
+        }
+
+        #auth-required p {
+            color: #8b7082;
+        }
+    </style>
 </head>
 <body>
-    <div class="container" style="max-width: 500px; padding: 1rem;">
-        <!-- Compact Header -->
-        <header style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-            <a href="/broadcast/" style="color: #64748b; text-decoration: none; font-size: 1.5rem;">←</a>
-            <div>
-                <h1 style="margin: 0; font-size: 1.25rem; color: #1e293b;">Your Posting Calendar</h1>
-            </div>
+    <div class="container">
+        <!-- Header -->
+        <header class="yak-header">
+            <a href="/broadcast/">←</a>
+            <h1>Your Posting Calendar</h1>
         </header>
 
         <!-- Auth Check -->
-        <div id="auth-required" style="display: none; text-align: center; padding: 2rem;">
+        <div id="auth-required" style="display: none;">
+            <img src="/resources/images/yak-curious.png" alt="Yak" style="width: 100px; margin-bottom: 1rem;">
             <h2>Login Required</h2>
-            <p style="color: #64748b;">Please login to view your calendar</p>
-            <a href="/login.html?redirect=/broadcast/calendar.html" class="btn btn-primary">Login</a>
+            <p>Please login to view your calendar</p>
+            <a href="/login.html?redirect=/broadcast/calendar.html" class="cta-button" style="max-width: 200px; margin: 1rem auto;">Login</a>
         </div>
 
         <!-- Main Content -->
         <main id="calendar-main" style="display: none;">
-            <!-- Stats Row - Just streak and total -->
-            <div style="display: flex; gap: 0.75rem; margin-bottom: 0.75rem;">
-                <div style="flex: 1; background: linear-gradient(135deg, #fff7ed, #fed7aa); border-radius: 12px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 1.5rem;">🔥</span>
-                    <div>
-                        <div id="current-streak" style="font-size: 1.25rem; font-weight: 800; color: #c2410c;">0</div>
-                        <div style="font-size: 0.7rem; color: #9a3412;">Day Streak</div>
-                    </div>
-                </div>
-                <div style="flex: 1; background: linear-gradient(135deg, #f0fdf4, #bbf7d0); border-radius: 12px; padding: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                    <span style="font-size: 1.5rem;">📊</span>
-                    <div>
-                        <div id="total-posts" style="font-size: 1.25rem; font-weight: 800; color: #15803d;">0</div>
-                        <div style="font-size: 0.7rem; color: #166534;">Total Posts</div>
-                    </div>
+            <!-- Yak Mascot Banner -->
+            <div class="yak-banner">
+                <img src="/resources/images/yak-sleepy.png" alt="Yak" class="yak-banner-img" id="yak-img">
+                <div class="yak-banner-content">
+                    <p class="yak-banner-message" id="yak-message">Loading your stats...</p>
+                    <p class="yak-banner-sub" id="yak-sub">Let's see how you're doing!</p>
                 </div>
             </div>
 
-            <!-- Motivation Banner -->
-            <div id="motivation-banner" style="background: linear-gradient(135deg, #818cf8, #a78bfa); color: white; padding: 0.6rem 1rem; border-radius: 10px; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
-                <span id="motivation-emoji">💡</span>
-                <span id="motivation-text">Loading...</span>
+            <!-- Stats Row -->
+            <div class="stats-row">
+                <div class="stat-card streak" id="streak-card">
+                    <span class="stat-icon">🔥</span>
+                    <div>
+                        <div class="stat-value" id="current-streak">0</div>
+                        <div class="stat-label">Day Streak</div>
+                    </div>
+                </div>
+                <div class="stat-card total">
+                    <span class="stat-icon">📸</span>
+                    <div>
+                        <div class="stat-value" id="total-posts">0</div>
+                        <div class="stat-label">Total Posts</div>
+                    </div>
+                </div>
             </div>
 
             <!-- Calendar -->
-            <div style="background: white; border-radius: 12px; padding: 0.75rem; box-shadow: 0 2px 10px rgba(0,0,0,0.06);">
-                <!-- Month Navigation -->
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <button id="prev-month" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; background: white; cursor: pointer;">←</button>
-                    <h2 id="month-year" style="margin: 0; font-size: 1rem; font-weight: 600;"></h2>
-                    <button id="next-month" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e2e8f0; background: white; cursor: pointer;">→</button>
+            <div class="calendar-container">
+                <div class="month-nav">
+                    <button id="prev-month">←</button>
+                    <h2 id="month-year"></h2>
+                    <button id="next-month">→</button>
                 </div>
 
-                <!-- Day Headers -->
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 4px;">
-                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">S</div>
-                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">M</div>
-                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">T</div>
-                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">W</div>
-                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">T</div>
-                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">F</div>
-                    <div style="text-align: center; font-size: 0.65rem; color: #94a3b8; font-weight: 600;">S</div>
+                <div class="day-headers">
+                    <div class="day-header">S</div>
+                    <div class="day-header">M</div>
+                    <div class="day-header">T</div>
+                    <div class="day-header">W</div>
+                    <div class="day-header">T</div>
+                    <div class="day-header">F</div>
+                    <div class="day-header">S</div>
                 </div>
 
-                <!-- Calendar Days -->
-                <div id="calendar-days" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;"></div>
+                <div class="calendar-days" id="calendar-days"></div>
+
+                <div class="legend">
+                    <span class="legend-item"><span class="legend-dot posted"></span>Posted</span>
+                    <span class="legend-item"><span class="legend-dot today"></span>Today</span>
+                </div>
             </div>
 
-            <!-- Simple Legend -->
-            <div style="display: flex; justify-content: center; gap: 1.5rem; margin-top: 0.5rem; font-size: 0.75rem; color: #64748b;">
-                <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(135deg, #22c55e, #16a34a); vertical-align: middle; margin-right: 4px;"></span>Posted</span>
-                <span><span style="display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: #1e40af; vertical-align: middle; margin-right: 4px;"></span>Today</span>
-            </div>
+            <!-- CTA Button -->
+            <a href="/broadcast/upload.html" class="cta-button">
+                ✨ Create New Post
+            </a>
         </main>
     </div>
 
@@ -95,18 +472,87 @@
         let currentDate = new Date();
         let allPosts = [];
 
-        const MESSAGES = [
-            { emoji: '🚀', text: "Keep that content flowing!" },
-            { emoji: '💪', text: "Consistency is key!" },
-            { emoji: '🌟', text: "Every post counts!" },
-            { emoji: '⚡', text: "Your audience awaits!" },
-            { emoji: '✨', text: "Keep sharing your story!" }
-        ];
+        // Yak messages based on state
+        const yakStates = {
+            newUser: {
+                image: '/resources/images/yak-curious.png',
+                messages: [
+                    { main: "Hey there, new friend!", sub: "Create your first post and start your journey!" },
+                    { main: "Ready to begin?", sub: "Your content adventure starts with one post!" }
+                ]
+            },
+            noStreak: {
+                image: '/resources/images/yak-sleepy.png',
+                messages: [
+                    { main: "Time to wake up that streak!", sub: "Post today to get back on track" },
+                    { main: "I miss seeing you post!", sub: "Let's create something together" }
+                ]
+            },
+            smallStreak: {
+                image: '/resources/images/yak-happy.png',
+                messages: [
+                    { main: "You're building momentum!", sub: "Keep that streak alive!" },
+                    { main: "Nice work! Keep it going!", sub: "Consistency is your superpower" }
+                ]
+            },
+            mediumStreak: {
+                image: '/resources/images/yak-proud.png',
+                messages: [
+                    { main: "You're on fire! 🔥", sub: "Your dedication is paying off!" },
+                    { main: "Look at you go!", sub: "Your audience loves the consistency!" }
+                ]
+            },
+            bigStreak: {
+                image: '/resources/images/yak-happy.png',
+                messages: [
+                    { main: "LEGENDARY! 🏆", sub: "You're a content machine!" },
+                    { main: "Unstoppable!", sub: "This streak is incredible!" }
+                ]
+            },
+            postedToday: {
+                image: '/resources/images/yak-happy.png',
+                messages: [
+                    { main: "You posted today! Amazing!", sub: "Come back tomorrow to keep the streak" },
+                    { main: "Great job today!", sub: "Rest up and see you tomorrow!" }
+                ]
+            }
+        };
 
-        const NEW_USER_MSGS = [
-            { emoji: '👋', text: "Create your first post!" },
-            { emoji: '🎬', text: "Start your journey today!" }
-        ];
+        function updateYakMascot(streak, totalPosts, postedToday) {
+            const yakImg = document.getElementById('yak-img');
+            const yakMessage = document.getElementById('yak-message');
+            const yakSub = document.getElementById('yak-sub');
+            const streakCard = document.getElementById('streak-card');
+
+            let state = 'noStreak';
+
+            if (totalPosts === 0) {
+                state = 'newUser';
+            } else if (postedToday) {
+                state = 'postedToday';
+            } else if (streak === 0) {
+                state = 'noStreak';
+            } else if (streak >= 7) {
+                state = 'bigStreak';
+                streakCard.classList.add('celebrating');
+            } else if (streak >= 3) {
+                state = 'mediumStreak';
+            } else {
+                state = 'smallStreak';
+            }
+
+            const yakState = yakStates[state];
+            const msg = yakState.messages[Math.floor(Math.random() * yakState.messages.length)];
+
+            if (yakImg.src !== yakState.image) {
+                yakImg.src = yakState.image;
+                yakImg.classList.add('yak-bouncing');
+                setTimeout(() => yakImg.classList.remove('yak-bouncing'), 500);
+            }
+
+            yakMessage.textContent = msg.main;
+            yakSub.textContent = msg.sub;
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             let user = null;
@@ -179,23 +625,12 @@
             const streak = calculateStreak();
             document.getElementById('current-streak').textContent = streak;
 
-            // Update motivation
-            const banner = document.getElementById('motivation-banner');
-            let msg;
-            if (allPosts.length === 0) {
-                msg = NEW_USER_MSGS[Math.floor(Math.random() * NEW_USER_MSGS.length)];
-                banner.style.background = 'linear-gradient(135deg, #3b82f6, #1e40af)';
-            } else if (streak >= 7) {
-                msg = { emoji: '🏆', text: `${streak} day streak! Crushing it!` };
-                banner.style.background = 'linear-gradient(135deg, #f97316, #ef4444)';
-            } else if (streak >= 3) {
-                msg = { emoji: '🔥', text: `${streak} days! Keep going!` };
-                banner.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
-            } else {
-                msg = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
-            }
-            document.getElementById('motivation-emoji').textContent = msg.emoji;
-            document.getElementById('motivation-text').textContent = msg.text;
+            // Check if posted today
+            const today = new Date().toDateString();
+            const postedToday = allPosts.some(post => new Date(post.created_at).toDateString() === today);
+
+            // Update yak mascot
+            updateYakMascot(streak, allPosts.length, postedToday);
         }
 
         function calculateStreak() {
@@ -224,7 +659,7 @@
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
 
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
             document.getElementById('month-year').textContent = `${monthNames[month]} ${year}`;
 
             const monthPosts = {};
@@ -242,25 +677,25 @@
             let html = '';
 
             for (let i = 0; i < firstDay; i++) {
-                html += '<div style="aspect-ratio: 1;"></div>';
+                html += '<div class="calendar-day empty"></div>';
             }
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
                 const hasPost = monthPosts[day];
 
-                let bg = '#f8fafc';
-                let color = '#475569';
-                if (hasPost) {
-                    bg = 'linear-gradient(135deg, #22c55e, #16a34a)';
-                    color = 'white';
-                }
-                if (isToday) {
-                    bg = '#1e40af';
-                    color = 'white';
+                let classes = 'calendar-day';
+                if (hasPost && isToday) {
+                    classes += ' today posted';
+                } else if (isToday) {
+                    classes += ' today';
+                } else if (hasPost) {
+                    classes += ' posted';
+                } else {
+                    classes += ' normal';
                 }
 
-                html += `<div style="aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 0.8rem; font-weight: 500; background: ${bg}; color: ${color};">${day}</div>`;
+                html += `<div class="${classes}">${day}</div>`;
             }
 
             document.getElementById('calendar-days').innerHTML = html;
