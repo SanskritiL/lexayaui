@@ -3,13 +3,348 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Post - Broadcast</title>
+    <title>Create Post - Yak Station</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* Yak Theme Overrides */
+        :root {
+            --yak-pink: #f8d7da;
+            --yak-cream: #fff5f5;
+            --yak-warm: #e8b4b8;
+            --yak-dark: #6d4c5c;
+            --yak-accent: #d4838f;
+            --yak-success: #7cb87c;
+            --yak-bg: linear-gradient(135deg, #fff9f9 0%, #fff5f5 50%, #fef0f0 100%);
+        }
+
+        body {
+            background: var(--yak-bg);
+            min-height: 100vh;
+        }
+
+        /* Yak Mascot Section */
+        .yak-mascot-section {
+            background: linear-gradient(135deg, #fff 0%, #fff9f9 100%);
+            border-radius: 20px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            border: 2px solid var(--yak-pink);
+            box-shadow: 0 4px 20px rgba(212, 131, 143, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .yak-mascot-section::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, var(--yak-pink) 0%, transparent 70%);
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .yak-image-container {
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .yak-image {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+        }
+
+        .yak-image:hover {
+            transform: scale(1.05) rotate(-3deg);
+        }
+
+        .yak-speech {
+            flex: 1;
+            position: relative;
+        }
+
+        .yak-speech-bubble {
+            background: white;
+            padding: 1rem 1.25rem;
+            border-radius: 16px;
+            border: 2px solid var(--yak-warm);
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .yak-speech-bubble::before {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 8px solid transparent;
+            border-right-color: var(--yak-warm);
+        }
+
+        .yak-speech-bubble::after {
+            content: '';
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 6px solid transparent;
+            border-right-color: white;
+        }
+
+        .yak-message {
+            font-family: 'Quicksand', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--yak-dark);
+            margin: 0 0 0.25rem 0;
+            line-height: 1.4;
+        }
+
+        .yak-submessage {
+            font-size: 0.85rem;
+            color: #8b7082;
+            margin: 0;
+        }
+
+        /* Progress Dots */
+        .yak-progress {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .progress-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--yak-pink);
+            transition: all 0.3s ease;
+        }
+
+        .progress-dot.active {
+            background: var(--yak-accent);
+            transform: scale(1.2);
+        }
+
+        .progress-dot.completed {
+            background: var(--yak-success);
+        }
+
+        /* Themed Header */
+        .header {
+            text-align: center;
+            padding: 1.5rem 0;
+        }
+
+        .header h1 {
+            font-family: 'Quicksand', sans-serif;
+            color: var(--yak-dark);
+            font-size: 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .header .tagline {
+            color: var(--yak-accent);
+            font-weight: 500;
+        }
+
+        /* Themed Sections */
+        .section {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 2px solid #fce4e6;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .section:hover {
+            border-color: var(--yak-warm);
+            box-shadow: 0 4px 20px rgba(212, 131, 143, 0.1);
+        }
+
+        .section.completed {
+            border-color: var(--yak-success);
+            background: linear-gradient(135deg, #fff 0%, #f0fff0 100%);
+        }
+
+        .section h2 {
+            font-family: 'Quicksand', sans-serif;
+            color: var(--yak-dark);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section h2 .step-icon {
+            width: 28px;
+            height: 28px;
+            background: var(--yak-pink);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            color: var(--yak-dark);
+            transition: all 0.3s ease;
+        }
+
+        .section.completed h2 .step-icon {
+            background: var(--yak-success);
+            color: white;
+        }
+
+        /* Themed Upload Zone */
+        .upload-zone {
+            border: 3px dashed var(--yak-warm);
+            border-radius: 16px;
+            padding: 2.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #fff9f9 0%, #fff 100%);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--yak-accent);
+            background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
+            transform: translateY(-2px);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--yak-accent);
+            background: var(--yak-cream);
+            transform: scale(1.01);
+        }
+
+        .upload-zone .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .upload-zone h3 {
+            font-family: 'Quicksand', sans-serif;
+            color: var(--yak-dark);
+            margin-bottom: 0.25rem;
+        }
+
+        /* Themed Platform Cards */
+        .platforms-select > div {
+            border-radius: 12px;
+            border: 2px solid #fce4e6;
+            transition: all 0.3s ease;
+        }
+
+        .platforms-select > div:hover {
+            border-color: var(--yak-warm);
+            background: var(--yak-cream);
+        }
+
+        .platforms-select input[type="checkbox"] {
+            accent-color: var(--yak-accent);
+        }
+
+        /* Themed Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--yak-accent) 0%, #c77080 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 0.875rem 1.5rem;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(212, 131, 143, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(212, 131, 143, 0.4);
+        }
+
+        .btn-primary:disabled {
+            background: #e5e5e5;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            border: 2px solid var(--yak-warm);
+            color: var(--yak-dark);
+            border-radius: 12px;
+            font-family: 'Quicksand', sans-serif;
+            font-weight: 600;
+        }
+
+        .btn-secondary:hover {
+            background: var(--yak-cream);
+        }
+
+        /* Confetti animation for success */
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            background: var(--yak-accent);
+            animation: confetti-fall 3s ease-out forwards;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Yak bounce animation */
+        @keyframes yak-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .yak-image.bouncing {
+            animation: yak-bounce 0.6s ease-in-out;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 640px) {
+            .yak-mascot-section {
+                flex-direction: column;
+                text-align: center;
+                padding: 1.25rem;
+            }
+
+            .yak-speech-bubble::before,
+            .yak-speech-bubble::after {
+                display: none;
+            }
+
+            .yak-image {
+                width: 80px;
+                height: 80px;
+            }
+
+            .yak-progress {
+                justify-content: center;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -17,8 +352,27 @@
         <header class="header">
             <a href="./" class="logo">← Back to Dashboard</a>
             <h1>Create New Post</h1>
-            <p class="tagline">Upload once, publish everywhere</p>
+            <p class="tagline">Let's make something awesome together!</p>
         </header>
+
+        <!-- Yak Mascot Section -->
+        <div class="yak-mascot-section" id="yak-mascot">
+            <div class="yak-image-container">
+                <img src="/resources/images/yak-sleepy.png" alt="Yak Mascot" class="yak-image" id="yak-img">
+            </div>
+            <div class="yak-speech">
+                <div class="yak-speech-bubble">
+                    <p class="yak-message" id="yak-message">Hey there! Ready to create something amazing?</p>
+                    <p class="yak-submessage" id="yak-submessage">Start by uploading your media below</p>
+                </div>
+                <div class="yak-progress">
+                    <div class="progress-dot" id="dot-media"></div>
+                    <div class="progress-dot" id="dot-caption"></div>
+                    <div class="progress-dot" id="dot-platforms"></div>
+                    <div class="progress-dot" id="dot-ready"></div>
+                </div>
+            </div>
+        </div>
 
         <!-- Auth Check -->
         <div id="auth-required" class="auth-required" style="display: none;">
@@ -33,8 +387,8 @@
         <main id="upload-form" style="display: none;">
             <form id="post-form" autocomplete="off">
                 <!-- Step 1: Media Upload (Video or Photo) -->
-                <section class="section">
-                    <h2>1. Upload Media <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn/Threads)</span></h2>
+                <section class="section" id="section-media">
+                    <h2><span class="step-icon">1</span> Upload Media <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn/Threads)</span></h2>
                     <div class="upload-zone" id="upload-zone">
                         <div class="upload-icon">📷</div>
                         <h3>Drop your photo or video here</h3>
@@ -66,8 +420,8 @@
                 </section>
 
                 <!-- Step 2: Caption -->
-                <section class="section">
-                    <h2>2. Add Caption</h2>
+                <section class="section" id="section-caption">
+                    <h2><span class="step-icon">2</span> Add Caption</h2>
                     <div class="form-group">
                         <label for="caption">Caption (will be used across all platforms)</label>
                         <textarea id="caption" name="caption" placeholder="Write your caption here... Include hashtags at the end!"></textarea>
@@ -78,8 +432,8 @@
                 </section>
 
                 <!-- Step 3: Select Platforms -->
-                <section class="section">
-                    <h2>3. Select Platforms</h2>
+                <section class="section" id="section-platforms">
+                    <h2><span class="step-icon">3</span> Select Platforms</h2>
                     <div class="platforms-select" id="platforms-select" style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <div data-platform="tiktok" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
                             <input type="checkbox" id="platform-tiktok" name="platforms" value="tiktok" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
@@ -128,8 +482,8 @@
                 </section>
 
                 <!-- Step 4: Schedule (Optional) -->
-                <section class="section">
-                    <h2>4. Schedule (Optional)</h2>
+                <section class="section" id="section-schedule">
+                    <h2><span class="step-icon">4</span> Schedule (Optional)</h2>
                     <div class="form-group">
                         <label for="schedule-toggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                             <input type="checkbox" id="schedule-toggle" style="width: auto;">
@@ -190,6 +544,116 @@
         let videoThumbnailBlob = null;
         const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
 
+        // Yak mascot state management
+        const yakMessages = {
+            idle: {
+                image: '/resources/images/yak-sleepy.png',
+                messages: [
+                    { main: "Hey there! Ready to create something amazing?", sub: "Start by uploading your media below" },
+                    { main: "I believe in you! Let's make magic happen", sub: "Drop your video or photo to get started" },
+                    { main: "Your audience is waiting!", sub: "What will you share today?" }
+                ]
+            },
+            mediaUploaded: {
+                image: '/resources/images/yak-happy.png',
+                messages: [
+                    { main: "Ooh nice pick! That looks great!", sub: "Now write a caption that'll stop the scroll" },
+                    { main: "Love it! This is going to be good", sub: "Time to add your caption magic" },
+                    { main: "Perfect choice! You've got great taste", sub: "Let's add a killer caption next" }
+                ]
+            },
+            captionAdded: {
+                image: '/resources/images/yak-proud.png',
+                messages: [
+                    { main: "Your words are fire! Almost there...", sub: "Pick where you want to share this masterpiece" },
+                    { main: "Caption game strong! You're doing amazing", sub: "Select your platforms to continue" },
+                    { main: "Wow, that caption hits different!", sub: "Now let's choose where to post" }
+                ]
+            },
+            platformsSelected: {
+                image: '/resources/images/yak-happy.png',
+                messages: [
+                    { main: "You're all set! Hit that publish button!", sub: "Your content is about to go live!" },
+                    { main: "Let's gooo! Ready to share with the world?", sub: "One click and you're live everywhere" },
+                    { main: "This is it! Time to shine!", sub: "Publish and watch the magic happen" }
+                ]
+            },
+            confused: {
+                image: '/resources/images/yak-curious.png',
+                messages: [
+                    { main: "Hmm, need some help?", sub: "Connect your accounts first to get started" },
+                    { main: "Something's missing...", sub: "Make sure you have accounts connected" }
+                ]
+            }
+        };
+
+        function updateYakMascot() {
+            const yakImg = document.getElementById('yak-img');
+            const yakMessage = document.getElementById('yak-message');
+            const yakSubmessage = document.getElementById('yak-submessage');
+
+            // Determine current state
+            const hasMedia = !!selectedFile;
+            const hasCaption = document.getElementById('caption')?.value?.trim()?.length > 10;
+            const selectedPlatforms = document.querySelectorAll('input[name="platforms"]:checked');
+            const hasPlatforms = selectedPlatforms.length > 0;
+            const hasConnectedAccounts = connectedAccounts.length > 0;
+
+            // Update progress dots
+            document.getElementById('dot-media')?.classList.toggle('completed', hasMedia);
+            document.getElementById('dot-media')?.classList.toggle('active', !hasMedia);
+            document.getElementById('dot-caption')?.classList.toggle('completed', hasCaption);
+            document.getElementById('dot-caption')?.classList.toggle('active', hasMedia && !hasCaption);
+            document.getElementById('dot-platforms')?.classList.toggle('completed', hasPlatforms);
+            document.getElementById('dot-platforms')?.classList.toggle('active', hasCaption && !hasPlatforms);
+            document.getElementById('dot-ready')?.classList.toggle('completed', hasMedia && hasCaption && hasPlatforms);
+            document.getElementById('dot-ready')?.classList.toggle('active', hasPlatforms && hasMedia && hasCaption);
+
+            // Update section completion states
+            document.getElementById('section-media')?.classList.toggle('completed', hasMedia);
+            document.getElementById('section-caption')?.classList.toggle('completed', hasCaption);
+            document.getElementById('section-platforms')?.classList.toggle('completed', hasPlatforms);
+
+            let state = 'idle';
+            if (!hasConnectedAccounts) {
+                state = 'confused';
+            } else if (hasPlatforms && (hasMedia || hasCaption)) {
+                state = 'platformsSelected';
+            } else if (hasCaption) {
+                state = 'captionAdded';
+            } else if (hasMedia) {
+                state = 'mediaUploaded';
+            }
+
+            const yakState = yakMessages[state];
+            const randomMsg = yakState.messages[Math.floor(Math.random() * yakState.messages.length)];
+
+            // Only update if changed to avoid flickering
+            if (yakImg.src !== yakState.image) {
+                yakImg.src = yakState.image;
+                yakImg.classList.add('bouncing');
+                setTimeout(() => yakImg.classList.remove('bouncing'), 600);
+            }
+
+            yakMessage.textContent = randomMsg.main;
+            yakSubmessage.textContent = randomMsg.sub;
+        }
+
+        // Confetti celebration function
+        function launchConfetti() {
+            const colors = ['#d4838f', '#f8d7da', '#7cb87c', '#e8b4b8', '#fff5f5'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 4000);
+            }
+        }
+
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -230,6 +694,7 @@
 
             await loadConnectedAccounts();
             setupEventListeners();
+            updateYakMascot();
             console.log('Setup complete, ready to post!');
         });
 
@@ -405,6 +870,7 @@
             });
 
             updatePlatformCheckboxes();
+            updateYakMascot();
         }
 
         function setupFormEventListeners() {
@@ -414,6 +880,7 @@
             caption.addEventListener('input', () => {
                 charCount.textContent = caption.value.length;
                 updatePublishButton();
+                updateYakMascot();
             });
 
             // Platform selection - listen on checkboxes directly
@@ -421,6 +888,7 @@
                 checkbox.addEventListener('change', () => {
                     console.log('Platform checkbox changed:', checkbox.value, checkbox.checked);
                     updatePublishButton();
+                    updateYakMascot();
                 });
             });
 
@@ -512,6 +980,7 @@
             }
 
             updatePlatformCheckboxes();
+            updateYakMascot();
         }
 
         // Generate thumbnail from video using canvas
@@ -1094,6 +1563,7 @@
                 modalIcon.className = 'modal-icon success';
                 modalTitle.textContent = 'Published successfully!';
                 modalSubtitle.textContent = `Posted to ${successCount} platform${successCount > 1 ? 's' : ''}`;
+                launchConfetti(); // Celebrate!
             } else if (overallStatus === 'partial') {
                 modalIcon.className = 'modal-icon partial';
                 modalTitle.textContent = 'Partially published';
@@ -1335,13 +1805,14 @@
             backdrop-filter: blur(4px);
         }
         .modal-content.publishing-modal {
-            background: white;
+            background: linear-gradient(135deg, #fff 0%, #fff9f9 100%);
             padding: 2rem;
-            border-radius: 16px;
+            border-radius: 20px;
             max-width: 420px;
             width: 90%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(212, 131, 143, 0.3);
             animation: modalSlideIn 0.3s ease;
+            border: 2px solid var(--yak-pink, #f8d7da);
         }
         @keyframes modalSlideIn {
             from { opacity: 0; transform: translateY(-20px) scale(0.95); }
@@ -1362,8 +1833,8 @@
         .modal-icon .spinner {
             width: 50px;
             height: 50px;
-            border: 4px solid #e5e7eb;
-            border-top-color: #1e40af;
+            border: 4px solid var(--yak-pink, #f8d7da);
+            border-top-color: var(--yak-accent, #d4838f);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -1371,13 +1842,13 @@
             to { transform: rotate(360deg); }
         }
         .modal-icon.success {
-            background: #dcfce7;
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
             border-radius: 50%;
+            border: 3px solid #7cb87c;
         }
         .modal-icon.success::after {
-            content: '✓';
+            content: '🎉';
             font-size: 2rem;
-            color: #16a34a;
         }
         .modal-icon.partial {
             background: #fef3c7;
@@ -1421,11 +1892,11 @@
             transition: all 0.3s ease;
         }
         .progress-item.publishing {
-            border-color: #1e40af;
-            background: #eff6ff;
+            border-color: var(--yak-accent, #d4838f);
+            background: var(--yak-cream, #fff5f5);
         }
         .progress-item.success {
-            border-color: #16a34a;
+            border-color: var(--yak-success, #7cb87c);
             background: #f0fdf4;
         }
         .progress-item.failed {
