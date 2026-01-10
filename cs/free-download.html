@@ -321,7 +321,7 @@
             // Fetch download URL from API
             try {
                 console.log('[Free Download] Fetching download URL from API...');
-                const response = await fetch(`/api/free-download?resource=${resource}`, {
+                const response = await fetch(`/api/download?resource=${resource}`, {
                     headers: { 'Authorization': `Bearer ${session.access_token}` }
                 });
 

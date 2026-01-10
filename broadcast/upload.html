@@ -51,16 +51,6 @@
                             <p id="video-info" style="color: var(--text-light); font-size: 0.9rem; margin: 0;"></p>
                             <button type="button" id="remove-media" class="btn btn-secondary btn-small">Remove</button>
                         </div>
-                        <!-- Hook Analyzer Button -->
-                        <div id="hook-analyzer-container" style="margin-top: 1rem;">
-                            <button type="button" id="analyze-hook-btn" class="btn btn-secondary" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                                Analyze Hook
-                            </button>
-                            <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem; text-align: center;">
-                                Get AI-powered suggestions to make your hook more viral
-                            </p>
-                        </div>
                     </div>
                     <!-- Image Preview -->
                     <div id="image-preview-container" style="display: none; margin-top: 1rem;">
@@ -185,65 +175,6 @@
             </div>
         </div>
 
-        <!-- Hook Analysis Modal -->
-        <div id="hook-analysis-modal" class="modal" style="display: none;">
-            <div class="modal-content hook-analysis-modal">
-                <button type="button" class="modal-close" id="close-analysis-modal">&times;</button>
-
-                <div class="modal-header">
-                    <h2>Hook Analysis</h2>
-                    <p class="modal-subtitle">AI-powered viral potential assessment</p>
-                </div>
-
-                <!-- Viral Score -->
-                <div class="viral-score-container">
-                    <div class="viral-score-ring">
-                        <svg viewBox="0 0 100 100">
-                            <circle class="score-bg" cx="50" cy="50" r="45"/>
-                            <circle class="score-progress" id="score-circle" cx="50" cy="50" r="45"/>
-                        </svg>
-                        <div class="score-value" id="viral-score-value">--</div>
-                    </div>
-                    <p class="score-label" id="score-label">Viral Score</p>
-                </div>
-
-                <!-- Extracted Text -->
-                <div class="analysis-section" id="extracted-text-section">
-                    <h3><i class="fa-solid fa-closed-captioning"></i> Detected Hook Text</h3>
-                    <div class="extracted-text" id="extracted-text-display">
-                        <em>Analyzing...</em>
-                    </div>
-                </div>
-
-                <!-- Strengths & Weaknesses -->
-                <div class="analysis-row">
-                    <div class="analysis-section strengths">
-                        <h3><i class="fa-solid fa-check-circle"></i> What's Working</h3>
-                        <ul id="strengths-list"></ul>
-                    </div>
-                    <div class="analysis-section weaknesses">
-                        <h3><i class="fa-solid fa-exclamation-circle"></i> Could Improve</h3>
-                        <ul id="weaknesses-list"></ul>
-                    </div>
-                </div>
-
-                <!-- Suggestions -->
-                <div class="analysis-section suggestions">
-                    <h3><i class="fa-solid fa-lightbulb"></i> Suggestions</h3>
-                    <ul id="suggestions-list"></ul>
-                </div>
-
-                <!-- Similar Viral Hooks -->
-                <div class="analysis-section similar-hooks" id="similar-hooks-section" style="display: none;">
-                    <h3><i class="fa-solid fa-fire"></i> Similar Viral Hooks</h3>
-                    <div class="similar-hooks-grid" id="similar-hooks-grid"></div>
-                </div>
-
-                <div class="modal-actions" style="display: block; margin-top: 1.5rem;">
-                    <button type="button" class="btn btn-primary" id="close-analysis-btn" style="width: 100%;">Got it</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>

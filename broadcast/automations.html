@@ -424,7 +424,7 @@
 
         async function loadStats() {
             try {
-                const response = await fetch('/api/broadcast/automation/stats', {
+                const response = await fetch('/api/broadcast/automation/rules?stats=true', {
                     headers: {
                         'Authorization': `Bearer ${currentSession.access_token}`
                     }
