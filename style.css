@@ -1270,8 +1270,8 @@ footer {
 }
 
 .yak-hero-img {
-    width: 180px;
-    height: 180px;
+    width: 240px;
+    height: 240px;
     object-fit: contain;
     filter: drop-shadow(0 10px 30px rgba(212, 131, 143, 0.3));
     animation: yak-float 3s ease-in-out infinite;
@@ -1368,8 +1368,8 @@ footer {
     }
 
     .yak-hero-img {
-        width: 140px;
-        height: 140px;
+        width: 180px;
+        height: 180px;
     }
 
     .yak-hero-title {

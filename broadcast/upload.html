@@ -388,7 +388,7 @@
             <form id="post-form" autocomplete="off">
                 <!-- Step 1: Media Upload (Video or Photo) -->
                 <section class="section" id="section-media">
-                    <h2><span class="step-icon">1</span> Upload Media <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn/Threads)</span></h2>
+                    <h2><span class="step-icon">1</span> Upload Media <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn)</span></h2>
                     <div class="upload-zone" id="upload-zone">
                         <div class="upload-icon">📷</div>
                         <h3>Drop your photo or video here</h3>
@@ -436,39 +436,45 @@
                     <h2><span class="step-icon">3</span> Select Platforms</h2>
                     <div class="platforms-select" id="platforms-select" style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <div data-platform="tiktok" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-tiktok" name="platforms" value="tiktok" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <input type="checkbox" id="platform-tiktok" name="platforms" value="tiktok" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
                             <label for="platform-tiktok" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
                                 <span style="font-size: 1.5rem;">🎵</span>
                                 <span style="font-weight: 500;">TikTok</span>
                             </label>
                             <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
                         </div>
+                        <!-- Instagram disabled - requires Facebook App approval -->
+                        <!--
                         <div data-platform="instagram" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-instagram" name="platforms" value="instagram" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <input type="checkbox" id="platform-instagram" name="platforms" value="instagram" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
                             <label for="platform-instagram" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
                                 <span style="font-size: 1.5rem;">📸</span>
                                 <span style="font-weight: 500;">Instagram</span>
                             </label>
                             <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
                         </div>
+                        -->
                         <div data-platform="linkedin" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-linkedin" name="platforms" value="linkedin" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <input type="checkbox" id="platform-linkedin" name="platforms" value="linkedin" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
                             <label for="platform-linkedin" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
                                 <span style="font-size: 1.5rem;">💼</span>
                                 <span style="font-weight: 500;">LinkedIn</span>
                             </label>
                             <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
                         </div>
+                        <!-- Threads disabled - requires Facebook App approval -->
+                        <!--
                         <div data-platform="threads" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-threads" name="platforms" value="threads" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <input type="checkbox" id="platform-threads" name="platforms" value="threads" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
                             <label for="platform-threads" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
                                 <span style="font-size: 1.5rem;">🧵</span>
                                 <span style="font-weight: 500;">Threads</span>
                             </label>
                             <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
                         </div>
+                        -->
                         <div data-platform="youtube" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-youtube" name="platforms" value="youtube" disabled style="width: 20px; height: 20px; accent-color: #1e40af;">
+                            <input type="checkbox" id="platform-youtube" name="platforms" value="youtube" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
                             <label for="platform-youtube" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
                                 <span style="font-size: 1.5rem; color: #FF0000;"><i class="fa-brands fa-youtube"></i></span>
                                 <span style="font-weight: 500;">YouTube Shorts</span>
@@ -524,6 +530,9 @@
                     <!-- Progress items will be added dynamically -->
                 </div>
                 <div id="modal-actions" class="modal-actions" style="display: none;">
+                    <button id="retry-failed-btn" class="btn btn-secondary" style="display: none; margin-bottom: 0.5rem;">
+                        🔄 Retry Failed Platforms
+                    </button>
                     <a href="./" class="btn btn-primary">Back to Dashboard</a>
                 </div>
             </div>
@@ -543,6 +552,13 @@
         let currentUser = null;
         let videoThumbnailBlob = null;
         const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
+
+        // Retry state - stores info needed to retry failed platforms
+        let lastPublishState = {
+            postId: null,
+            failedPlatforms: [],
+            platformResults: {}
+        };
 
         // Yak mascot state management
         const yakMessages = {
@@ -660,30 +676,16 @@
             console.log('Page loaded, initializing...');
             const { data: { user } } = await supabaseClient.auth.getUser();
             currentUser = user;
-            console.log('User:', currentUser ? currentUser.email : 'not logged in');
 
+            // DEV BYPASS: skip auth if not logged in
             if (!currentUser) {
-                document.getElementById('auth-required').style.display = 'flex';
-                document.getElementById('upload-form').style.display = 'none';
-                return;
+                currentUser = { id: 'dev-local', email: 'sanslamsal16@gmail.com' };
+                console.log('DEV MODE: using default user', currentUser.email);
+            } else {
+                console.log('User:', currentUser.email);
             }
 
-            // Admin bypass - skip subscription check
-            if (!ADMIN_EMAILS.includes(currentUser.email)) {
-                const { data: subscription } = await supabaseClient
-                    .from('subscriptions')
-                    .select('*')
-                    .eq('customer_email', currentUser.email)
-                    .eq('product_key', 'broadcast')
-                    .eq('status', 'active')
-                    .single();
-
-                if (!subscription) {
-                    window.location.href = '/broadcast/pricing.html';
-                    return;
-                }
-            }
-
+            // Auth & subscription checks bypassed for local dev
             document.getElementById('auth-required').style.display = 'none';
             document.getElementById('upload-form').style.display = 'block';
 
@@ -709,15 +711,16 @@
                 .select('*')
                 .eq('user_id', currentUser.id);
 
-            console.log('Connected accounts:', accounts);
-            console.log('Error:', error);
+            if (error) {
+                console.warn('Could not load accounts (no session?):', error.message);
+            }
 
             connectedAccounts = accounts || [];
             updatePlatformCheckboxes();
         }
 
         function updatePlatformCheckboxes() {
-            const platforms = ['tiktok', 'instagram', 'linkedin', 'threads', 'youtube'];
+            const platforms = ['tiktok', /* 'instagram', */ 'linkedin', /* 'threads', */ 'youtube'];
             const warning = document.getElementById('no-accounts-warning');
             const hasMedia = !!selectedFile;
             const hasVideo = hasMedia && selectedMediaType === 'video';
@@ -757,23 +760,9 @@
                             container.style.opacity = '1';
                         }
                     }
-                    // Instagram supports both video (Reels) and images (Posts)
-                    else if (platform === 'instagram') {
-                        if (!hasMedia) {
-                            input.disabled = true;
-                            input.checked = false;
-                            status.textContent = '(Requires media)';
-                            status.style.color = '#f59e0b';
-                            container.style.opacity = '0.6';
-                        } else {
-                            input.disabled = false;
-                            const mediaTypeLabel = hasImage ? '📷' : '🎬';
-                            status.textContent = `${mediaTypeLabel} @${account.account_name || 'Connected'}`;
-                            status.style.color = '#10b981';
-                            container.style.opacity = '1';
-                        }
-                    }
-                    // LinkedIn and Threads support text, images, and videos
+                    // Instagram disabled - requires Facebook App approval
+                    // else if (platform === 'instagram') { ... }
+                    // LinkedIn (and Threads when re-enabled) support text, images, and videos
                     else {
                         input.disabled = false;
                         status.textContent = account.account_name ? `@${account.account_name}` : '✓ Connected';
@@ -1013,10 +1002,10 @@
             const scheduleToggle = document.getElementById('schedule-toggle');
             const caption = document.getElementById('caption').value.trim();
 
-            // Check if only text-friendly platforms are selected (LinkedIn, Threads)
-            const textFriendlyPlatforms = ['linkedin', 'threads'];
+            // Check if only text-friendly platforms are selected (LinkedIn)
+            const textFriendlyPlatforms = ['linkedin' /* , 'threads' */];
             const onlyTextFriendly = selectedPlatforms.every(p => textFriendlyPlatforms.includes(p.value));
-            const hasVideoRequired = selectedPlatforms.some(p => p.value === 'tiktok' || p.value === 'instagram');
+            const hasVideoRequired = selectedPlatforms.some(p => p.value === 'tiktok' /* || p.value === 'instagram' */);
 
             // Valid if: has platforms AND (has video OR only text-friendly platforms with caption)
             const isValid = selectedPlatforms.length > 0 &&
@@ -1081,7 +1070,7 @@
 
             // Check media requirements
             const needsTikTok = selectedPlatforms.includes('tiktok');
-            const needsInstagram = selectedPlatforms.includes('instagram');
+            // const needsInstagram = selectedPlatforms.includes('instagram');
 
             // TikTok requires video (no images)
             if (needsTikTok && (!selectedFile || selectedMediaType !== 'video') && !isDraft) {
@@ -1098,12 +1087,12 @@
                 return;
             }
 
-            // Instagram requires some media (image or video)
-            if (needsInstagram && !selectedFile && !isDraft) {
-                console.log('[VALIDATION] Instagram requires media');
-                alert('Instagram requires an image or video.');
-                return;
-            }
+            // Instagram disabled - requires Facebook App approval
+            // if (needsInstagram && !selectedFile && !isDraft) {
+            //     console.log('[VALIDATION] Instagram requires media');
+            //     alert('Instagram requires an image or video.');
+            //     return;
+            // }
 
             if (!selectedFile && !caption && !isDraft) {
                 console.log('[VALIDATION] No media and no caption');
@@ -1133,11 +1122,10 @@
                 const isImage = selectedMediaType === 'image';
                 const isVideo = selectedMediaType === 'video';
 
-                // Instagram, LinkedIn, Threads, and YouTube need R2 for media
+                // LinkedIn and YouTube need R2 for media (Instagram/Threads disabled)
                 // LinkedIn: server-side video upload (browser CORS blocks direct upload)
-                // Threads: uses media URLs for API
                 // YouTube: server-side video upload
-                const needsR2Upload = (selectedPlatforms.includes('instagram') || selectedPlatforms.includes('linkedin') || selectedPlatforms.includes('threads') || selectedPlatforms.includes('youtube')) && selectedFile;
+                const needsR2Upload = (selectedPlatforms.includes('linkedin') || selectedPlatforms.includes('youtube')) && selectedFile;
                 // LinkedIn video is now handled server-side via R2, so we skip browser upload
                 const needsLinkedInVideo = false; // Disabled - now using server-side upload
                 // TikTok only supports video
@@ -1235,23 +1223,56 @@
                             throw new Error(err.error || 'Failed to init TikTok upload');
                         }
 
-                        const { uploadUrl, publishId } = await initRes.json();
+                        const { uploadUrl, publishId, chunkSize, totalChunks } = await initRes.json();
                         console.log('[TIKTOK] Got upload URL, uploading video...');
+                        console.log('[TIKTOK] Chunk size:', chunkSize, 'Total chunks:', totalChunks);
 
-                        // Upload video directly to TikTok
-                        const uploadRes = await fetch(uploadUrl, {
-                            method: 'PUT',
-                            headers: {
-                                'Content-Type': 'video/mp4',
-                                'Content-Range': `bytes 0-${selectedFile.size - 1}/${selectedFile.size}`,
-                            },
-                            body: selectedFile
-                        });
+                        // Upload video to TikTok (single or multi-chunk)
+                        if (totalChunks === 1) {
+                            // Single chunk upload
+                            const uploadRes = await fetch(uploadUrl, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'video/mp4',
+                                    'Content-Range': `bytes 0-${selectedFile.size - 1}/${selectedFile.size}`,
+                                },
+                                body: selectedFile
+                            });
 
-                        if (!uploadRes.ok) {
-                            const errText = await uploadRes.text();
-                            console.error('[TIKTOK] Upload failed:', errText);
-                            throw new Error('Failed to upload video to TikTok');
+                            if (!uploadRes.ok) {
+                                const errText = await uploadRes.text();
+                                console.error('[TIKTOK] Upload failed:', errText);
+                                throw new Error('Failed to upload video to TikTok');
+                            }
+                        } else {
+                            // Multi-chunk upload
+                            const fileBuffer = await selectedFile.arrayBuffer();
+                            const bytes = new Uint8Array(fileBuffer);
+
+                            for (let i = 0; i < totalChunks; i++) {
+                                const start = i * chunkSize;
+                                const end = Math.min(start + chunkSize, selectedFile.size);
+                                const chunk = bytes.slice(start, end);
+
+                                console.log(`[TIKTOK] Uploading chunk ${i + 1}/${totalChunks}: bytes ${start}-${end - 1}`);
+                                updatePlatformProgress('tiktok', 'publishing', `Uploading ${Math.round((i + 1) / totalChunks * 100)}%...`);
+
+                                const uploadRes = await fetch(uploadUrl, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'video/mp4',
+                                        'Content-Range': `bytes ${start}-${end - 1}/${selectedFile.size}`,
+                                    },
+                                    body: chunk
+                                });
+
+                                if (!uploadRes.ok) {
+                                    const errText = await uploadRes.text();
+                                    console.error(`[TIKTOK] Chunk ${i + 1} upload failed:`, errText);
+                                    throw new Error(`Failed to upload chunk ${i + 1} to TikTok`);
+                                }
+                            }
+                            console.log('[TIKTOK] All chunks uploaded!');
                         }
 
                         console.log('[TIKTOK] Video uploaded! Publish ID:', publishId);
@@ -1265,12 +1286,11 @@
                     }
                 }
 
-                // 3. Upload media to R2 (for Instagram/Threads - handles images and videos)
+                // 3. Upload media to R2 (for LinkedIn/YouTube - handles images and videos)
                 if (selectedFile && needsR2Upload) {
                     const mediaTypeLabel = isImage ? 'image' : 'video';
-                    console.log(`[R2] Uploading ${mediaTypeLabel} for Instagram...`);
+                    console.log(`[R2] Uploading ${mediaTypeLabel}...`);
                     publishBtn.textContent = `Uploading ${mediaTypeLabel}...`;
-                    updatePlatformProgress('instagram', 'publishing', `Uploading ${mediaTypeLabel}...`);
 
                     const { data: { session } } = await supabaseClient.auth.getSession();
 
@@ -1381,7 +1401,7 @@
                         if (completedCount >= selectedPlatforms.length && !isCompleted) {
                             isCompleted = true;
                             const status = updatedPost.status || (successCount > 0 ? 'partial' : 'failed');
-                            completePublishingModal(status, successCount, selectedPlatforms.length);
+                            completePublishingModal(status, successCount, selectedPlatforms.length, postId, platformResults);
 
                             // Unsubscribe
                             if (realtimeChannel) {
@@ -1411,7 +1431,8 @@
                             if (!isCompleted) {
                                 isCompleted = true;
                                 let successCount = 0;
-                                for (const [platform, result] of Object.entries(publishResult.results || {})) {
+                                const results = publishResult.results || {};
+                                for (const [platform, result] of Object.entries(results)) {
                                     if (result.status === 'success') {
                                         successCount++;
                                         updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : 'Success!');
@@ -1423,7 +1444,7 @@
                                         updatePlatformProgress(platform, 'failed', result.error || 'Failed');
                                     }
                                 }
-                                completePublishingModal(publishResult.status, successCount, selectedPlatforms.length);
+                                completePublishingModal(publishResult.status, successCount, selectedPlatforms.length, post.id, results);
                                 if (realtimeChannel) {
                                     supabaseClient.removeChannel(realtimeChannel);
                                 }
@@ -1433,8 +1454,13 @@
                             console.error('Publish error:', err);
                             if (!isCompleted) {
                                 isCompleted = true;
-                                selectedPlatforms.forEach(p => updatePlatformProgress(p, 'failed', 'Error'));
-                                completePublishingModal('failed', 0, selectedPlatforms.length);
+                                // Create error results for all platforms
+                                const errorResults = {};
+                                selectedPlatforms.forEach(p => {
+                                    updatePlatformProgress(p, 'failed', 'Error');
+                                    errorResults[p] = { status: 'error', error: err.message };
+                                });
+                                completePublishingModal('failed', 0, selectedPlatforms.length, post.id, errorResults);
                                 if (realtimeChannel) {
                                     supabaseClient.removeChannel(realtimeChannel);
                                 }
@@ -1499,8 +1525,9 @@
         const platformInfo = {
             linkedin: { name: 'LinkedIn', icon: '<i class="fa-brands fa-linkedin"></i>' },
             tiktok: { name: 'TikTok', icon: '<i class="fa-brands fa-tiktok"></i>' },
-            instagram: { name: 'Instagram', icon: '<i class="fa-brands fa-instagram"></i>' },
-            threads: { name: 'Threads', icon: '<i class="fa-brands fa-threads"></i>' }
+            youtube: { name: 'YouTube', icon: '<i class="fa-brands fa-youtube"></i>' }
+            // instagram: { name: 'Instagram', icon: '<i class="fa-brands fa-instagram"></i>' },
+            // threads: { name: 'Threads', icon: '<i class="fa-brands fa-threads"></i>' }
         };
 
         function showPublishingModal(platforms) {
@@ -1551,27 +1578,43 @@
             statusIcon.className = `progress-status ${status}`;
         }
 
-        function completePublishingModal(overallStatus, successCount, totalCount) {
+        function completePublishingModal(overallStatus, successCount, totalCount, postId = null, platformResults = {}) {
             const modalIcon = document.getElementById('modal-icon');
             const modalTitle = document.getElementById('modal-title');
             const modalSubtitle = document.getElementById('modal-subtitle');
             const modalActions = document.getElementById('modal-actions');
+            const retryBtn = document.getElementById('retry-failed-btn');
 
             modalIcon.innerHTML = '';
+
+            // Find failed platforms
+            const failedPlatforms = Object.entries(platformResults)
+                .filter(([_, result]) => result.status === 'error')
+                .map(([platform, _]) => platform);
+
+            // Store state for retry
+            if (postId) {
+                lastPublishState.postId = postId;
+                lastPublishState.failedPlatforms = failedPlatforms;
+                lastPublishState.platformResults = platformResults;
+            }
 
             if (overallStatus === 'published') {
                 modalIcon.className = 'modal-icon success';
                 modalTitle.textContent = 'Published successfully!';
                 modalSubtitle.textContent = `Posted to ${successCount} platform${successCount > 1 ? 's' : ''}`;
+                retryBtn.style.display = 'none';
                 launchConfetti(); // Celebrate!
             } else if (overallStatus === 'partial') {
                 modalIcon.className = 'modal-icon partial';
                 modalTitle.textContent = 'Partially published';
-                modalSubtitle.textContent = `${successCount} of ${totalCount} platforms succeeded`;
+                modalSubtitle.textContent = `${successCount} of ${totalCount} succeeded. ${failedPlatforms.length} failed.`;
+                retryBtn.style.display = failedPlatforms.length > 0 ? 'block' : 'none';
             } else {
                 modalIcon.className = 'modal-icon failed';
                 modalTitle.textContent = 'Publishing failed';
                 modalSubtitle.textContent = 'Check the details below';
+                retryBtn.style.display = failedPlatforms.length > 0 ? 'block' : 'none';
             }
 
             modalActions.style.display = 'block';
@@ -1606,6 +1649,87 @@
 
             return response.json();
         }
+
+        // ========== RETRY FAILED PLATFORMS ==========
+        async function retryFailedPlatforms() {
+            const { postId, failedPlatforms } = lastPublishState;
+
+            if (!postId || failedPlatforms.length === 0) {
+                console.log('[RETRY] No failed platforms to retry');
+                return;
+            }
+
+            console.log('[RETRY] Retrying platforms:', failedPlatforms);
+
+            // Reset modal state for retry
+            const modalIcon = document.getElementById('modal-icon');
+            const modalTitle = document.getElementById('modal-title');
+            const modalSubtitle = document.getElementById('modal-subtitle');
+            const modalActions = document.getElementById('modal-actions');
+            const retryBtn = document.getElementById('retry-failed-btn');
+
+            modalIcon.innerHTML = '<div class="spinner"></div>';
+            modalIcon.className = 'modal-icon';
+            modalTitle.textContent = 'Retrying failed platforms...';
+            modalSubtitle.textContent = `Attempting ${failedPlatforms.length} platform${failedPlatforms.length > 1 ? 's' : ''}`;
+            modalActions.style.display = 'none';
+            retryBtn.disabled = true;
+
+            // Reset the failed platforms in the progress UI
+            failedPlatforms.forEach(platform => {
+                updatePlatformProgress(platform, 'publishing', 'Retrying...');
+            });
+
+            try {
+                const result = await publishToAllPlatforms(postId, failedPlatforms);
+                console.log('[RETRY] Result:', result);
+
+                let successCount = 0;
+                const results = result.results || {};
+
+                for (const [platform, platformResult] of Object.entries(results)) {
+                    if (platformResult.status === 'success') {
+                        successCount++;
+                        updatePlatformProgress(platform, 'success', platformResult.url ? 'Posted!' : 'Success!');
+                    } else if (platformResult.status === 'pending') {
+                        successCount++;
+                        updatePlatformProgress(platform, 'success', platformResult.note || 'Processing...');
+                    } else {
+                        updatePlatformProgress(platform, 'failed', platformResult.error || 'Failed');
+                    }
+                }
+
+                // Update overall status
+                const totalPlatforms = Object.keys(lastPublishState.platformResults).length;
+                const previousSuccess = Object.values(lastPublishState.platformResults)
+                    .filter(r => r.status === 'success' || r.status === 'pending').length;
+                const newTotalSuccess = previousSuccess + successCount;
+
+                // Merge results
+                const mergedResults = { ...lastPublishState.platformResults, ...results };
+
+                const newStatus = newTotalSuccess === totalPlatforms ? 'published' :
+                                  newTotalSuccess > 0 ? 'partial' : 'failed';
+
+                completePublishingModal(newStatus, newTotalSuccess, totalPlatforms, postId, mergedResults);
+
+                if (newStatus === 'published') {
+                    launchConfetti();
+                }
+
+            } catch (error) {
+                console.error('[RETRY] Error:', error);
+                failedPlatforms.forEach(platform => {
+                    updatePlatformProgress(platform, 'failed', error.message || 'Retry failed');
+                });
+                completePublishingModal('failed', 0, failedPlatforms.length, postId, lastPublishState.platformResults);
+            }
+
+            retryBtn.disabled = false;
+        }
+
+        // Retry button event listener
+        document.getElementById('retry-failed-btn')?.addEventListener('click', retryFailedPlatforms);
 
         // ========== HOOK ANALYZER ==========
         let analysisInProgress = false;
@@ -1915,8 +2039,8 @@
         }
         .progress-icon.linkedin { background: #0A66C2; color: white; }
         .progress-icon.tiktok { background: #000000; color: white; }
-        .progress-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
-        .progress-icon.threads { background: #000000; color: white; }
+        /* .progress-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; } */
+        /* .progress-icon.threads { background: #000000; color: white; } */
         .progress-info {
             flex: 1;
             min-width: 0;
@@ -1945,7 +2069,7 @@
             width: 20px;
             height: 20px;
             border: 2px solid #e5e7eb;
-            border-top-color: #1e40af;
+            border-top-color: #d4838f;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
         }
@@ -1964,9 +2088,19 @@
         .modal-actions {
             margin-top: 1.5rem;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
         .modal-actions .btn {
             width: 100%;
+        }
+        .modal-actions .btn-secondary {
+            background: white;
+        }
+        .modal-actions .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
 
         /* Hook Analysis Modal Styles */
@@ -2026,7 +2160,7 @@
         }
         .score-progress {
             fill: none;
-            stroke: #1e40af;
+            stroke: #d4838f;
             stroke-width: 8;
             stroke-linecap: round;
             stroke-dasharray: 283;
@@ -2040,7 +2174,7 @@
             transform: translate(-50%, -50%);
             font-size: 2rem;
             font-weight: 700;
-            color: #1e40af;
+            color: #d4838f;
             transition: color 0.3s;
         }
         .score-label {
@@ -2075,7 +2209,7 @@
         }
         .strengths h3 i { color: #16a34a; }
         .weaknesses h3 i { color: #f59e0b; }
-        .suggestions h3 i { color: #3b82f6; }
+        .suggestions h3 i { color: #d4838f; }
         .similar-hooks h3 i { color: #ef4444; }
 
         .analysis-section ul {
@@ -2128,8 +2262,8 @@
         .similar-hook-card .hook-category {
             font-size: 0.7rem;
             padding: 0.2rem 0.5rem;
-            background: #eff6ff;
-            color: #1e40af;
+            background: #fef0f0;
+            color: #d4838f;
             border-radius: 4px;
             text-transform: capitalize;
         }

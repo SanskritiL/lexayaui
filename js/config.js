@@ -1,5 +1,6 @@
 // Configuration - Replace these with your actual keys
 const CONFIG = {
+
     // Supabase (get from: https://supabase.com/dashboard/project/YOUR_PROJECT/settings/api)
     SUPABASE_URL: 'https://bcyhcsphmqizzvzmdqxc.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk',

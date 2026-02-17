@@ -74,7 +74,8 @@
                     </div>
                 </div>
 
-                <!-- Instagram -->
+                <!-- Instagram (disabled - requires Facebook App approval) -->
+                <!--
                 <div class="connect-card" id="instagram-card" data-platform="instagram">
                     <div class="card-header">
                         <div class="platform-icon instagram">
@@ -94,8 +95,10 @@
                         </div>
                     </div>
                 </div>
+                -->
 
-                <!-- Threads -->
+                <!-- Threads (disabled - requires Facebook App approval) -->
+                <!--
                 <div class="connect-card" id="threads-card" data-platform="threads">
                     <div class="card-header">
                         <div class="platform-icon threads">
@@ -115,6 +118,7 @@
                         </div>
                     </div>
                 </div>
+                -->
 
                 <!-- YouTube -->
                 <div class="connect-card" id="youtube-card" data-platform="youtube">
@@ -446,7 +450,7 @@
         }
 
         function updateUI() {
-            const platforms = ['linkedin', 'tiktok', 'instagram', 'threads', 'youtube'];
+            const platforms = ['linkedin', 'tiktok', /* 'instagram', 'threads', */ 'youtube'];
 
             platforms.forEach(platform => {
                 const account = connectedAccounts.find(a => a.platform === platform);
@@ -485,23 +489,15 @@
                 }
             });
 
-            document.getElementById('instagram-btn').addEventListener('click', () => {
-                const account = connectedAccounts.find(a => a.platform === 'instagram');
-                if (account) {
-                    disconnectAccount('instagram');
-                } else {
-                    connectInstagram();
-                }
-            });
-
-            document.getElementById('threads-btn').addEventListener('click', () => {
-                const account = connectedAccounts.find(a => a.platform === 'threads');
-                if (account) {
-                    disconnectAccount('threads');
-                } else {
-                    connectThreads();
-                }
-            });
+            // Instagram & Threads disabled - requires Facebook App approval
+            // document.getElementById('instagram-btn').addEventListener('click', () => {
+            //     const account = connectedAccounts.find(a => a.platform === 'instagram');
+            //     if (account) { disconnectAccount('instagram'); } else { connectInstagram(); }
+            // });
+            // document.getElementById('threads-btn').addEventListener('click', () => {
+            //     const account = connectedAccounts.find(a => a.platform === 'threads');
+            //     if (account) { disconnectAccount('threads'); } else { connectThreads(); }
+            // });
 
             document.getElementById('youtube-btn').addEventListener('click', () => {
                 const account = connectedAccounts.find(a => a.platform === 'youtube');
@@ -524,15 +520,15 @@
             window.location.href = `/api/broadcast/auth/tiktok?state=${encodeURIComponent(state)}`;
         }
 
-        function connectInstagram() {
-            const state = currentSession.access_token;
-            window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
-        }
-
-        function connectThreads() {
-            const state = currentSession.access_token;
-            window.location.href = `/api/broadcast/auth/threads?state=${encodeURIComponent(state)}`;
-        }
+        // Instagram & Threads disabled - requires Facebook App approval
+        // function connectInstagram() {
+        //     const state = currentSession.access_token;
+        //     window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
+        // }
+        // function connectThreads() {
+        //     const state = currentSession.access_token;
+        //     window.location.href = `/api/broadcast/auth/threads?state=${encodeURIComponent(state)}`;
+        // }
 
         function connectYouTube() {
             const state = currentSession.access_token;
@@ -615,8 +611,9 @@
             const platformNames = {
                 linkedin: 'LinkedIn',
                 tiktok: 'TikTok',
-                instagram: 'Instagram',
-                threads: 'Threads'
+                // instagram: 'Instagram',
+                // threads: 'Threads',
+                youtube: 'YouTube'
             };
             const platformName = platformNames[platform] || platform;
 
@@ -792,8 +789,8 @@
             display: inline-block;
             margin-top: 0.25rem;
             padding: 0.125rem 0.5rem;
-            background: #eff6ff;
-            color: #1e40af;
+            background: #fff5f5;
+            color: #d4838f;
             font-size: 0.7rem;
             font-weight: 500;
             border-radius: 20px;
@@ -886,9 +883,9 @@
         }
 
         .btn-refresh:hover {
-            background: #f3f4f6;
-            color: #1e40af;
-            border-color: #1e40af;
+            background: #fff5f5;
+            color: #d4838f;
+            border-color: #d4838f;
         }
 
         .btn-refresh.spinning i {

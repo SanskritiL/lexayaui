@@ -131,6 +131,8 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
     }
 
     // TikTok chunk size requirements
+    // Min chunk size: 5MB, Max chunk size: 64MB
+    const MIN_CHUNK_SIZE = 5 * 1024 * 1024;
     const MAX_CHUNK_SIZE = 64 * 1024 * 1024;
     const DEFAULT_CHUNK_SIZE = 10 * 1024 * 1024;
 
@@ -138,13 +140,15 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
     let calculatedChunkCount;
 
     if (fileSizeBytes <= MAX_CHUNK_SIZE) {
+        // Single chunk upload - chunk_size = file size (even if < 5MB, TikTok allows this for single chunks)
         calculatedChunkSize = fileSizeBytes;
         calculatedChunkCount = 1;
         console.log('[TIKTOK] Small file, single chunk upload');
     } else {
+        // Multi-chunk upload - use 10MB chunks
         calculatedChunkSize = DEFAULT_CHUNK_SIZE;
         calculatedChunkCount = Math.ceil(fileSizeBytes / calculatedChunkSize);
-        console.log(`[TIKTOK] Large file, using ${calculatedChunkCount} chunks`);
+        console.log(`[TIKTOK] Large file, using ${calculatedChunkCount} chunks of ${calculatedChunkSize / 1024 / 1024}MB`);
     }
 
     const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
@@ -186,7 +190,12 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
     console.log('[TIKTOK] Upload URL:', uploadUrl);
     console.log('[TIKTOK] Publish ID:', publishId);
 
-    return res.status(200).json({ uploadUrl, publishId });
+    return res.status(200).json({
+        uploadUrl,
+        publishId,
+        chunkSize: calculatedChunkSize,
+        totalChunks: calculatedChunkCount
+    });
 }
 
 // LinkedIn Video Init
@@ -216,7 +225,7 @@ async function handleLinkedInInit(req, res, account, fileSizeBytes) {
         'Authorization': `Bearer ${access_token}`,
         'Content-Type': 'application/json',
         'X-Restli-Protocol-Version': '2.0.0',
-        'LinkedIn-Version': '202411',
+        'LinkedIn-Version': '202507',
     };
 
     const registerResponse = await fetch('https://api.linkedin.com/rest/videos?action=initializeUpload', {

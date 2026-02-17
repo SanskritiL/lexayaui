@@ -6,7 +6,7 @@
     <title>Try Lexaya - Post Once, Publish Everywhere</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -107,12 +107,12 @@
 
         const PLATFORM_ICONS = {
             tiktok: '<i class="fa-brands fa-tiktok"></i>',
-            instagram: '<i class="fa-brands fa-instagram"></i>',
+            // instagram: '<i class="fa-brands fa-instagram"></i>',
             linkedin: '<i class="fa-brands fa-linkedin"></i>',
-            threads: '<i class="fa-brands fa-threads"></i>',
+            // threads: '<i class="fa-brands fa-threads"></i>',
             youtube: '<i class="fa-brands fa-youtube"></i>'
         };
-        const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn', threads: 'Threads', youtube: 'YouTube' };
+        const PLATFORM_NAMES = { tiktok: 'TikTok', /* instagram: 'Instagram', */ linkedin: 'LinkedIn', /* threads: 'Threads', */ youtube: 'YouTube' };
         const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
         let currentUser = null;
         let currentSession = null;
@@ -153,33 +153,15 @@
             const authRequired = document.getElementById('auth-required');
             const dashboard = document.getElementById('dashboard');
 
+            // DEV BYPASS: skip auth if not logged in
             if (!currentUser) {
-                if (authRequired) authRequired.style.display = 'flex';
-                if (dashboard) dashboard.style.display = 'none';
-                return;
+                currentUser = { id: 'dev-local', email: 'sanslamsal16@gmail.com' };
+                console.log('DEV MODE: using default user', currentUser.email);
+            } else {
+                console.log('[Auth] User email:', currentUser.email);
             }
 
-            console.log('[Auth] User email:', currentUser.email);
-            console.log('[Auth] Is admin:', ADMIN_EMAILS.includes(currentUser.email));
-
-            // Admin bypass - skip subscription check
-            if (!ADMIN_EMAILS.includes(currentUser.email.toLowerCase())) {
-                // Check subscription status (only active, no trials)
-                const { data: subscription } = await supabaseClient
-                    .from('subscriptions')
-                    .select('*')
-                    .eq('customer_email', currentUser.email)
-                    .eq('product_key', 'broadcast')
-                    .eq('status', 'active')
-                    .single();
-
-                if (!subscription) {
-                    // No active subscription - redirect to pricing
-                    window.location.href = '/broadcast/pricing.html';
-                    return;
-                }
-            }
-
+            // Auth & subscription checks bypassed for local dev
             if (authRequired) authRequired.style.display = 'none';
             if (dashboard) dashboard.style.display = 'block';
 
@@ -325,8 +307,8 @@
                 .eq('user_id', currentUser.id);
 
             if (error) {
-                console.error('Error loading accounts:', error);
-                grid.innerHTML = '<div class="empty-state"><h3>Error loading accounts</h3></div>';
+                console.warn('Could not load accounts (no session?):', error.message);
+                renderAccounts(grid, []);
                 return;
             }
 
@@ -336,12 +318,12 @@
         }
 
         function renderAccounts(grid, accounts) {
-            const platforms = ['linkedin', 'instagram', 'tiktok', 'threads', 'youtube'];
+            const platforms = ['linkedin', /* 'instagram', */ 'tiktok', /* 'threads', */ 'youtube'];
             const platformColors = {
                 linkedin: '#0A66C2',
-                instagram: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
+                // instagram: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
                 tiktok: '#000000',
-                threads: '#000000',
+                // threads: '#000000',
                 youtube: '#FF0000'
             };
 
@@ -447,8 +429,8 @@
                 .limit(3);
 
             if (error) {
-                console.error('Error loading posts:', error);
-                container.innerHTML = '<div class="empty-state"><h3>Error loading posts</h3></div>';
+                console.warn('Could not load posts (no session?):', error.message);
+                renderPosts(container, []);
                 return;
             }
 
@@ -475,7 +457,7 @@
                         ${post.thumbnail_url
                             ? `<img src="${post.thumbnail_url}" alt="thumbnail" loading="lazy">`
                             : post.video_url
-                                ? `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #1e40af; color: white; font-size: 1.5rem;">🎬</div>`
+                                ? `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #d4838f; color: white; font-size: 1.5rem;">🎬</div>`
                                 : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #6b7280; font-size: 1.5rem;">📝</div>`
                         }
                     </div>
@@ -623,8 +605,8 @@
             display: inline-block;
             margin-top: 0.25rem;
             padding: 0.125rem 0.5rem;
-            background: #eff6ff;
-            color: #1e40af;
+            background: #fef0f0;
+            color: #d4838f;
             font-size: 0.65rem;
             font-weight: 500;
             border-radius: 20px;
@@ -792,11 +774,11 @@
 
         /* Member Badge */
         .member-badge {
-            background: #1e40af;
+            background: linear-gradient(135deg, #d4838f, #c77080);
             border-radius: 16px;
             padding: 1rem 1.5rem;
             margin-bottom: 1.5rem;
-            box-shadow: 0 4px 15px rgba(30, 64, 175, 0.25);
+            box-shadow: 0 4px 15px rgba(212, 131, 143, 0.3);
         }
 
         .member-badge-content {

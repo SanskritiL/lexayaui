@@ -141,38 +141,45 @@
         }
 
         .stat-card.streak {
-            background: linear-gradient(135deg, #fff5eb, #fed7aa);
-            border-color: #fdba74;
+            background: white;
+            border-color: var(--yak-pink);
         }
 
         .stat-card.total {
-            background: linear-gradient(135deg, var(--yak-cream), var(--yak-pink));
-            border-color: var(--yak-warm);
+            background: white;
+            border-color: var(--yak-pink);
         }
 
-        .stat-icon {
-            font-size: 1.75rem;
-            line-height: 1;
+        .stat-icon-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 800;
+        .stat-icon-circle.streak-icon {
+            background: linear-gradient(135deg, var(--yak-accent), #c77080);
+        }
+
+        .stat-icon-circle.total-icon {
+            background: linear-gradient(135deg, var(--yak-success), #6aa66a);
+        }
+
+        .stat-number-icon {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
             font-family: 'Quicksand', sans-serif;
         }
 
-        .stat-card.streak .stat-value { color: #c2410c; }
-        .stat-card.total .stat-value { color: var(--yak-accent); }
-
         .stat-label {
-            font-size: 0.7rem;
+            font-size: 0.8rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: var(--yak-dark);
         }
-
-        .stat-card.streak .stat-label { color: #9a3412; }
-        .stat-card.total .stat-label { color: var(--yak-dark); }
 
         /* Calendar Container */
         .calendar-container {
@@ -282,15 +289,14 @@
         }
 
         .calendar-day.today {
-            background: linear-gradient(135deg, var(--yak-accent), #c77080);
-            color: white;
-            box-shadow: 0 2px 10px rgba(212, 131, 143, 0.5);
+            border: 2px solid var(--yak-accent);
             font-weight: 700;
         }
 
         .calendar-day.today.posted {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            box-shadow: 0 2px 10px rgba(245, 158, 11, 0.5);
+            background: linear-gradient(135deg, var(--yak-success), #6aa66a);
+            color: white;
+            border: 2px solid var(--yak-accent);
         }
 
         /* Legend */
@@ -320,7 +326,8 @@
         }
 
         .legend-dot.today {
-            background: linear-gradient(135deg, var(--yak-accent), #c77080);
+            background: white;
+            border: 2px solid var(--yak-accent);
         }
 
         /* CTA Button */
@@ -414,16 +421,18 @@
             <!-- Stats Row -->
             <div class="stats-row">
                 <div class="stat-card streak" id="streak-card">
-                    <span class="stat-icon">🔥</span>
+                    <div class="stat-icon-circle streak-icon">
+                        <span class="stat-number-icon" id="current-streak">0</span>
+                    </div>
                     <div>
-                        <div class="stat-value" id="current-streak">0</div>
                         <div class="stat-label">Day Streak</div>
                     </div>
                 </div>
                 <div class="stat-card total">
-                    <span class="stat-icon">📸</span>
+                    <div class="stat-icon-circle total-icon">
+                        <span class="stat-number-icon" id="total-posts">0</span>
+                    </div>
                     <div>
-                        <div class="stat-value" id="total-posts">0</div>
                         <div class="stat-label">Total Posts</div>
                     </div>
                 </div>
@@ -620,10 +629,13 @@
         }
 
         function updateStats() {
-            document.getElementById('total-posts').textContent = allPosts.length;
+            const totalPostsEl = document.getElementById('total-posts');
+            const currentStreakEl = document.getElementById('current-streak');
+
+            totalPostsEl.textContent = allPosts.length;
 
             const streak = calculateStreak();
-            document.getElementById('current-streak').textContent = streak;
+            currentStreakEl.textContent = streak;
 
             // Check if posted today
             const today = new Date().toDateString();

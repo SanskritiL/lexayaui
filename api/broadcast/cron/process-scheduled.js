@@ -153,8 +153,8 @@ async function publishToPlatform(platform, post, account) {
             return await publishToLinkedIn(post, account);
         case 'tiktok':
             return await publishToTikTok(post, account);
-        case 'instagram':
-            return await publishToInstagram(post, account);
+        // case 'instagram':
+        //     return await publishToInstagram(post, account);
         default:
             throw new Error('Unknown platform');
     }
@@ -178,7 +178,7 @@ async function publishToLinkedIn(post, account) {
         'Authorization': `Bearer ${access_token}`,
         'Content-Type': 'application/json',
         'X-Restli-Protocol-Version': '2.0.0',
-        'LinkedIn-Version': '202401',
+        'LinkedIn-Version': '202507',
     };
 
     const postBody = {

@@ -168,15 +168,15 @@ module.exports = async function handler(req, res) {
                     case 'tiktok':
                         result = await publishToTikTok(post, account);
                         break;
-                    case 'instagram':
-                        result = await publishToInstagram(post, account);
-                        break;
+                    // case 'instagram':
+                    //     result = await publishToInstagram(post, account);
+                    //     break;
                     case 'twitter':
                         result = await publishToTwitter(post, account);
                         break;
-                    case 'threads':
-                        result = await publishToThreads(post, account);
-                        break;
+                    // case 'threads':
+                    //     result = await publishToThreads(post, account);
+                    //     break;
                     case 'youtube':
                         result = await publishToYouTube(post, account, supabase);
                         break;
@@ -312,7 +312,7 @@ async function publishToLinkedIn(post, account) {
         'Authorization': `Bearer ${access_token}`,
         'Content-Type': 'application/json',
         'X-Restli-Protocol-Version': '2.0.0',
-        'LinkedIn-Version': '202411',
+        'LinkedIn-Version': '202507',
     };
 
     // Get the author URN (person URN)

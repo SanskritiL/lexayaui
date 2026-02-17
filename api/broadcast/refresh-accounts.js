@@ -45,9 +45,9 @@ export default async function handler(req, res) {
                 case 'linkedin':
                     updatedMetadata = await refreshLinkedIn(account, updatedMetadata);
                     break;
-                case 'instagram':
-                    updatedMetadata = await refreshInstagram(account, updatedMetadata);
-                    break;
+                // case 'instagram':
+                //     updatedMetadata = await refreshInstagram(account, updatedMetadata);
+                //     break;
                 case 'tiktok':
                     updatedMetadata = await refreshTikTok(account, updatedMetadata);
                     break;
@@ -57,9 +57,9 @@ export default async function handler(req, res) {
                 case 'youtube':
                     updatedMetadata = await refreshYouTube(account, updatedMetadata);
                     break;
-                case 'threads':
-                    updatedMetadata = await refreshThreads(account, updatedMetadata);
-                    break;
+                // case 'threads':
+                //     updatedMetadata = await refreshThreads(account, updatedMetadata);
+                //     break;
             }
 
             // Update in database
