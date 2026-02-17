@@ -9,15 +9,15 @@ const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 // R2 Configuration
 const R2_ACCOUNT_ID = '20ed24d883ada4e35ecd4e48ae90ab27';
-const R2_BUCKET = process.env.R2_BUCKET_NAME || 'lexaya-videos';
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || 'https://pub-d8491ccfbb3a45e2bb038d9ae60a1957.r2.dev';
+const R2_BUCKET = (process.env.R2_BUCKET_NAME || 'lexaya-videos').trim();
+const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || 'https://pub-d8491ccfbb3a45e2bb038d9ae60a1957.r2.dev').trim();
 
 const r2Client = new S3Client({
     region: 'auto',
     endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
     credentials: {
-        accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+        accessKeyId: (process.env.R2_ACCESS_KEY_ID || '').trim(),
+        secretAccessKey: (process.env.R2_SECRET_ACCESS_KEY || '').trim(),
     },
 });
 

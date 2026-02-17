@@ -889,21 +889,8 @@
                 updatePublishButton();
             });
 
-            // Form submit
+            // Form submit only (removed duplicate button click listener that caused triple posting)
             document.getElementById('post-form').addEventListener('submit', handleSubmit);
-
-            // Publish button click (in case form submit doesn't work)
-            const publishBtn = document.getElementById('publish-btn');
-            console.log('Publish button found:', publishBtn);
-            console.log('Publish button disabled:', publishBtn?.disabled);
-
-            if (publishBtn) {
-                publishBtn.addEventListener('click', (e) => {
-                    console.log('Publish button clicked!');
-                    e.preventDefault();
-                    handleSubmit(e, false);
-                });
-            }
 
             // Save draft
             document.getElementById('save-draft').addEventListener('click', () => {
@@ -1029,10 +1016,16 @@
             }
         }
 
+        let isSubmitting = false; // Guard against double submission
+
         async function handleSubmit(e, isDraft = false) {
-            console.log('========== UPLOAD SUBMIT START ==========');
-            console.log('handleSubmit called, isDraft:', isDraft);
             if (e) e.preventDefault();
+            if (isSubmitting) {
+                console.log('[GUARD] Already submitting, ignoring duplicate');
+                return;
+            }
+            isSubmitting = true;
+            console.log('========== UPLOAD SUBMIT START ==========');
 
             if (!currentUser) {
                 console.log('[ERROR] No user!');
@@ -1126,209 +1119,168 @@
                 // LinkedIn: server-side video upload (browser CORS blocks direct upload)
                 // YouTube: server-side video upload
                 const needsR2Upload = (selectedPlatforms.includes('linkedin') || selectedPlatforms.includes('youtube')) && selectedFile;
-                // LinkedIn video is now handled server-side via R2, so we skip browser upload
                 const needsLinkedInVideo = false; // Disabled - now using server-side upload
-                // TikTok only supports video
                 const needsTikTokVideo = selectedPlatforms.includes('tiktok') && selectedFile;
 
-                // 1. Upload thumbnail (always, if we have video)
+                // Get session once upfront (avoid repeated calls)
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                const authToken = session?.access_token;
+
+                // ALL uploads run in PARALLEL: thumbnail + TikTok + R2
+                publishBtn.textContent = 'Uploading...';
+                const uploadPromises = [];
+
+                // Thumbnail upload promise
                 if (selectedFile && videoThumbnailBlob) {
-                    console.log('[THUMBNAIL] Uploading thumbnail...');
-                    const thumbFileName = `${currentUser.id}/${Date.now()}_thumb.jpg`;
-
-                    const { error: thumbError } = await supabaseClient.storage
-                        .from('videos')
-                        .upload(thumbFileName, videoThumbnailBlob, { contentType: 'image/jpeg' });
-
-                    if (thumbError) {
-                        console.error('[THUMBNAIL] Upload failed:', thumbError.message);
-                    } else {
-                        const { data: { publicUrl } } = supabaseClient.storage
+                    const thumbPromise = (async () => {
+                        console.log('[THUMBNAIL] Uploading thumbnail...');
+                        const thumbFileName = `${currentUser.id}/${Date.now()}_thumb.jpg`;
+                        const { error: thumbError } = await supabaseClient.storage
                             .from('videos')
-                            .getPublicUrl(thumbFileName);
-                        thumbnailUrl = publicUrl;
-                        console.log('[THUMBNAIL] Uploaded:', thumbnailUrl);
-                    }
+                            .upload(thumbFileName, videoThumbnailBlob, { contentType: 'image/jpeg' });
+                        if (!thumbError) {
+                            const { data: { publicUrl } } = supabaseClient.storage
+                                .from('videos')
+                                .getPublicUrl(thumbFileName);
+                            thumbnailUrl = publicUrl;
+                            console.log('[THUMBNAIL] Uploaded:', thumbnailUrl);
+                        }
+                    })();
+                    uploadPromises.push(thumbPromise);
                 }
 
-                // 2. Upload video to LinkedIn directly (if LinkedIn selected with video)
-                if (needsLinkedInVideo) {
-                    console.log('[LINKEDIN] Uploading video directly to LinkedIn...');
-                    publishBtn.textContent = 'Uploading to LinkedIn...';
-                    updatePlatformProgress('linkedin', 'publishing', 'Uploading video...');
-
-                    try {
-                        const { data: { session } } = await supabaseClient.auth.getSession();
-
-                        // Init upload
-                        const initRes = await fetch('/api/broadcast/init-video?platform=linkedin', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${session.access_token}`
-                            },
-                            body: JSON.stringify({ fileSizeBytes: selectedFile.size })
-                        });
-
-                        if (!initRes.ok) {
-                            const err = await initRes.json();
-                            throw new Error(err.error || 'Failed to init LinkedIn upload');
-                        }
-
-                        const { uploadUrl, videoUrn } = await initRes.json();
-                        console.log('[LINKEDIN] Got upload URL, uploading video...');
-
-                        // Upload video directly to LinkedIn
-                        const uploadRes = await fetch(uploadUrl, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/octet-stream' },
-                            body: selectedFile
-                        });
-
-                        if (!uploadRes.ok) {
-                            throw new Error('Failed to upload video to LinkedIn');
-                        }
-
-                        console.log('[LINKEDIN] Video uploaded! URN:', videoUrn);
-                        metadata.linkedin_video_urn = videoUrn;
-
-                    } catch (linkedinError) {
-                        console.error('[LINKEDIN] Video upload failed:', linkedinError.message);
-                        updatePlatformProgress('linkedin', '', 'Will post as text');
-                        // Continue anyway - will fall back to text post
-                    }
-                }
-
-                // 2b. Upload video directly to TikTok (if TikTok selected with video)
+                // TikTok upload promise
                 if (needsTikTokVideo) {
                     console.log('[TIKTOK] Uploading video directly to TikTok...');
-                    publishBtn.textContent = 'Uploading to TikTok...';
+                    publishBtn.textContent = 'Uploading to platforms...';
                     updatePlatformProgress('tiktok', 'publishing', 'Uploading video...');
 
-                    try {
-                        const { data: { session } } = await supabaseClient.auth.getSession();
-
-                        // Init upload
-                        const initRes = await fetch('/api/broadcast/init-video?platform=tiktok', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${session.access_token}`
-                            },
-                            body: JSON.stringify({ fileSizeBytes: selectedFile.size })
-                        });
-
-                        if (!initRes.ok) {
-                            const err = await initRes.json();
-                            throw new Error(err.error || 'Failed to init TikTok upload');
-                        }
-
-                        const { uploadUrl, publishId, chunkSize, totalChunks } = await initRes.json();
-                        console.log('[TIKTOK] Got upload URL, uploading video...');
-                        console.log('[TIKTOK] Chunk size:', chunkSize, 'Total chunks:', totalChunks);
-
-                        // Upload video to TikTok (single or multi-chunk)
-                        if (totalChunks === 1) {
-                            // Single chunk upload
-                            const uploadRes = await fetch(uploadUrl, {
-                                method: 'PUT',
+                    const tiktokPromise = (async () => {
+                        try {
+                            const initRes = await fetch('/api/broadcast/init-video?platform=tiktok', {
+                                method: 'POST',
                                 headers: {
-                                    'Content-Type': 'video/mp4',
-                                    'Content-Range': `bytes 0-${selectedFile.size - 1}/${selectedFile.size}`,
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${authToken}`
                                 },
-                                body: selectedFile
+                                body: JSON.stringify({ fileSizeBytes: selectedFile.size })
                             });
 
-                            if (!uploadRes.ok) {
-                                const errText = await uploadRes.text();
-                                console.error('[TIKTOK] Upload failed:', errText);
-                                throw new Error('Failed to upload video to TikTok');
+                            if (!initRes.ok) {
+                                const err = await initRes.json();
+                                throw new Error(err.error || 'Failed to init TikTok upload');
                             }
-                        } else {
-                            // Multi-chunk upload
-                            const fileBuffer = await selectedFile.arrayBuffer();
-                            const bytes = new Uint8Array(fileBuffer);
 
-                            for (let i = 0; i < totalChunks; i++) {
-                                const start = i * chunkSize;
-                                const end = Math.min(start + chunkSize, selectedFile.size);
-                                const chunk = bytes.slice(start, end);
+                            const { uploadUrl, publishId, chunkSize, totalChunks } = await initRes.json();
+                            console.log('[TIKTOK] Got upload URL, uploading video...');
+                            console.log('[TIKTOK] Chunk size:', chunkSize, 'Total chunks:', totalChunks);
 
-                                console.log(`[TIKTOK] Uploading chunk ${i + 1}/${totalChunks}: bytes ${start}-${end - 1}`);
-                                updatePlatformProgress('tiktok', 'publishing', `Uploading ${Math.round((i + 1) / totalChunks * 100)}%...`);
-
+                            if (totalChunks === 1) {
                                 const uploadRes = await fetch(uploadUrl, {
                                     method: 'PUT',
                                     headers: {
                                         'Content-Type': 'video/mp4',
-                                        'Content-Range': `bytes ${start}-${end - 1}/${selectedFile.size}`,
+                                        'Content-Range': `bytes 0-${selectedFile.size - 1}/${selectedFile.size}`,
                                     },
-                                    body: chunk
+                                    body: selectedFile
                                 });
 
                                 if (!uploadRes.ok) {
                                     const errText = await uploadRes.text();
-                                    console.error(`[TIKTOK] Chunk ${i + 1} upload failed:`, errText);
-                                    throw new Error(`Failed to upload chunk ${i + 1} to TikTok`);
+                                    console.error('[TIKTOK] Upload failed:', errText);
+                                    throw new Error('Failed to upload video to TikTok');
                                 }
+                            } else {
+                                const fileBuffer = await selectedFile.arrayBuffer();
+                                const bytes = new Uint8Array(fileBuffer);
+
+                                for (let i = 0; i < totalChunks; i++) {
+                                    const start = i * chunkSize;
+                                    const end = Math.min(start + chunkSize, selectedFile.size);
+                                    const chunk = bytes.slice(start, end);
+
+                                    console.log(`[TIKTOK] Uploading chunk ${i + 1}/${totalChunks}: bytes ${start}-${end - 1}`);
+                                    updatePlatformProgress('tiktok', 'publishing', `Uploading ${Math.round((i + 1) / totalChunks * 100)}%...`);
+
+                                    const uploadRes = await fetch(uploadUrl, {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-Type': 'video/mp4',
+                                            'Content-Range': `bytes ${start}-${end - 1}/${selectedFile.size}`,
+                                        },
+                                        body: chunk
+                                    });
+
+                                    if (!uploadRes.ok) {
+                                        const errText = await uploadRes.text();
+                                        console.error(`[TIKTOK] Chunk ${i + 1} upload failed:`, errText);
+                                        throw new Error(`Failed to upload chunk ${i + 1} to TikTok`);
+                                    }
+                                }
+                                console.log('[TIKTOK] All chunks uploaded!');
                             }
-                            console.log('[TIKTOK] All chunks uploaded!');
+
+                            console.log('[TIKTOK] Video uploaded! Publish ID:', publishId);
+                            metadata.tiktok_publish_id = publishId;
+
+                        } catch (tiktokError) {
+                            console.error('[TIKTOK] Video upload failed:', tiktokError.message);
+                            updatePlatformProgress('tiktok', 'failed', 'Upload failed');
+                            metadata.tiktok_upload_error = tiktokError.message;
                         }
-
-                        console.log('[TIKTOK] Video uploaded! Publish ID:', publishId);
-                        metadata.tiktok_publish_id = publishId;
-
-                    } catch (tiktokError) {
-                        console.error('[TIKTOK] Video upload failed:', tiktokError.message);
-                        updatePlatformProgress('tiktok', 'failed', 'Upload failed');
-                        // Store error so publish.js knows upload failed
-                        metadata.tiktok_upload_error = tiktokError.message;
-                    }
+                    })();
+                    uploadPromises.push(tiktokPromise);
                 }
 
-                // 3. Upload media to R2 (for LinkedIn/YouTube - handles images and videos)
+                // R2 upload promise (for LinkedIn/YouTube)
                 if (selectedFile && needsR2Upload) {
                     const mediaTypeLabel = isImage ? 'image' : 'video';
                     console.log(`[R2] Uploading ${mediaTypeLabel}...`);
-                    publishBtn.textContent = `Uploading ${mediaTypeLabel}...`;
+                    if (!needsTikTokVideo) publishBtn.textContent = `Uploading ${mediaTypeLabel}...`;
 
-                    const { data: { session } } = await supabaseClient.auth.getSession();
+                    const r2Promise = (async () => {
+                        const presignRes = await fetch('/api/broadcast/publish?action=upload', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${authToken}`
+                            },
+                            body: JSON.stringify({
+                                fileName: selectedFile.name,
+                                contentType: selectedFile.type
+                            })
+                        });
 
-                    // Get presigned upload URL from our API
-                    const presignRes = await fetch('/api/broadcast/publish?action=upload', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${session.access_token}`
-                        },
-                        body: JSON.stringify({
-                            fileName: selectedFile.name,
-                            contentType: selectedFile.type
-                        })
-                    });
+                        if (!presignRes.ok) {
+                            const err = await presignRes.json();
+                            throw new Error(err.error || 'Failed to get upload URL');
+                        }
 
-                    if (!presignRes.ok) {
-                        const err = await presignRes.json();
-                        throw new Error(err.error || 'Failed to get upload URL');
-                    }
+                        const { uploadUrl, key, publicUrl } = await presignRes.json();
+                        console.log('[R2] Got presigned URL, uploading...');
 
-                    const { uploadUrl, key, publicUrl } = await presignRes.json();
-                    console.log('[R2] Got presigned URL, uploading...');
+                        const uploadRes = await fetch(uploadUrl, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': selectedFile.type },
+                            body: selectedFile
+                        });
 
-                    // Upload directly to R2
-                    const uploadRes = await fetch(uploadUrl, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': selectedFile.type },
-                        body: selectedFile
-                    });
+                        if (!uploadRes.ok) {
+                            throw new Error(`Failed to upload ${mediaTypeLabel} to R2`);
+                        }
 
-                    if (!uploadRes.ok) {
-                        throw new Error(`Failed to upload ${mediaTypeLabel} to R2`);
-                    }
+                        mediaUrl = publicUrl;
+                        metadata.r2_key = key;
+                        console.log(`[R2] ${mediaTypeLabel} uploaded:`, mediaUrl);
+                    })();
+                    uploadPromises.push(r2Promise);
+                }
 
-                    mediaUrl = publicUrl;
-                    metadata.r2_key = key; // Store key for deletion after publish
-                    console.log(`[R2] ${mediaTypeLabel} uploaded:`, mediaUrl);
+                // Wait for all uploads to finish in parallel
+                if (uploadPromises.length > 0) {
+                    console.log(`[UPLOAD] Waiting for ${uploadPromises.length} parallel uploads...`);
+                    await Promise.all(uploadPromises);
+                    console.log('[UPLOAD] All uploads complete!');
                 }
 
                 // 4. Create post record
@@ -1510,6 +1462,7 @@
 
                 publishBtn.disabled = false;
                 publishBtn.textContent = 'Publish Now';
+                isSubmitting = false;
             }
         }
 
