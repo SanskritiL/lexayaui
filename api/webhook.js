@@ -73,14 +73,18 @@ module.exports = async (req, res) => {
                 }
             } else {
                 // Save one-time purchase to Supabase
+                const customerEmail = session.customer_details?.email || session.customer_email;
+                const productKey = session.metadata?.productKey || 'unknown';
+                const userId = session.metadata?.userId || null;
+
                 const { error } = await supabase
                     .from('purchases')
                     .insert([{
-                        user_id: session.metadata?.userId || null,
+                        user_id: userId,
                         stripe_session_id: session.id,
                         amount: session.amount_total,
-                        product_id: session.metadata?.productKey || 'unknown',
-                        customer_email: session.customer_details?.email || session.customer_email,
+                        product_id: productKey,
+                        customer_email: customerEmail,
                         status: 'completed',
                         created_at: new Date().toISOString()
                     }]);
@@ -88,7 +92,28 @@ module.exports = async (req, res) => {
                 if (error) {
                     console.error('Error saving purchase:', error);
                 } else {
-                    console.log('Purchase saved:', session.customer_details?.email, session.metadata?.productKey);
+                    console.log('Purchase saved:', customerEmail, productKey);
+                }
+
+                // Also create a subscription record so access checks work
+                // (broadcast pages check the subscriptions table for access)
+                const { error: subError } = await supabase
+                    .from('subscriptions')
+                    .upsert([{
+                        user_id: userId,
+                        customer_email: customerEmail,
+                        stripe_customer_id: session.customer,
+                        stripe_subscription_id: session.id, // Use session ID for one-time payments
+                        product_key: productKey,
+                        status: 'active',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    }], { onConflict: 'customer_email,product_key' });
+
+                if (subError) {
+                    console.error('Error creating subscription record:', subError);
+                } else {
+                    console.log('Subscription record created for one-time payment:', customerEmail, productKey);
                 }
             }
             break;

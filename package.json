@@ -3,12 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "npx serve ."
+    "start": "npx serve .",
+    "test": "jest"
   },
   "dependencies": {
-    "stripe": "^14.0.0",
-    "@supabase/supabase-js": "^2.39.0",
     "@aws-sdk/client-s3": "^3.0.0",
-    "@aws-sdk/s3-request-presigner": "^3.0.0"
+    "@aws-sdk/s3-request-presigner": "^3.0.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "stripe": "^14.0.0"
+  },
+  "devDependencies": {
+    "jest": "^30.2.0"
   }
 }
