@@ -26,8 +26,8 @@
                 <div class="pricing-header">
                     <h2>Broadcast Pro</h2>
                     <div class="price">
-                        <span class="amount">$14.99</span>
-                        <span class="period">/month</span>
+                        <span class="amount">$2.99</span>
+                        <span class="period">one-time</span>
                     </div>
                 </div>
 
@@ -96,8 +96,8 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Stripe Price ID for Broadcast Pro subscription ($14.99/month)
-        const BROADCAST_PRICE_ID = 'price_1SjK7SA1WPL5LnBtWdgJCcVD';
+        // Stripe Price ID for Broadcast Pro ($2.99 one-time)
+        const BROADCAST_PRICE_ID = 'price_1T1ogBA1WPL5LnBtEQBc2ZXx';
 
         let currentUser = null;
         let currentSession = null;
@@ -145,7 +145,7 @@
                         userEmail: currentUser.email,
                         userId: currentUser.id,
                         productKey: 'broadcast',
-                        mode: 'subscription',
+                        mode: 'payment',
                         successUrl: window.location.origin + '/broadcast/?subscribed=true'
                     })
                 });

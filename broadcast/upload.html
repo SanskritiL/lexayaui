@@ -1115,12 +1115,9 @@
                 const isImage = selectedMediaType === 'image';
                 const isVideo = selectedMediaType === 'video';
 
-                // LinkedIn and YouTube need R2 for media (Instagram/Threads disabled)
-                // LinkedIn: server-side video upload (browser CORS blocks direct upload)
-                // YouTube: server-side video upload
-                const needsR2Upload = (selectedPlatforms.includes('linkedin') || selectedPlatforms.includes('youtube')) && selectedFile;
-                const needsLinkedInVideo = false; // Disabled - now using server-side upload
-                const needsTikTokVideo = selectedPlatforms.includes('tiktok') && selectedFile;
+                // Always upload to R2 when there's a file - server handles all platforms
+                // (TikTok via PULL_FROM_URL, LinkedIn/YouTube server-side upload from R2)
+                const needsR2Upload = !!selectedFile;
 
                 // Get session once upfront (avoid repeated calls)
                 const { data: { session } } = await supabaseClient.auth.getSession();
@@ -1149,94 +1146,14 @@
                     uploadPromises.push(thumbPromise);
                 }
 
-                // TikTok upload promise
-                if (needsTikTokVideo) {
-                    console.log('[TIKTOK] Uploading video directly to TikTok...');
-                    publishBtn.textContent = 'Uploading to platforms...';
-                    updatePlatformProgress('tiktok', 'publishing', 'Uploading video...');
-
-                    const tiktokPromise = (async () => {
-                        try {
-                            const initRes = await fetch('/api/broadcast/init-video?platform=tiktok', {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bearer ${authToken}`
-                                },
-                                body: JSON.stringify({ fileSizeBytes: selectedFile.size })
-                            });
-
-                            if (!initRes.ok) {
-                                const err = await initRes.json();
-                                throw new Error(err.error || 'Failed to init TikTok upload');
-                            }
-
-                            const { uploadUrl, publishId, chunkSize, totalChunks } = await initRes.json();
-                            console.log('[TIKTOK] Got upload URL, uploading video...');
-                            console.log('[TIKTOK] Chunk size:', chunkSize, 'Total chunks:', totalChunks);
-
-                            if (totalChunks === 1) {
-                                const uploadRes = await fetch(uploadUrl, {
-                                    method: 'PUT',
-                                    headers: {
-                                        'Content-Type': 'video/mp4',
-                                        'Content-Range': `bytes 0-${selectedFile.size - 1}/${selectedFile.size}`,
-                                    },
-                                    body: selectedFile
-                                });
-
-                                if (!uploadRes.ok) {
-                                    const errText = await uploadRes.text();
-                                    console.error('[TIKTOK] Upload failed:', errText);
-                                    throw new Error('Failed to upload video to TikTok');
-                                }
-                            } else {
-                                const fileBuffer = await selectedFile.arrayBuffer();
-                                const bytes = new Uint8Array(fileBuffer);
-
-                                for (let i = 0; i < totalChunks; i++) {
-                                    const start = i * chunkSize;
-                                    const end = Math.min(start + chunkSize, selectedFile.size);
-                                    const chunk = bytes.slice(start, end);
-
-                                    console.log(`[TIKTOK] Uploading chunk ${i + 1}/${totalChunks}: bytes ${start}-${end - 1}`);
-                                    updatePlatformProgress('tiktok', 'publishing', `Uploading ${Math.round((i + 1) / totalChunks * 100)}%...`);
-
-                                    const uploadRes = await fetch(uploadUrl, {
-                                        method: 'PUT',
-                                        headers: {
-                                            'Content-Type': 'video/mp4',
-                                            'Content-Range': `bytes ${start}-${end - 1}/${selectedFile.size}`,
-                                        },
-                                        body: chunk
-                                    });
-
-                                    if (!uploadRes.ok) {
-                                        const errText = await uploadRes.text();
-                                        console.error(`[TIKTOK] Chunk ${i + 1} upload failed:`, errText);
-                                        throw new Error(`Failed to upload chunk ${i + 1} to TikTok`);
-                                    }
-                                }
-                                console.log('[TIKTOK] All chunks uploaded!');
-                            }
-
-                            console.log('[TIKTOK] Video uploaded! Publish ID:', publishId);
-                            metadata.tiktok_publish_id = publishId;
-
-                        } catch (tiktokError) {
-                            console.error('[TIKTOK] Video upload failed:', tiktokError.message);
-                            updatePlatformProgress('tiktok', 'failed', 'Upload failed');
-                            metadata.tiktok_upload_error = tiktokError.message;
-                        }
-                    })();
-                    uploadPromises.push(tiktokPromise);
-                }
-
-                // R2 upload promise (for LinkedIn/YouTube)
+                // R2 upload promise (single upload for all platforms)
                 if (selectedFile && needsR2Upload) {
                     const mediaTypeLabel = isImage ? 'image' : 'video';
                     console.log(`[R2] Uploading ${mediaTypeLabel}...`);
-                    if (!needsTikTokVideo) publishBtn.textContent = `Uploading ${mediaTypeLabel}...`;
+                    publishBtn.textContent = `Uploading ${mediaTypeLabel}...`;
+
+                    // Show upload progress on all selected platforms
+                    selectedPlatforms.forEach(p => updatePlatformProgress(p, 'uploading', 'Uploading...'));
 
                     const r2Promise = (async () => {
                         const presignRes = await fetch('/api/broadcast/publish?action=upload', {
@@ -1257,21 +1174,47 @@
                         }
 
                         const { uploadUrl, key, publicUrl } = await presignRes.json();
-                        console.log('[R2] Got presigned URL, uploading...');
+                        console.log('[R2] Got presigned URL, uploading with progress...');
 
-                        const uploadRes = await fetch(uploadUrl, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': selectedFile.type },
-                            body: selectedFile
+                        // Use XMLHttpRequest for upload progress tracking
+                        await new Promise((resolve, reject) => {
+                            const xhr = new XMLHttpRequest();
+                            xhr.open('PUT', uploadUrl);
+                            xhr.setRequestHeader('Content-Type', selectedFile.type);
+
+                            xhr.upload.onprogress = (e) => {
+                                if (e.lengthComputable) {
+                                    const pct = Math.round((e.loaded / e.total) * 100);
+                                    const loadedMB = (e.loaded / 1024 / 1024).toFixed(1);
+                                    const totalMB = (e.total / 1024 / 1024).toFixed(1);
+                                    publishBtn.textContent = `Uploading ${pct}%`;
+                                    selectedPlatforms.forEach(p => {
+                                        updatePlatformProgress(p, 'uploading', `Uploading ${pct}% (${loadedMB}/${totalMB} MB)`);
+                                        updateProgressBar(p, pct);
+                                    });
+                                }
+                            };
+
+                            xhr.onload = () => {
+                                if (xhr.status >= 200 && xhr.status < 300) {
+                                    resolve();
+                                } else {
+                                    reject(new Error(`Failed to upload ${mediaTypeLabel} to R2`));
+                                }
+                            };
+                            xhr.onerror = () => reject(new Error(`Network error uploading ${mediaTypeLabel}`));
+                            xhr.send(selectedFile);
                         });
-
-                        if (!uploadRes.ok) {
-                            throw new Error(`Failed to upload ${mediaTypeLabel} to R2`);
-                        }
 
                         mediaUrl = publicUrl;
                         metadata.r2_key = key;
                         console.log(`[R2] ${mediaTypeLabel} uploaded:`, mediaUrl);
+
+                        // Update all platforms to "Publishing..." after upload completes
+                        selectedPlatforms.forEach(p => {
+                            updatePlatformProgress(p, 'publishing', 'Publishing...');
+                            updateProgressBar(p, 100);
+                        });
                     })();
                     uploadPromises.push(r2Promise);
                 }
@@ -1507,6 +1450,9 @@
                         <div class="progress-info">
                             <h4>${info.name}</h4>
                             <p id="progress-${platform}-status">Waiting...</p>
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill" id="progress-${platform}-bar" style="width: 0%"></div>
+                            </div>
                         </div>
                         <div class="progress-status" id="progress-${platform}-icon">
                             <div class="mini-spinner"></div>
@@ -1527,8 +1473,40 @@
 
             item.className = `progress-item ${status}`;
             statusText.textContent = message;
-            statusIcon.innerHTML = '';
-            statusIcon.className = `progress-status ${status}`;
+
+            // Keep spinner for active states, clear for final states
+            if (status === 'uploading' || status === 'publishing' || status === '') {
+                statusIcon.innerHTML = '<div class="mini-spinner"></div>';
+                statusIcon.className = 'progress-status';
+            } else {
+                statusIcon.innerHTML = '';
+                statusIcon.className = `progress-status ${status}`;
+            }
+
+            // Hide progress bar on completion states, show pulsing bar during publishing
+            const bar = document.getElementById(`progress-${platform}-bar`);
+            const track = bar?.parentElement;
+            if (track) {
+                if (status === 'success' || status === 'failed') {
+                    track.style.display = 'none';
+                } else if (status === 'publishing') {
+                    // Pulsing indeterminate bar during server publishing
+                    track.style.display = 'block';
+                    bar.style.width = '100%';
+                    bar.classList.add('indeterminate');
+                } else {
+                    track.style.display = 'block';
+                    bar.classList.remove('indeterminate');
+                }
+            }
+        }
+
+        function updateProgressBar(platform, percent) {
+            const bar = document.getElementById(`progress-${platform}-bar`);
+            if (bar) {
+                bar.classList.remove('indeterminate');
+                bar.style.width = `${percent}%`;
+            }
         }
 
         function completePublishingModal(overallStatus, successCount, totalCount, postId = null, platformResults = {}) {
@@ -1980,6 +1958,34 @@
             border-color: #dc2626;
             background: #fef2f2;
         }
+        .progress-item.uploading {
+            border-color: var(--yak-accent, #d4838f);
+            background: var(--yak-cream, #fff5f5);
+        }
+        .progress-bar-track {
+            width: 100%;
+            height: 3px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--yak-accent, #d4838f);
+            border-radius: 2px;
+            transition: width 0.2s ease;
+        }
+        .progress-bar-fill.indeterminate {
+            width: 100% !important;
+            background: linear-gradient(90deg, var(--yak-accent, #d4838f) 0%, var(--yak-warm, #e8b4b8) 50%, var(--yak-accent, #d4838f) 100%);
+            background-size: 200% 100%;
+            animation: indeterminate 1.5s ease-in-out infinite;
+        }
+        @keyframes indeterminate {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
         .progress-icon {
             width: 36px;
             height: 36px;
@@ -1992,6 +1998,7 @@
         }
         .progress-icon.linkedin { background: #0A66C2; color: white; }
         .progress-icon.tiktok { background: #000000; color: white; }
+        .progress-icon.youtube { background: #FF0000; color: white; }
         /* .progress-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; } */
         /* .progress-icon.threads { background: #000000; color: white; } */
         .progress-info {

@@ -166,7 +166,7 @@ module.exports = async function handler(req, res) {
                         result = await publishToLinkedIn(post, account);
                         break;
                     case 'tiktok':
-                        result = await publishToTikTok(post, account);
+                        result = await publishToTikTok(post, account, supabase);
                         break;
                     // case 'instagram':
                     //     result = await publishToInstagram(post, account);
@@ -230,7 +230,9 @@ module.exports = async function handler(req, res) {
             .eq('id', postId);
 
         // CLEANUP: Delete video from R2 or Supabase storage after successful publish
-        if (hasSuccess && post.video_url) {
+        // Skip cleanup if TikTok used PULL_FROM_URL (it fetches the video asynchronously)
+        const tiktokNeedsVideo = results.tiktok?._skipCleanup;
+        if (hasSuccess && post.video_url && !tiktokNeedsVideo) {
             console.log('[CLEANUP] Starting video cleanup...');
             try {
                 // Check if this is an R2 video (has r2_key in metadata)
@@ -278,6 +280,8 @@ module.exports = async function handler(req, res) {
                 console.error('[CLEANUP] Error during cleanup:', cleanupError.message);
                 // Don't fail the whole request if cleanup fails
             }
+        } else if (tiktokNeedsVideo) {
+            console.log('[CLEANUP] Skipping R2 cleanup — TikTok is pulling video asynchronously');
         }
 
         console.log('========== PUBLISH API COMPLETE ==========');
@@ -691,35 +695,97 @@ async function createLinkedInTextPost(headers, authorUrn, post) {
     };
 }
 
-// TikTok Publishing (Direct Upload to Drafts)
-async function publishToTikTok(post, account) {
+// TikTok Publishing (PULL_FROM_URL from R2)
+async function publishToTikTok(post, account, supabase) {
     console.log('[TIKTOK] Starting publish...');
     console.log('[TIKTOK] Post metadata:', post.metadata);
 
-    // Check if video was already uploaded directly from browser
-    const tiktokPublishId = post.metadata?.tiktok_publish_id;
-    const tiktokUploadError = post.metadata?.tiktok_upload_error;
-
-    // If there was an upload error, report it
-    if (tiktokUploadError) {
-        console.error('[TIKTOK] Upload error from browser:', tiktokUploadError);
-        throw new Error(tiktokUploadError);
+    if (!post.video_url) {
+        console.log('[TIKTOK] No video URL available');
+        throw new Error('No video available for TikTok. Please try again.');
     }
 
-    // If video was uploaded directly, it's already in the user's inbox
-    if (tiktokPublishId) {
-        console.log('[TIKTOK] Video already uploaded! Publish ID:', tiktokPublishId);
-        return {
-            status: 'success',
-            publish_id: tiktokPublishId,
-            note: 'Video sent to TikTok inbox. Open TikTok app to add caption and post.',
-        };
+    let accessToken = account.access_token;
+
+    // Refresh token if expired or expiring soon
+    const tokenExpiresAt = new Date(account.token_expires_at);
+    const now = new Date();
+    const isExpired = tokenExpiresAt <= now;
+    const isExpiringSoon = tokenExpiresAt <= new Date(now.getTime() + 5 * 60 * 1000);
+
+    if ((isExpired || isExpiringSoon) && account.refresh_token) {
+        console.log('[TIKTOK] Token expired or expiring soon, refreshing...');
+        try {
+            const refreshResponse = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    client_key: process.env.TIKTOK_CLIENT_KEY,
+                    client_secret: process.env.TIKTOK_CLIENT_SECRET,
+                    grant_type: 'refresh_token',
+                    refresh_token: account.refresh_token,
+                }),
+            });
+
+            const refreshData = await refreshResponse.json();
+            console.log('[TIKTOK] Refresh response status:', refreshResponse.status);
+
+            if (refreshData.access_token) {
+                accessToken = refreshData.access_token;
+                await supabase
+                    .from('connected_accounts')
+                    .update({
+                        access_token: refreshData.access_token,
+                        refresh_token: refreshData.refresh_token || account.refresh_token,
+                        token_expires_at: new Date(Date.now() + (refreshData.expires_in * 1000)).toISOString(),
+                    })
+                    .eq('id', account.id);
+                console.log('[TIKTOK] Token refreshed successfully!');
+            } else {
+                console.error('[TIKTOK] Token refresh failed:', refreshData.error);
+                throw new Error('TikTok token expired. Please reconnect your TikTok account.');
+            }
+        } catch (refreshError) {
+            if (refreshError.message.includes('reconnect')) throw refreshError;
+            console.error('[TIKTOK] Token refresh error:', refreshError.message);
+            throw new Error('Failed to refresh TikTok token. Please reconnect your account.');
+        }
     }
 
-    // No direct upload - this shouldn't happen with the new flow
-    // but keep as fallback
-    console.log('[TIKTOK] No direct upload found, video required');
-    throw new Error('Video upload to TikTok failed. Please try again.');
+    // Use PULL_FROM_URL — TikTok fetches video from R2 asynchronously
+    console.log('[TIKTOK] Using PULL_FROM_URL with R2 video:', post.video_url);
+
+    const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: JSON.stringify({
+            source_info: {
+                source: 'PULL_FROM_URL',
+                video_url: post.video_url,
+            },
+        }),
+    });
+
+    const initData = await initResponse.json();
+    console.log('[TIKTOK] PULL_FROM_URL response:', JSON.stringify(initData));
+
+    if (initData.error && initData.error.code !== 'ok') {
+        console.error('[TIKTOK] PULL_FROM_URL error:', initData.error);
+        throw new Error(initData.error.message || 'Failed to send video to TikTok');
+    }
+
+    const publishId = initData.data?.publish_id;
+    console.log('[TIKTOK] PULL_FROM_URL success! Publish ID:', publishId);
+
+    return {
+        status: 'success',
+        publish_id: publishId,
+        note: 'Video sent to TikTok inbox. Open TikTok app to add caption and post.',
+        _skipCleanup: true, // TikTok pulls video async, don't delete from R2 yet
+    };
 }
 
 // Instagram Publishing
