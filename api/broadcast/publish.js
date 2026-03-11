@@ -230,9 +230,7 @@ module.exports = async function handler(req, res) {
             .eq('id', postId);
 
         // CLEANUP: Delete video from R2 or Supabase storage after successful publish
-        // Skip cleanup if TikTok used PULL_FROM_URL (it fetches the video asynchronously)
-        const tiktokNeedsVideo = results.tiktok?._skipCleanup;
-        if (hasSuccess && post.video_url && !tiktokNeedsVideo) {
+        if (hasSuccess && post.video_url) {
             console.log('[CLEANUP] Starting video cleanup...');
             try {
                 // Check if this is an R2 video (has r2_key in metadata)
@@ -280,8 +278,6 @@ module.exports = async function handler(req, res) {
                 console.error('[CLEANUP] Error during cleanup:', cleanupError.message);
                 // Don't fail the whole request if cleanup fails
             }
-        } else if (tiktokNeedsVideo) {
-            console.log('[CLEANUP] Skipping R2 cleanup — TikTok is pulling video asynchronously');
         }
 
         console.log('========== PUBLISH API COMPLETE ==========');
@@ -695,7 +691,7 @@ async function createLinkedInTextPost(headers, authorUrn, post) {
     };
 }
 
-// TikTok Publishing (PULL_FROM_URL from R2)
+// TikTok Publishing (FILE_UPLOAD — direct binary upload, no domain verification needed)
 async function publishToTikTok(post, account, supabase) {
     console.log('[TIKTOK] Starting publish...');
     console.log('[TIKTOK] Post metadata:', post.metadata);
@@ -752,9 +748,22 @@ async function publishToTikTok(post, account, supabase) {
         }
     }
 
-    // Use PULL_FROM_URL — TikTok fetches video from R2 asynchronously
-    console.log('[TIKTOK] Using PULL_FROM_URL with R2 video:', post.video_url);
+    // Download video from R2 to upload directly to TikTok (FILE_UPLOAD)
+    console.log('[TIKTOK] Downloading video from R2:', post.video_url);
+    const videoFetch = await fetch(post.video_url);
+    if (!videoFetch.ok) throw new Error('Failed to fetch video from storage');
+    const videoBuffer = Buffer.from(await videoFetch.arrayBuffer());
+    const videoSize = videoBuffer.length;
+    console.log('[TIKTOK] Video downloaded, size:', (videoSize / 1024 / 1024).toFixed(2), 'MB');
 
+    // Chunk size: whole file if <5MB, else 10MB chunks (max 64MB each, final chunk can be larger)
+    const MIN_CHUNK = 5 * 1024 * 1024;
+    const TARGET_CHUNK = 10 * 1024 * 1024;
+    const chunkSize = videoSize < MIN_CHUNK ? videoSize : TARGET_CHUNK;
+    const totalChunks = Math.floor(videoSize / chunkSize) || 1;
+    console.log('[TIKTOK] Chunk size:', (chunkSize / 1024 / 1024).toFixed(2), 'MB, total chunks:', totalChunks);
+
+    // Step 1: Init upload
     const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
         method: 'POST',
         headers: {
@@ -763,28 +772,61 @@ async function publishToTikTok(post, account, supabase) {
         },
         body: JSON.stringify({
             source_info: {
-                source: 'PULL_FROM_URL',
-                video_url: post.video_url,
+                source: 'FILE_UPLOAD',
+                video_size: videoSize,
+                chunk_size: chunkSize,
+                total_chunk_count: totalChunks,
             },
         }),
     });
 
     const initData = await initResponse.json();
-    console.log('[TIKTOK] PULL_FROM_URL response:', JSON.stringify(initData));
+    console.log('[TIKTOK] FILE_UPLOAD init response:', JSON.stringify(initData));
 
     if (initData.error && initData.error.code !== 'ok') {
-        console.error('[TIKTOK] PULL_FROM_URL error:', initData.error);
-        throw new Error(initData.error.message || 'Failed to send video to TikTok');
+        console.error('[TIKTOK] Init error:', initData.error);
+        throw new Error(initData.error.message || 'Failed to initialize TikTok upload');
     }
 
     const publishId = initData.data?.publish_id;
-    console.log('[TIKTOK] PULL_FROM_URL success! Publish ID:', publishId);
+    const uploadUrl = initData.data?.upload_url;
+    if (!uploadUrl) throw new Error('No upload URL returned from TikTok');
+    console.log('[TIKTOK] Publish ID:', publishId);
 
+    // Step 2: Upload chunks sequentially
+    for (let i = 0; i < totalChunks; i++) {
+        const start = i * chunkSize;
+        // Last chunk gets all remaining bytes (handles trailing bytes per TikTok spec)
+        const end = i === totalChunks - 1 ? videoSize : start + chunkSize;
+        const chunk = videoBuffer.slice(start, end);
+        const lastByte = end - 1;
+
+        console.log(`[TIKTOK] Uploading chunk ${i + 1}/${totalChunks} bytes ${start}-${lastByte}/${videoSize}`);
+        const uploadResponse = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'video/mp4',
+                'Content-Length': chunk.length.toString(),
+                'Content-Range': `bytes ${start}-${lastByte}/${videoSize}`,
+            },
+            body: chunk,
+        });
+
+        console.log(`[TIKTOK] Chunk ${i + 1} response status:`, uploadResponse.status);
+        const isLastChunk = i === totalChunks - 1;
+        const expectedStatus = isLastChunk ? 201 : 206;
+        if (uploadResponse.status !== expectedStatus && uploadResponse.status !== 201 && uploadResponse.status !== 206) {
+            const errText = await uploadResponse.text();
+            throw new Error(`TikTok chunk upload failed (${uploadResponse.status}): ${errText}`);
+        }
+    }
+
+    console.log('[TIKTOK] All chunks uploaded! Publish ID:', publishId);
     return {
         status: 'success',
         publish_id: publishId,
         note: 'Video sent to TikTok inbox. Open TikTok app to add caption and post.',
-        _skipCleanup: true, // TikTok pulls video async, don't delete from R2 yet
+        _skipCleanup: false,
     };
 }
 
@@ -1336,11 +1378,11 @@ async function publishToYouTube(post, account, supabase) {
             description = description + '\n\n#Shorts';
         }
 
-        // Extract title from caption (first line or first 100 chars)
-        let title = post.caption?.split('\n')[0]?.substring(0, 100) || 'Short video';
-        if (title.length > 100) {
-            title = title.substring(0, 97) + '...';
-        }
+        // Extract title from caption (first non-empty line, max 100 chars)
+        const firstLine = post.caption?.split('\n').find(line => line.trim())?.trim() || '';
+        let title = firstLine.substring(0, 100) || 'Short video';
+        // YouTube rejects titles with < or >
+        title = title.replace(/[<>]/g, '')  || 'Short video';
 
         const videoMetadata = {
             snippet: {
