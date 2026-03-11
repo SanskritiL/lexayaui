@@ -2,6 +2,7 @@
   "version": 2,
   "cleanUrls": true,
   "rewrites": [
+    { "source": "/api/broadcast/auth/:platform", "destination": "/api/broadcast/auth/[platform]" },
     { "source": "/kit/:token", "destination": "/kit/index.html" }
   ],
   "functions": {

@@ -12,8 +12,8 @@ module.exports = async function handler(req, res) {
     switch (platform) {
         case 'linkedin':
             return handleLinkedIn(req, res);
-        // case 'instagram':
-        //     return handleInstagram(req, res);
+        case 'instagram':
+            return handleInstagram(req, res);
         case 'tiktok':
             return handleTikTok(req, res);
         case 'twitter':

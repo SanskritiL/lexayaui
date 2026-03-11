@@ -74,8 +74,7 @@
                     </div>
                 </div>
 
-                <!-- Instagram (disabled - requires Facebook App approval) -->
-                <!--
+                <!-- Instagram -->
                 <div class="connect-card" id="instagram-card" data-platform="instagram">
                     <div class="card-header">
                         <div class="platform-icon instagram">
@@ -95,7 +94,6 @@
                         </div>
                     </div>
                 </div>
-                -->
 
                 <!-- Threads (disabled - requires Facebook App approval) -->
                 <!--
@@ -450,7 +448,7 @@
         }
 
         function updateUI() {
-            const platforms = ['linkedin', 'tiktok', /* 'instagram', 'threads', */ 'youtube'];
+            const platforms = ['linkedin', 'tiktok', 'instagram', /* 'threads', */ 'youtube'];
 
             platforms.forEach(platform => {
                 const account = connectedAccounts.find(a => a.platform === platform);
@@ -489,11 +487,10 @@
                 }
             });
 
-            // Instagram & Threads disabled - requires Facebook App approval
-            // document.getElementById('instagram-btn').addEventListener('click', () => {
-            //     const account = connectedAccounts.find(a => a.platform === 'instagram');
-            //     if (account) { disconnectAccount('instagram'); } else { connectInstagram(); }
-            // });
+            document.getElementById('instagram-btn').addEventListener('click', () => {
+                const account = connectedAccounts.find(a => a.platform === 'instagram');
+                if (account) { disconnectAccount('instagram'); } else { connectInstagram(); }
+            });
             // document.getElementById('threads-btn').addEventListener('click', () => {
             //     const account = connectedAccounts.find(a => a.platform === 'threads');
             //     if (account) { disconnectAccount('threads'); } else { connectThreads(); }
@@ -520,11 +517,10 @@
             window.location.href = `/api/broadcast/auth/tiktok?state=${encodeURIComponent(state)}`;
         }
 
-        // Instagram & Threads disabled - requires Facebook App approval
-        // function connectInstagram() {
-        //     const state = currentSession.access_token;
-        //     window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
-        // }
+        function connectInstagram() {
+            const state = currentSession.access_token;
+            window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
+        }
         // function connectThreads() {
         //     const state = currentSession.access_token;
         //     window.location.href = `/api/broadcast/auth/threads?state=${encodeURIComponent(state)}`;
@@ -611,7 +607,7 @@
             const platformNames = {
                 linkedin: 'LinkedIn',
                 tiktok: 'TikTok',
-                // instagram: 'Instagram',
+                instagram: 'Instagram',
                 // threads: 'Threads',
                 youtube: 'YouTube'
             };
