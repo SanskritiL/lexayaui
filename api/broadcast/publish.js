@@ -756,11 +756,17 @@ async function publishToTikTok(post, account, supabase) {
     const videoSize = videoBuffer.length;
     console.log('[TIKTOK] Video downloaded, size:', (videoSize / 1024 / 1024).toFixed(2), 'MB');
 
-    // Chunk size: whole file if <5MB, else 10MB chunks (max 64MB each, final chunk can be larger)
-    const MIN_CHUNK = 5 * 1024 * 1024;
+    // TikTok chunk rules: single-chunk → chunk_size must equal video_size
+    // Multi-chunk → chunk_size=10MB, total_chunks=ceil(size/10MB)
     const TARGET_CHUNK = 10 * 1024 * 1024;
-    const chunkSize = videoSize < MIN_CHUNK ? videoSize : TARGET_CHUNK;
-    const totalChunks = Math.floor(videoSize / chunkSize) || 1;
+    let chunkSize, totalChunks;
+    if (videoSize <= TARGET_CHUNK) {
+        chunkSize = videoSize;
+        totalChunks = 1;
+    } else {
+        chunkSize = TARGET_CHUNK;
+        totalChunks = Math.ceil(videoSize / TARGET_CHUNK);
+    }
     console.log('[TIKTOK] Chunk size:', (chunkSize / 1024 / 1024).toFixed(2), 'MB, total chunks:', totalChunks);
 
     // Step 1: Init upload
