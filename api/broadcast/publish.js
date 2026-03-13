@@ -168,9 +168,9 @@ module.exports = async function handler(req, res) {
                     case 'tiktok':
                         result = await publishToTikTok(post, account, supabase);
                         break;
-                    // case 'instagram':
-                    //     result = await publishToInstagram(post, account);
-                    //     break;
+                    case 'instagram':
+                        result = await publishToInstagram(post, account);
+                        break;
                     case 'twitter':
                         result = await publishToTwitter(post, account);
                         break;
