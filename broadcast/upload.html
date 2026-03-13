@@ -1176,6 +1176,10 @@
                             const xhr = new XMLHttpRequest();
                             xhr.open('PUT', uploadUrl);
                             xhr.setRequestHeader('Content-Type', selectedFile.type);
+                            xhr.timeout = 300000; // 5 min timeout
+
+                            let lastLoaded = 0;
+                            let stallTimer = null;
 
                             xhr.upload.onprogress = (e) => {
                                 if (e.lengthComputable) {
@@ -1187,17 +1191,29 @@
                                         updatePlatformProgress(p, 'uploading', `Uploading ${pct}% (${loadedMB}/${totalMB} MB)`);
                                         updateProgressBar(p, pct);
                                     });
+
+                                    // Reset stall detector on progress
+                                    if (e.loaded > lastLoaded) {
+                                        lastLoaded = e.loaded;
+                                        clearTimeout(stallTimer);
+                                        stallTimer = setTimeout(() => {
+                                            xhr.abort();
+                                            reject(new Error('Upload stalled — no progress for 30s. Check your connection and try again.'));
+                                        }, 30000);
+                                    }
                                 }
                             };
 
                             xhr.onload = () => {
+                                clearTimeout(stallTimer);
                                 if (xhr.status >= 200 && xhr.status < 300) {
                                     resolve();
                                 } else {
-                                    reject(new Error(`Failed to upload ${mediaTypeLabel} to R2`));
+                                    reject(new Error(`Failed to upload ${mediaTypeLabel} to R2 (status ${xhr.status})`));
                                 }
                             };
-                            xhr.onerror = () => reject(new Error(`Network error uploading ${mediaTypeLabel}`));
+                            xhr.onerror = () => { clearTimeout(stallTimer); reject(new Error(`Network error uploading ${mediaTypeLabel}`)); };
+                            xhr.ontimeout = () => { clearTimeout(stallTimer); reject(new Error('Upload timed out after 5 minutes')); };
                             xhr.send(selectedFile);
                         });
 
