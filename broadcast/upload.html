@@ -1356,20 +1356,50 @@
                                 }
                             }
                         })
-                        .catch(err => {
+                        .catch(async err => {
                             console.error('Publish error:', err);
                             if (!isCompleted) {
                                 isCompleted = true;
-                                // Create error results for all platforms
-                                const errorResults = {};
-                                selectedPlatforms.forEach(p => {
-                                    updatePlatformProgress(p, 'failed', 'Error');
-                                    errorResults[p] = { status: 'error', error: err.message };
-                                });
-                                completePublishingModal('failed', 0, selectedPlatforms.length, post.id, errorResults);
                                 if (realtimeChannel) {
                                     supabaseClient.removeChannel(realtimeChannel);
                                 }
+                                // Fetch actual DB results — some platforms may have succeeded
+                                // even if the API response was lost (network error, timeout, etc.)
+                                let actualResults = {};
+                                let dbStatus = null;
+                                try {
+                                    const { data } = await supabaseClient
+                                        .from('posts')
+                                        .select('platform_results, status')
+                                        .eq('id', post.id)
+                                        .single();
+                                    actualResults = data?.platform_results || {};
+                                    dbStatus = data?.status;
+                                    console.log('[CATCH] DB platform_results:', actualResults);
+                                } catch (dbErr) {
+                                    console.warn('[CATCH] Could not fetch DB results:', dbErr);
+                                }
+
+                                let successCount = 0;
+                                const finalResults = {};
+                                selectedPlatforms.forEach(p => {
+                                    const r = actualResults[p];
+                                    if (r?.status === 'success' || r?.status === 'pending') {
+                                        successCount++;
+                                        finalResults[p] = r;
+                                        updatePlatformProgress(p, 'success', r.url ? 'Posted!' : (r.note || 'Success!'));
+                                    } else if (r?.status === 'error') {
+                                        finalResults[p] = r;
+                                        updatePlatformProgress(p, 'failed', r.error || 'Failed');
+                                    } else {
+                                        // No DB result — mark as failed with the thrown error
+                                        finalResults[p] = { status: 'error', error: err.message };
+                                        updatePlatformProgress(p, 'failed', err.message || 'Error');
+                                    }
+                                });
+
+                                const status = dbStatus || (successCount === selectedPlatforms.length ? 'published' : successCount > 0 ? 'partial' : 'failed');
+                                completePublishingModal(status, successCount, selectedPlatforms.length, post.id, finalResults);
                             }
                         });
 
@@ -1664,7 +1694,10 @@
                 failedPlatforms.forEach(platform => {
                     updatePlatformProgress(platform, 'failed', error.message || 'Retry failed');
                 });
-                completePublishingModal('failed', 0, failedPlatforms.length, postId, lastPublishState.platformResults);
+                const totalPlatforms = Object.keys(lastPublishState.platformResults).length;
+                const previousSuccess = Object.values(lastPublishState.platformResults)
+                    .filter(r => r.status === 'success' || r.status === 'pending').length;
+                completePublishingModal('failed', previousSuccess, totalPlatforms, postId, lastPublishState.platformResults);
             }
 
             retryBtn.disabled = false;

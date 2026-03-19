@@ -94,13 +94,34 @@ module.exports = async function handler(req, res) {
         }
         console.log('[DB] Post found:', { id: post.id, caption: post.caption?.substring(0, 30), platforms: post.platforms });
 
-        // Get connected accounts for the platforms
-        console.log('[DB] Fetching connected accounts for platforms:', platforms);
+        // Read existing platform_results so we can preserve prior successes on retry
+        const existingPlatformResults = post.platform_results || {};
+        console.log('[DB] Existing platform_results:', existingPlatformResults);
+
+        // Skip platforms that already succeeded — never re-publish them
+        const platformsToPublish = platforms.filter(p => {
+            const existing = existingPlatformResults[p];
+            const alreadyDone = existing && (existing.status === 'success' || existing.status === 'pending');
+            if (alreadyDone) console.log(`[PUBLISH] Skipping ${p} — already succeeded`);
+            return !alreadyDone;
+        });
+
+        if (platformsToPublish.length === 0) {
+            console.log('[PUBLISH] All requested platforms already succeeded, nothing to do');
+            return res.status(200).json({
+                success: true,
+                status: 'published',
+                results: existingPlatformResults,
+            });
+        }
+
+        // Get connected accounts for only the platforms we still need to publish
+        console.log('[DB] Fetching connected accounts for platforms:', platformsToPublish);
         const { data: accounts, error: accountsError } = await supabase
             .from('connected_accounts')
             .select('*')
             .eq('user_id', user.id)
-            .in('platform', platforms);
+            .in('platform', platformsToPublish);
 
         if (accountsError) {
             console.log('[DB] Error fetching accounts:', accountsError);
@@ -110,7 +131,7 @@ module.exports = async function handler(req, res) {
 
         // Check which platforms are connected
         const connectedPlatforms = accounts.map(a => a.platform);
-        const missingPlatforms = platforms.filter(p => !connectedPlatforms.includes(p));
+        const missingPlatforms = platformsToPublish.filter(p => !connectedPlatforms.includes(p));
 
         if (missingPlatforms.length > 0) {
             console.log('[ERROR] Missing platforms:', missingPlatforms);
@@ -121,19 +142,23 @@ module.exports = async function handler(req, res) {
         }
 
         // Publish to each platform IN PARALLEL with real-time progress updates
-        console.log('[PUBLISH] Starting PARALLEL publish to platforms:', platforms);
+        console.log('[PUBLISH] Starting PARALLEL publish to platforms:', platformsToPublish);
         const results = {};
         let hasSuccess = false;
         let hasFailure = false;
 
-        // Helper to update post with current progress
-        async function updateProgress(platformResults) {
-            const successCount = Object.values(platformResults).filter(r => r.status === 'success').length;
-            const errorCount = Object.values(platformResults).filter(r => r.status === 'error').length;
-            const pendingCount = platforms.length - Object.keys(platformResults).length;
+        // Total platforms for this post (used to determine overall status)
+        const totalPlatforms = post.platforms || platforms;
+
+        // Helper to update post with current progress, always merging with existing successes
+        async function updateProgress(newResults) {
+            const mergedResults = { ...existingPlatformResults, ...newResults };
+            const successCount = Object.values(mergedResults).filter(r => r.status === 'success' || r.status === 'pending').length;
+            const errorCount = Object.values(mergedResults).filter(r => r.status === 'error').length;
+            const pendingCount = totalPlatforms.length - Object.keys(mergedResults).length;
 
             let status = 'publishing';
-            if (pendingCount === 0) {
+            if (pendingCount <= 0) {
                 status = errorCount === 0 ? 'published' : (successCount > 0 ? 'partial' : 'failed');
             }
 
@@ -141,14 +166,14 @@ module.exports = async function handler(req, res) {
                 .from('posts')
                 .update({
                     status: status,
-                    platform_results: platformResults,
+                    platform_results: mergedResults,
                     updated_at: new Date().toISOString(),
                 })
                 .eq('id', post.id);
         }
 
         // Create publish promises - each updates DB when done
-        const publishPromises = platforms.map(async (platform) => {
+        const publishPromises = platformsToPublish.map(async (platform) => {
             console.log(`[PUBLISH] Starting ${platform}...`);
             const account = accounts.find(a => a.platform === platform);
 
@@ -201,11 +226,14 @@ module.exports = async function handler(req, res) {
         // Wait for all platforms to complete
         await Promise.allSettled(publishPromises);
 
-        // Calculate final status
-        for (const [platform, result] of Object.entries(results)) {
-            if (result.status === 'success') {
+        // Merge new results with existing successes for final status calculation
+        const finalResults = { ...existingPlatformResults, ...results };
+
+        // Calculate final status across ALL platforms (existing + new)
+        for (const [platform, result] of Object.entries(finalResults)) {
+            if (result.status === 'success' || result.status === 'pending') {
                 hasSuccess = true;
-            } else {
+            } else if (result.status === 'error') {
                 hasFailure = true;
             }
         }
@@ -218,13 +246,13 @@ module.exports = async function handler(req, res) {
             overallStatus = 'partial';
         }
 
-        // Update post with results
-        console.log('[DB] Updating post with results:', { overallStatus, results });
+        // Update post with merged results — never lose a previous success
+        console.log('[DB] Updating post with results:', { overallStatus, finalResults });
         await supabase
             .from('posts')
             .update({
                 status: overallStatus,
-                platform_results: results,
+                platform_results: finalResults,
                 published_at: hasSuccess ? new Date().toISOString() : null,
             })
             .eq('id', postId);
@@ -287,7 +315,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({
             success: hasSuccess,
             status: overallStatus,
-            results
+            results: finalResults,
         });
 
     } catch (error) {
