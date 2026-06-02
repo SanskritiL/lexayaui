@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -92,7 +93,7 @@
 
     <!-- Top Navigation -->
     <nav class="w-full top-0 sticky bg-white/80 backdrop-blur-md z-50">
-        <div class="flex justify-between items-center px-6 md:px-12 py-6 max-w-[1920px] mx-auto">
+        <div class="flex justify-between items-center px-6 md:px-12 py-6 max-w-[1920px] mx-auto relative">
             <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
             <div class="hidden md:flex items-center space-x-12">
                 <a href="/broadcast/" class="font-['Manrope'] tracking-tight text-sm uppercase font-semibold text-slate-500 hover:text-slate-900 transition-colors">Broadcast</a>
@@ -105,6 +106,15 @@
             <button class="md:hidden mobile-menu-btn text-slate-900" aria-label="Toggle menu">
                 <span class="material-symbols-outlined">menu</span>
             </button>
+            <!-- Mobile nav links (hidden by default, toggled by .mobile-menu-btn) -->
+            <div class="nav-links md:hidden">
+                <a href="/broadcast/" class="text-sm uppercase font-semibold text-slate-500 hover:text-slate-900 transition-colors">Broadcast</a>
+                <a href="/blog/" class="text-sm uppercase font-semibold text-slate-500 hover:text-slate-900 transition-colors">Blog</a>
+                <a href="/resources/" class="text-sm uppercase font-semibold text-slate-500 hover:text-slate-900 transition-colors">Resources</a>
+                <a href="/login.html" class="bg-primary text-white px-8 py-3 rounded-md text-sm uppercase font-semibold hover:bg-primary-dim transition-all shadow-lg shadow-primary/20 text-center">
+                    Get Started
+                </a>
+            </div>
         </div>
     </nav>
 
