@@ -1,0 +1,9 @@
+.git
+.gitignore
+node_modules
+npm-debug.log
+env.yaml.example
+deploy.sh
+cloudbuild.yaml
+*.md
+.DS_Store

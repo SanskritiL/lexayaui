@@ -1,0 +1,50 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/cloud-run-source-deploy/publish-service'
+      - '.'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${_PROJECT_ID}/cloud-run-source-deploy/publish-service'
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'publish-service'
+      - '--image=${_REGION}-docker.pkg.dev/${_PROJECT_ID}/cloud-run-source-deploy/publish-service'
+      - '--platform=managed'
+      - '--region=${_REGION}'
+      - '--memory=2Gi'
+      - '--timeout=900'
+      - '--concurrency=10'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=SUPABASE_URL=${_SUPABASE_URL},SUPABASE_SERVICE_KEY=${_SUPABASE_SERVICE_KEY}'
+      - '--set-env-vars=R2_ACCESS_KEY_ID=${_R2_ACCESS_KEY_ID},R2_SECRET_ACCESS_KEY=${_R2_SECRET_ACCESS_KEY}'
+      - '--set-env-vars=R2_BUCKET_NAME=${_R2_BUCKET_NAME},R2_PUBLIC_URL=${_R2_PUBLIC_URL}'
+      - '--set-env-vars=YOUTUBE_CLIENT_ID=${_YOUTUBE_CLIENT_ID},YOUTUBE_CLIENT_SECRET=${_YOUTUBE_CLIENT_SECRET}'
+      - '--set-env-vars=TIKTOK_CLIENT_KEY=${_TIKTOK_CLIENT_KEY},TIKTOK_CLIENT_SECRET=${_TIKTOK_CLIENT_SECRET}'
+
+substitutions:
+  _REGION: us-central1
+  _PROJECT_ID: turtle-487402
+  _SUPABASE_URL: https://bcyhcsphmqizzvzmdqxc.supabase.co
+  _SUPABASE_SERVICE_KEY: YOUR_SERVICE_KEY
+  _R2_ACCESS_KEY_ID: YOUR_R2_KEY
+  _R2_SECRET_ACCESS_KEY: YOUR_R2_SECRET
+  _R2_BUCKET_NAME: lexaya-videos
+  _R2_PUBLIC_URL: https://pub-d8491ccfbb3a45e2bb038d9ae60a1957.r2.dev
+  _YOUTUBE_CLIENT_ID: YOUR_YT_CLIENT_ID
+  _YOUTUBE_CLIENT_SECRET: YOUR_YT_CLIENT_SECRET
+  _TIKTOK_CLIENT_KEY: YOUR_TT_KEY
+  _TIKTOK_CLIENT_SECRET: YOUR_TT_SECRET
+
+options:
+  machineType: 'E2_HIGHCPU_8'

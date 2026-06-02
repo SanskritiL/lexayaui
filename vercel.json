@@ -3,12 +3,11 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/api/broadcast/auth/:platform", "destination": "/api/broadcast/auth/[platform]" },
-    { "source": "/kit/:token", "destination": "/kit/index.html" }
+    { "source": "/kit/:token", "destination": "/kit/index.html" },
+
+    { "source": "/api/publish/:path*", "destination": "https://publish-service-266355090145.us-central1.run.app/:path*" }
   ],
   "functions": {
-    "api/broadcast/publish.js": {
-      "maxDuration": 60
-    },
     "api/broadcast/init-video.js": {
       "maxDuration": 60
     }

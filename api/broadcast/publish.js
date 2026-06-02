@@ -70,6 +70,11 @@ module.exports = async function handler(req, res) {
     }
     console.log('[AUTH] User verified:', user.id, user.email);
 
+    // Handle instagram-complete action (poll container + publish)
+    if (req.query.action === 'instagram-complete') {
+        return handleInstagramComplete(req, res, supabase, user);
+    }
+
     const { postId, platforms } = req.body;
     console.log('[REQUEST] postId:', postId, 'platforms:', platforms);
 
@@ -864,6 +869,100 @@ async function publishToTikTok(post, account, supabase) {
     };
 }
 
+// Instagram async completion — polls container status then calls media_publish
+async function handleInstagramComplete(req, res, supabase, user) {
+    const { postId } = req.body || {};
+    if (!postId) return res.status(400).json({ error: 'postId required' });
+
+    const { data: post, error: postError } = await supabase
+        .from('posts')
+        .select('*')
+        .eq('id', postId)
+        .eq('user_id', user.id)
+        .single();
+
+    if (postError || !post) return res.status(404).json({ error: 'Post not found' });
+
+    const igResult = post.platform_results?.instagram;
+    if (!igResult || igResult.status !== 'pending' || !igResult.container_id) {
+        // Already done or no container — return current status
+        return res.status(200).json(igResult || { status: 'error', error: 'No pending Instagram container' });
+    }
+
+    const { data: account, error: acctError } = await supabase
+        .from('connected_accounts')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('platform', 'instagram')
+        .single();
+
+    if (acctError || !account) return res.status(400).json({ error: 'Instagram account not connected' });
+
+    const { access_token, platform_user_id: igUserId } = account;
+    const containerId = igResult.container_id;
+
+    // Poll for up to 25 seconds
+    let isReady = false;
+    let lastStatusCode = '';
+    for (let i = 0; i < 25; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const statusUrl = new URL(`https://graph.facebook.com/v18.0/${containerId}`);
+        statusUrl.searchParams.set('fields', 'status_code,status');
+        statusUrl.searchParams.set('access_token', access_token);
+        const statusData = await fetch(statusUrl.toString()).then(r => r.json());
+
+        if (statusData.status_code !== lastStatusCode) {
+            console.log(`[INSTAGRAM-COMPLETE] Status: ${statusData.status_code} ${statusData.status || ''}`);
+            lastStatusCode = statusData.status_code;
+        }
+
+        if (statusData.status_code === 'FINISHED') { isReady = true; break; }
+        if (statusData.status_code === 'ERROR') {
+            const err = statusData.status || 'Media processing failed';
+            const merged = { ...post.platform_results, instagram: { status: 'error', error: err } };
+            await supabase.from('posts').update({ platform_results: merged }).eq('id', postId);
+            return res.status(200).json({ status: 'error', error: err });
+        }
+    }
+
+    if (!isReady) {
+        console.log('[INSTAGRAM-COMPLETE] Still processing — client should retry');
+        return res.status(200).json({ status: 'pending', note: 'Still processing' });
+    }
+
+    // Publish the container
+    const publishUrl = new URL(`https://graph.facebook.com/v18.0/${igUserId}/media_publish`);
+    publishUrl.searchParams.set('access_token', access_token);
+    publishUrl.searchParams.set('creation_id', containerId);
+    const publishResponse = await fetch(publishUrl.toString(), { method: 'POST' });
+
+    if (!publishResponse.ok) {
+        const errData = await publishResponse.json();
+        const err = errData.error?.message || 'Failed to publish to Instagram';
+        const merged = { ...post.platform_results, instagram: { status: 'error', error: err } };
+        await supabase.from('posts').update({ platform_results: merged }).eq('id', postId);
+        return res.status(200).json({ status: 'error', error: err });
+    }
+
+    const publishData = await publishResponse.json();
+    const successResult = {
+        status: 'success',
+        post_id: publishData.id,
+        url: `https://www.instagram.com/reel/${publishData.id}/`,
+    };
+    const merged = { ...post.platform_results, instagram: successResult };
+    // Recalculate overall post status
+    const allResults = Object.values(merged);
+    const hasError = allResults.some(r => r.status === 'error');
+    const overallStatus = hasError ? 'partial' : 'published';
+    await supabase.from('posts')
+        .update({ platform_results: merged, status: overallStatus, published_at: new Date().toISOString() })
+        .eq('id', postId);
+
+    console.log('[INSTAGRAM-COMPLETE] ✅ Published! Post ID:', publishData.id);
+    return res.status(200).json(successResult);
+}
+
 // Instagram Publishing
 async function publishToInstagram(post, account) {
     console.log('[INSTAGRAM] Starting publish...');
@@ -917,72 +1016,12 @@ async function publishToInstagram(post, account) {
     const containerId = containerData.id;
     console.log('[INSTAGRAM] ✅ Container created! ID:', containerId);
 
-    // Step 2: Wait for processing (poll status) - wait up to 50 seconds
-    console.log('[INSTAGRAM] Step 2: Polling for processing status...');
-    let isReady = false;
-    let attempts = 0;
-    const maxAttempts = 50; // 50 seconds max wait (function has 60s timeout)
-    let lastStatus = '';
-
-    while (!isReady && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const statusUrl = new URL(`https://graph.facebook.com/v18.0/${containerId}`);
-        statusUrl.searchParams.set('fields', 'status_code,status');
-        statusUrl.searchParams.set('access_token', access_token);
-
-        const statusResponse = await fetch(statusUrl.toString());
-        const statusData = await statusResponse.json();
-
-        if (statusData.status_code !== lastStatus) {
-            console.log(`[INSTAGRAM] Status check #${attempts + 1}:`, statusData.status_code, statusData.status || '');
-            lastStatus = statusData.status_code;
-        }
-
-        if (statusData.status_code === 'FINISHED') {
-            isReady = true;
-            console.log('[INSTAGRAM] ✅ Media processing complete!');
-        } else if (statusData.status_code === 'ERROR') {
-            console.error('[INSTAGRAM] ❌ Media processing failed!');
-            console.error('[INSTAGRAM] Status data:', JSON.stringify(statusData, null, 2));
-            throw new Error('Instagram media processing failed: ' + (statusData.status || 'Unknown error'));
-        }
-
-        attempts++;
-    }
-
-    if (!isReady) {
-        console.log('[INSTAGRAM] ⏳ Still processing after 50 seconds - video too large or Instagram slow');
-        throw new Error('Instagram is taking too long to process. Try a shorter/smaller video.')
-    }
-
-    // Step 3: Publish the container
-    console.log('[INSTAGRAM] Step 3: Publishing the container...');
-    const publishUrl = new URL(`https://graph.facebook.com/v18.0/${igUserId}/media_publish`);
-    publishUrl.searchParams.set('access_token', access_token);
-    publishUrl.searchParams.set('creation_id', containerId);
-
-    const publishResponse = await fetch(publishUrl.toString(), {
-        method: 'POST',
-    });
-
-    console.log('[INSTAGRAM] Publish response status:', publishResponse.status);
-
-    if (!publishResponse.ok) {
-        const errorData = await publishResponse.json();
-        console.error('[INSTAGRAM] ❌ Publish failed!');
-        console.error('[INSTAGRAM] Error response:', JSON.stringify(errorData, null, 2));
-        throw new Error(errorData.error?.message || 'Failed to publish to Instagram');
-    }
-
-    const publishData = await publishResponse.json();
-    console.log('[INSTAGRAM] ✅ Published successfully!');
-    console.log('[INSTAGRAM] Post ID:', publishData.id);
-
+    // Step 2: Return pending — container_id saved so ?action=instagram-complete can finish it
+    console.log('[INSTAGRAM] ✅ Container created — returning pending for async completion');
     return {
-        status: 'success',
-        post_id: publishData.id,
-        url: `https://www.instagram.com/reel/${publishData.id}/`,
+        status: 'pending',
+        container_id: containerId,
+        note: 'Instagram is processing your video...',
     };
 }
 

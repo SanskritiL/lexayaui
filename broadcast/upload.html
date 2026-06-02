@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/config.js"></script>
+    <script src="/js/api-config.js"></script>
     <style>
         /* Yak Theme Overrides */
         :root {
@@ -539,9 +541,7 @@
 
     <script>
         // Config
-        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
         let selectedFile = null;
         let selectedMediaType = null; // 'image' or 'video'
@@ -1151,7 +1151,7 @@
                     selectedPlatforms.forEach(p => updatePlatformProgress(p, 'uploading', 'Uploading...'));
 
                     const r2Promise = (async () => {
-                        const presignRes = await fetch('/api/broadcast/publish?action=upload', {
+                        const presignRes = await fetch(API.upload(), {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -1590,6 +1590,51 @@
             }
 
             modalActions.style.display = 'block';
+
+            // If Instagram returned pending, background-poll to finish it
+            if (postId && platformResults?.instagram?.status === 'pending' && platformResults?.instagram?.container_id) {
+                pollInstagramCompletion(postId);
+            }
+        }
+
+        async function pollInstagramCompletion(postId) {
+            console.log('[INSTAGRAM] Starting background completion polling...');
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return;
+
+            let attempts = 0;
+            const maxAttempts = 24; // 2 minutes (24 × 5s)
+
+            const poll = async () => {
+                if (attempts >= maxAttempts) {
+                    console.log('[INSTAGRAM] Completion polling timed out');
+                    updatePlatformProgress('instagram', 'failed', 'Timed out — check Instagram app');
+                    return;
+                }
+                attempts++;
+                try {
+                    const res = await fetch(API.instagramComplete(), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                        body: JSON.stringify({ postId }),
+                    });
+                    const result = await res.json();
+                    console.log('[INSTAGRAM] Completion poll result:', result);
+
+                    if (result.status === 'success') {
+                        updatePlatformProgress('instagram', 'success', 'Posted!');
+                    } else if (result.status === 'pending') {
+                        setTimeout(poll, 5000);
+                    } else {
+                        updatePlatformProgress('instagram', 'failed', result.error || 'Processing failed');
+                    }
+                } catch (err) {
+                    console.warn('[INSTAGRAM] Poll error, retrying:', err.message);
+                    setTimeout(poll, 5000);
+                }
+            };
+
+            setTimeout(poll, 5000); // First check after 5s
         }
 
         async function publishToAllPlatforms(postId, platforms) {
@@ -1602,7 +1647,7 @@
             }
 
             console.log('Calling publish API...');
-            const response = await fetch('/api/broadcast/publish', {
+            const response = await fetch(API.publish(), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1735,7 +1780,7 @@
                 const { data: { session } } = await supabaseClient.auth.getSession();
 
                 // Call analyze API
-                const response = await fetch('/api/broadcast/analyze-hook', {
+                const response = await fetch(API.analyzeHook(), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
