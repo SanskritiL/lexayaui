@@ -1,243 +1,124 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Lexaya</title>
+    <title>Dashboard — Lexaya</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        .members-nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.25rem 2rem;
-            background: rgba(255, 255, 255, 0.95);
-            border-bottom: 2px dashed var(--border-light);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .members-nav .nav-brand a {
-            color: var(--text-primary);
-            font-weight: 700;
-            font-size: 2rem;
-            text-decoration: none;
-        }
-
-        .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 1.5rem;
-        }
-
-        .logout-btn {
-            padding: 0.5rem 1rem;
-            background: transparent;
-            border: 2px solid var(--border);
-            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.95rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .logout-btn:hover {
-            background: var(--text-primary);
-            color: white;
-        }
-
-        .dashboard-content {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-        }
-
-        .greeting-box {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .greeting-box h1 {
-            font-size: 2.5rem;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .greeting-box p {
-            color: var(--text-secondary);
-            font-size: 1.3rem;
-        }
-
-        .actions-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1.5rem;
-        }
-
-        .action-card {
-            background: var(--bg);
-            padding: 2rem;
-            border: 3px solid var(--border);
-            border-radius: 15px 225px 15px 255px/255px 15px 225px 15px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            cursor: pointer;
-        }
-
-        .action-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(30, 64, 175, 0.15);
-            border-color: var(--text-primary);
-        }
-
-        .action-icon {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 1.25rem;
-        }
-
-        .action-icon i {
-            font-size: 1.75rem;
-            color: white;
-        }
-
-        .action-icon.broadcast {
-            background: linear-gradient(135deg, #3b82f6, #1e40af);
-        }
-
-        .action-icon.blogs {
-            background: linear-gradient(135deg, #10b981, #059669);
-        }
-
-        .action-icon.hooks {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-        }
-
-        .action-icon.calendar {
-            background: linear-gradient(135deg, #8b5cf6, #6d28d9);
-        }
-
-        .action-card h3 {
-            font-size: 1.4rem;
-            color: var(--text-primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .action-card p {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            line-height: 1.5;
-        }
-
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 60vh;
-            font-size: 1.5rem;
-            color: var(--text-secondary);
-        }
-
-        @media (max-width: 768px) {
-            .members-nav {
-                flex-direction: column;
-                gap: 1rem;
-            }
-
-            .nav-right {
-                flex-direction: column;
-                gap: 0.75rem;
-            }
-
-            .actions-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .greeting-box h1 {
-                font-size: 2rem;
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2563eb",
+                        "primary-dim": "#1d4ed8",
+                        "on-primary": "#ffffff",
+                        "secondary": "#475569",
+                        "on-surface": "#0f172a",
+                        "on-surface-variant": "#475569",
+                        "surface": "#ffffff",
+                        "surface-container-low": "#f8fafc",
+                        "surface-container": "#f1f5f9",
+                        "outline": "#64748b",
+                        "outline-variant": "#cbd5e1"
+                    },
+                    fontFamily: {
+                        "body": ["Manrope"]
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    }
+                }
             }
         }
-    </style>
+    </script>
 </head>
-<body>
-    <div id="loading" class="loading">Loading...</div>
+<body class="bg-surface-container-low font-body text-on-surface antialiased">
 
+    <!-- Loading State -->
+    <div id="loading" class="min-h-screen flex items-center justify-center">
+        <div class="flex items-center gap-3 text-slate-400">
+            <span class="material-symbols-outlined animate-spin text-primary">progress_activity</span>
+            <span class="text-sm font-medium">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Members Content -->
     <div id="members" style="display: none;">
-        <nav class="members-nav">
-            <div class="nav-brand">
-                <a href="/">Lexaya</a>
-            </div>
-            <div class="nav-right">
-                <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+        <!-- Nav -->
+        <nav class="w-full bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+            <div class="flex justify-between items-center px-6 md:px-12 py-5 max-w-[1200px] mx-auto">
+                <a href="/" class="text-xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+                <button onclick="handleLogout()" class="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-primary transition-colors bg-transparent border-none cursor-pointer">
+                    Sign Out
+                </button>
             </div>
         </nav>
 
-        <div class="dashboard-content">
-            <div class="greeting-box">
-                <h1>What would you like to do today?</h1>
-                <p>Pick an option to get started</p>
+        <!-- Dashboard Content -->
+        <div class="max-w-[900px] mx-auto px-6 md:px-12 py-16">
+            <!-- Greeting -->
+            <div class="text-center mb-12">
+                <h1 class="text-3xl md:text-4xl font-bold tracking-tighter text-slate-900">What would you like to do today?</h1>
+                <p class="text-slate-500 mt-2">Pick an option to get started</p>
             </div>
 
-            <div class="actions-grid">
-                <a href="/broadcast/" class="action-card">
-                    <div class="action-icon broadcast">
-                        <i class="fas fa-share-nodes"></i>
+            <!-- Actions Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <a href="/broadcast/" class="action-card bg-white border border-slate-200 rounded-xl p-8 flex flex-col items-center text-center hover:border-primary/30 hover:shadow-xl shadow-sm">
+                    <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+                        <span class="material-symbols-outlined text-primary text-3xl">share</span>
                     </div>
-                    <h3>Broadcast Videos</h3>
-                    <p>Post to TikTok, Instagram, LinkedIn, and Threads in one click</p>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Broadcast Videos</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed">Post to TikTok, Instagram, LinkedIn, and Threads in one click</p>
                 </a>
 
-                <a href="/blog/" class="action-card">
-                    <div class="action-icon blogs">
-                        <i class="fas fa-book-open"></i>
+                <a href="/blog/" class="action-card bg-white border border-slate-200 rounded-xl p-8 flex flex-col items-center text-center hover:border-primary/30 hover:shadow-xl shadow-sm">
+                    <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+                        <span class="material-symbols-outlined text-primary text-3xl">menu_book</span>
                     </div>
-                    <h3>Read UGC Blogs</h3>
-                    <p>Tips, strategies, and lessons from my UGC journey</p>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Read UGC Blogs</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed">Tips, strategies, and lessons from my UGC journey</p>
                 </a>
 
-                <a href="/hooks/" class="action-card">
-                    <div class="action-icon hooks">
-                        <i class="fas fa-fire"></i>
+                <a href="/resources/" class="action-card bg-white border border-slate-200 rounded-xl p-8 flex flex-col items-center text-center hover:border-primary/30 hover:shadow-xl shadow-sm">
+                    <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+                        <span class="material-symbols-outlined text-primary text-3xl">local_fire_department</span>
                     </div>
-                    <h3>Top Viral Hooks</h3>
-                    <p>See the best performing hooks this month</p>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Top Viral Hooks</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed">See the best performing hooks this month</p>
                 </a>
 
-                <a href="/broadcast/calendar.html" class="action-card">
-                    <div class="action-icon calendar">
-                        <i class="fas fa-calendar-check"></i>
+                <a href="/broadcast/calendar.html" class="action-card bg-white border border-slate-200 rounded-xl p-8 flex flex-col items-center text-center hover:border-primary/30 hover:shadow-xl shadow-sm">
+                    <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+                        <span class="material-symbols-outlined text-primary text-3xl">calendar_month</span>
                     </div>
-                    <h3>Your Calendar</h3>
-                    <p>Track your posting schedule and progress</p>
+                    <h3 class="text-lg font-bold text-slate-900 mb-2">Your Calendar</h3>
+                    <p class="text-sm text-slate-500 leading-relaxed">Track your posting schedule and progress</p>
                 </a>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/supabase.js"></script>
     <script>
-        // Check for auth errors in URL hash
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         if (hashParams.get('error')) {
             const errorDesc = hashParams.get('error_description') || 'Link expired';
             window.location.href = '/login.html?error=' + encodeURIComponent(errorDesc);
         }
 
-        // Check auth on load
         (async () => {
             const user = await auth.getUser();
 

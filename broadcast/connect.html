@@ -1,180 +1,221 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Accounts - Broadcast</title>
+    <title>Connect Accounts — Lexaya Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/broadcast/style.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <a href="./" class="logo">← Back to Dashboard</a>
-            <h1>Connect Accounts</h1>
-            <p class="tagline">Link your social media accounts to start publishing</p>
-        </header>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-bright": "#f9f9f7", "tertiary": "#695781", "on-primary-fixed-variant": "#001b42",
+                        "outline": "#777c79", "primary-dim": "#0050ab", "error-dim": "#67040d",
+                        "surface-container-highest": "#e0e3e0", "surface-tint": "#005bc2", "inverse-surface": "#0d0f0e",
+                        "tertiary-container": "#e4ceff", "secondary": "#575f72", "on-primary-container": "#000e29",
+                        "on-secondary-container": "#4a5264", "on-error": "#fff7f6", "inverse-primary": "#4c8efe",
+                        "tertiary-fixed-dim": "#d6c0f0", "tertiary-fixed": "#e4ceff", "on-tertiary-fixed": "#403057",
+                        "secondary-fixed": "#dbe2f9", "on-primary": "#f9f8ff", "surface-container-high": "#e6e9e6",
+                        "on-tertiary-fixed-variant": "#5d4d75", "on-secondary-fixed": "#373f51",
+                        "surface": "#f9f9f7", "outline-variant": "#afb3b0", "on-primary-fixed": "#000000",
+                        "primary-fixed-dim": "#3c81f0", "primary-fixed": "#4c8efe", "on-secondary": "#f9f8ff",
+                        "on-tertiary-container": "#54436b", "on-background": "#2f3332", "on-surface": "#2f3332",
+                        "surface-container": "#eceeec", "error": "#a83836", "surface-variant": "#e0e3e0",
+                        "tertiary-dim": "#5c4b74", "primary": "#005bc2", "on-error-container": "#6e0a12",
+                        "background": "#f9f9f7", "surface-container-low": "#f3f4f2",
+                        "on-secondary-fixed-variant": "#545b6e", "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d7dbd8", "primary-container": "#4c8efe", "error-container": "#fa746f",
+                        "secondary-fixed-dim": "#cdd4ea", "secondary-dim": "#4b5366",
+                        "on-surface-variant": "#5c605e", "secondary-container": "#dbe2f9",
+                        "on-tertiary": "#fef6ff", "inverse-on-surface": "#9c9d9b"
+                    },
+                    borderRadius: { DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem" },
+                    fontFamily: { headline: ["Manrope"], display: ["Manrope"], body: ["Manrope"], label: ["Manrope"] }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+        .glass { background: rgba(249, 249, 247, 0.8); backdrop-filter: blur(24px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .text-display-lg { font-size: 3.5rem; line-height: 1.1; letter-spacing: -0.02em; }
+        .text-headline-lg { font-size: 2rem; line-height: 1.2; font-weight: 700; }
+        .text-headline-sm { font-size: 1.25rem; line-height: 1.4; font-weight: 800; }
+        .text-label-md { font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; }
+        .ambient-shadow { box-shadow: 0px 24px 48px rgba(47, 51, 50, 0.06); }
+        .dash-card { transition: all 0.3s ease; }
+        .dash-card:hover { transform: translateY(-2px); box-shadow: 0 24px 48px rgba(47, 51, 50, 0.1); }
 
-        <!-- Auth Check -->
-        <div id="auth-required" class="auth-required" style="display: none;">
-            <div class="card">
-                <h2>Login Required</h2>
-                <p>Please login to connect accounts</p>
-                <a href="/login.html?redirect=/broadcast/connect.html" class="btn btn-primary">Login with Email</a>
+        .connect-grid { display: grid; gap: 1.25rem; }
+        .connect-card { background: white; border: 2px solid #e5e7eb; border-radius: 16px; overflow: hidden; transition: all 0.3s ease; }
+        .connect-card.connected { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
+        .card-header { display: flex; align-items: center; gap: 1rem; padding: 1.25rem; background: #f9fafb; }
+        .platform-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; flex-shrink: 0; }
+        .platform-icon.linkedin { background: #0A66C2; }
+        .platform-icon.tiktok { background: #000; }
+        .platform-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+        .platform-icon.youtube { background: #FF0000; }
+        .platform-info h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+        .platform-desc { margin: 0; font-size: 0.85rem; color: #6b7280; }
+        .card-body { padding: 1.25rem; }
+        .disconnected-state { text-align: center; }
+        .disconnected-state p { color: #6b7280; margin: 0 0 1rem 0; font-size: 0.9rem; }
+        .connected-state { display: flex; flex-direction: column; gap: 1rem; }
+        .account-profile { display: flex; align-items: center; gap: 0.875rem; }
+        .profile-pic { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid #e5e7eb; }
+        .profile-pic-fallback { width: 56px; height: 56px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 1.25rem; flex-shrink: 0; }
+        .account-details { flex: 1; min-width: 0; }
+        .account-name { font-weight: 600; font-size: 1rem; color: #111827; }
+        .account-handle { font-size: 0.85rem; color: #6b7280; }
+        .account-type { display: inline-block; margin-top: 0.25rem; padding: 0.125rem 0.5rem; background: #fff5f5; color: #d4838f; font-size: 0.7rem; font-weight: 500; border-radius: 20px; text-transform: uppercase; }
+        .account-stats { display: flex; gap: 1.5rem; padding: 0.75rem 1rem; background: #f9fafb; border-radius: 10px; }
+        .account-stats .stat { display: flex; flex-direction: column; align-items: center; }
+        .stat-value { font-weight: 700; font-size: 1.1rem; color: #111827; }
+        .stat-label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; }
+        .connected-actions { display: flex; align-items: center; justify-content: space-between; padding-top: 0.5rem; border-top: 1px solid #f3f4f6; }
+        .connected-badge { display: flex; align-items: center; gap: 0.375rem; font-size: 0.85rem; color: #10b981; font-weight: 500; }
+        .connected-badge i { font-size: 1rem; }
+        .btn-disconnect { background: transparent; color: #dc2626; border: 1px solid #fecaca; padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
+        .btn-disconnect:hover { background: #fef2f2; border-color: #dc2626; }
+        .action-buttons { display: flex; align-items: center; gap: 0.5rem; }
+        .btn-refresh { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e5e7eb; background: white; color: #6b7280; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+        .btn-refresh:hover { background: #fff5f5; color: #d4838f; border-color: #d4838f; }
+        .btn-refresh.spinning i { animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .btn-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+        .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 1rem 1.5rem; border-radius: 10px; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .success-banner { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1.5rem; animation: slideDown 0.3s ease; transition: all 0.3s ease; }
+        .success-banner-content { display: flex; align-items: center; gap: 0.75rem; }
+        .banner-close { background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .banner-close:hover { background: rgba(255,255,255,0.3); }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container antialiased" data-page="accounts" data-title="Connect Accounts" data-subtitle="Account Setup">
+    <div id="app-shell"></div>
+
+    <div data-content style="display: none;">
+        <div class="connect-grid">
+            <!-- LinkedIn -->
+            <div class="connect-card" id="linkedin-card" data-platform="linkedin">
+                <div class="card-header">
+                    <div class="platform-icon linkedin"><i class="fa-brands fa-linkedin"></i></div>
+                    <div class="platform-info">
+                        <h3>LinkedIn</h3>
+                        <p class="platform-desc">Share to your professional network</p>
+                    </div>
+                </div>
+                <div class="card-body" id="linkedin-body">
+                    <div class="disconnected-state">
+                        <p>Connect your LinkedIn account to share posts and videos</p>
+                        <button id="linkedin-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
+                            <i class="fa-brands fa-linkedin"></i> Connect LinkedIn
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TikTok -->
+            <div class="connect-card" id="tiktok-card" data-platform="tiktok">
+                <div class="card-header">
+                    <div class="platform-icon tiktok"><i class="fa-brands fa-tiktok"></i></div>
+                    <div class="platform-info">
+                        <h3>TikTok</h3>
+                        <p class="platform-desc">Post short-form videos</p>
+                    </div>
+                </div>
+                <div class="card-body" id="tiktok-body">
+                    <div class="disconnected-state">
+                        <p>Connect your TikTok to post videos directly</p>
+                        <button id="tiktok-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
+                            <i class="fa-brands fa-tiktok"></i> Connect TikTok
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instagram -->
+            <div class="connect-card" id="instagram-card" data-platform="instagram">
+                <div class="card-header">
+                    <div class="platform-icon instagram"><i class="fa-brands fa-instagram"></i></div>
+                    <div class="platform-info">
+                        <h3>Instagram</h3>
+                        <p class="platform-desc">Publish Reels & posts</p>
+                    </div>
+                </div>
+                <div class="card-body" id="instagram-body">
+                    <div class="disconnected-state">
+                        <p>Connect your Instagram Business or Creator account</p>
+                        <button id="instagram-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
+                            <i class="fa-brands fa-instagram"></i> Connect Instagram
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- YouTube -->
+            <div class="connect-card" id="youtube-card" data-platform="youtube">
+                <div class="card-header">
+                    <div class="platform-icon youtube"><i class="fa-brands fa-youtube"></i></div>
+                    <div class="platform-info">
+                        <h3>YouTube Shorts</h3>
+                        <p class="platform-desc">Upload vertical short videos</p>
+                    </div>
+                </div>
+                <div class="card-body" id="youtube-body">
+                    <div class="disconnected-state">
+                        <p>Connect your YouTube channel to post Shorts</p>
+                        <button id="youtube-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
+                            <i class="fa-brands fa-youtube"></i> Connect YouTube
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Connect Options -->
-        <main id="connect-main" style="display: none;">
-            <div class="connect-grid">
-                <!-- LinkedIn -->
-                <div class="connect-card" id="linkedin-card" data-platform="linkedin">
-                    <div class="card-header">
-                        <div class="platform-icon linkedin">
-                            <i class="fa-brands fa-linkedin"></i>
-                        </div>
-                        <div class="platform-info">
-                            <h3>LinkedIn</h3>
-                            <p class="platform-desc">Share to your professional network</p>
-                        </div>
-                    </div>
-                    <div class="card-body" id="linkedin-body">
-                        <div class="disconnected-state">
-                            <p>Connect your LinkedIn account to share posts and videos</p>
-                            <button id="linkedin-btn" class="btn btn-primary">
-                                <i class="fa-brands fa-linkedin"></i> Connect LinkedIn
-                            </button>
-                        </div>
-                    </div>
+        <!-- How it works -->
+        <section class="mt-16">
+            <h2 class="text-headline-sm mb-8">How it works</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow">
+                    <span class="material-symbols-outlined text-primary mb-4 text-3xl">link</span>
+                    <h3 class="font-bold text-lg mb-2">1. Connect your accounts</h3>
+                    <p class="text-sm text-on-surface-variant">Authorize Broadcast to post on your behalf. We only request posting permissions.</p>
                 </div>
-
-                <!-- TikTok -->
-                <div class="connect-card" id="tiktok-card" data-platform="tiktok">
-                    <div class="card-header">
-                        <div class="platform-icon tiktok">
-                            <i class="fa-brands fa-tiktok"></i>
-                        </div>
-                        <div class="platform-info">
-                            <h3>TikTok</h3>
-                            <p class="platform-desc">Post short-form videos</p>
-                        </div>
-                    </div>
-                    <div class="card-body" id="tiktok-body">
-                        <div class="disconnected-state">
-                            <p>Connect your TikTok to post videos directly</p>
-                            <button id="tiktok-btn" class="btn btn-primary">
-                                <i class="fa-brands fa-tiktok"></i> Connect TikTok
-                            </button>
-                        </div>
-                    </div>
+                <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow">
+                    <span class="material-symbols-outlined text-primary mb-4 text-3xl">upload</span>
+                    <h3 class="font-bold text-lg mb-2">2. Upload your content</h3>
+                    <p class="text-sm text-on-surface-variant">Upload a video once and write a single caption for all platforms.</p>
                 </div>
-
-                <!-- Instagram -->
-                <div class="connect-card" id="instagram-card" data-platform="instagram">
-                    <div class="card-header">
-                        <div class="platform-icon instagram">
-                            <i class="fa-brands fa-instagram"></i>
-                        </div>
-                        <div class="platform-info">
-                            <h3>Instagram</h3>
-                            <p class="platform-desc">Publish Reels & posts</p>
-                        </div>
-                    </div>
-                    <div class="card-body" id="instagram-body">
-                        <div class="disconnected-state">
-                            <p>Connect your Instagram Business or Creator account</p>
-                            <button id="instagram-btn" class="btn btn-primary">
-                                <i class="fa-brands fa-instagram"></i> Connect Instagram
-                            </button>
-                        </div>
-                    </div>
+                <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow">
+                    <span class="material-symbols-outlined text-primary mb-4 text-3xl">publish</span>
+                    <h3 class="font-bold text-lg mb-2">3. Publish or schedule</h3>
+                    <p class="text-sm text-on-surface-variant">Post immediately or schedule for the perfect time. We handle the rest.</p>
                 </div>
-
-                <!-- Threads (disabled - requires Facebook App approval) -->
-                <!--
-                <div class="connect-card" id="threads-card" data-platform="threads">
-                    <div class="card-header">
-                        <div class="platform-icon threads">
-                            <i class="fa-brands fa-threads"></i>
-                        </div>
-                        <div class="platform-info">
-                            <h3>Threads</h3>
-                            <p class="platform-desc">Share text & video posts</p>
-                        </div>
-                    </div>
-                    <div class="card-body" id="threads-body">
-                        <div class="disconnected-state">
-                            <p>Connect your Threads account</p>
-                            <button id="threads-btn" class="btn btn-primary">
-                                <i class="fa-brands fa-threads"></i> Connect Threads
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                -->
-
-                <!-- YouTube -->
-                <div class="connect-card" id="youtube-card" data-platform="youtube">
-                    <div class="card-header">
-                        <div class="platform-icon youtube">
-                            <i class="fa-brands fa-youtube"></i>
-                        </div>
-                        <div class="platform-info">
-                            <h3>YouTube Shorts</h3>
-                            <p class="platform-desc">Upload vertical short videos</p>
-                        </div>
-                    </div>
-                    <div class="card-body" id="youtube-body">
-                        <div class="disconnected-state">
-                            <p>Connect your YouTube channel to post Shorts</p>
-                            <button id="youtube-btn" class="btn btn-primary">
-                                <i class="fa-brands fa-youtube"></i> Connect YouTube
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
             </div>
+        </section>
 
-            <!-- Info Section -->
-            <section class="section" style="margin-top: 3rem;">
-                <h2>How it works</h2>
-                <div class="info-grid" style="display: grid; gap: 1rem; margin-top: 1rem;">
-                    <div class="info-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
-                        <strong>1. Connect your accounts</strong>
-                        <p style="color: var(--text-light); margin-top: 0.25rem;">
-                            Authorize Broadcast to post on your behalf. We only request posting permissions.
-                        </p>
-                    </div>
-                    <div class="info-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
-                        <strong>2. Upload your content</strong>
-                        <p style="color: var(--text-light); margin-top: 0.25rem;">
-                            Upload a video once and write a single caption for all platforms.
-                        </p>
-                    </div>
-                    <div class="info-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px;">
-                        <strong>3. Publish or schedule</strong>
-                        <p style="color: var(--text-light); margin-top: 0.25rem;">
-                            Post immediately or schedule for the perfect time. We handle the rest.
-                        </p>
-                    </div>
+        <!-- Security Note -->
+        <div class="mt-12 p-8 border-2 border-dashed border-outline-variant rounded-xl bg-surface-container-lowest">
+            <div class="flex items-center gap-4">
+                <span class="material-symbols-outlined text-3xl text-primary">lock</span>
+                <div>
+                    <h3 class="font-bold text-base mb-1">Your data is secure</h3>
+                    <p class="text-sm text-on-surface-variant">We use official OAuth APIs and never store your passwords. You can disconnect at any time. Access tokens are encrypted and stored securely.</p>
                 </div>
-            </section>
-
-            <!-- Security Note -->
-            <section class="section" style="margin-top: 2rem; padding: 1.5rem; border: 2px dashed var(--border); border-radius: 12px;">
-                <h3 style="font-size: 1rem;">🔒 Your data is secure</h3>
-                <p style="color: var(--text-light); margin-top: 0.5rem; font-size: 0.9rem;">
-                    We use official OAuth APIs and never store your passwords. You can disconnect at any time.
-                    Access tokens are encrypted and stored securely.
-                </p>
-            </section>
-        </main>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -236,18 +277,11 @@
             currentSession = sessionRes.data.session;
 
             console.log('[Auth] User:', currentUser?.email || 'none');
-            console.log('[Auth] Session:', currentSession ? 'exists' : 'null');
-            console.log('[Auth] Token length:', currentSession?.access_token?.length || 0);
 
             if (!currentUser) {
-                document.getElementById('auth-required').style.display = 'flex';
-                document.getElementById('connect-main').style.display = 'none';
+                document.getElementById('connect-main')?.style.setProperty('display', 'none');
                 return;
             }
-
-            // Connect accounts is free for all logged-in users (for media kit)
-            document.getElementById('auth-required').style.display = 'none';
-            document.getElementById('connect-main').style.display = 'block';
 
             // If OAuth just completed, force fresh data
             await loadConnectedAccounts(oauthResult.wasOAuthCallback);
@@ -269,9 +303,6 @@
             if (!currentUser) return;
 
             // Always fetch fresh data from database - cache was causing issues
-            console.log('[DB] Fetching account data from database...');
-
-            // Fetch from Supabase
             const { data: accounts } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
@@ -290,8 +321,6 @@
         }
 
         async function refreshAccountStats() {
-            console.log('[Refresh] Refreshing account stats from platform APIs...');
-
             try {
                 const response = await fetch('/api/broadcast/refresh-accounts', {
                     method: 'POST',
@@ -305,17 +334,13 @@
                     const { accounts } = await response.json();
                     if (accounts && accounts.length > 0) {
                         connectedAccounts = accounts;
-                        console.log('[Refresh] Account stats updated');
                     }
-                } else {
-                    console.log('[Refresh] Could not refresh stats, using existing data');
                 }
             } catch (err) {
                 console.log('[Refresh] Error refreshing stats:', err.message);
             }
         }
 
-        // Expose to window for onclick handlers
         window.refreshSingleAccount = async function(platform) {
             const btn = document.querySelector(`#${platform}-card .btn-refresh`);
             if (btn) {
@@ -333,7 +358,6 @@
                 showToast('Failed to refresh', 'error');
             }
 
-            // Re-query button after UI update
             setTimeout(() => {
                 const newBtn = document.querySelector(`#${platform}-card .btn-refresh`);
                 if (newBtn) {
@@ -357,7 +381,6 @@
             const following = metadata.following_count || metadata.friends_count;
             const username = account.account_name || metadata.username || metadata.display_name;
             const displayName = metadata.display_name || metadata.name || username;
-            const bio = metadata.bio || metadata.headline || '';
             const accountType = metadata.account_type || '';
 
             const formattedFollowers = formatFollowers(followers);
@@ -399,7 +422,7 @@
                             <button class="btn-refresh" onclick="refreshSingleAccount('${platform}')" title="Refresh stats">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
-                            <button id="${platform}-btn" class="btn btn-disconnect">
+                            <button id="${platform}-btn" class="btn-disconnect">
                                 Disconnect
                             </button>
                         </div>
@@ -410,37 +433,17 @@
 
         function getDisconnectedHTML(platform) {
             const platformConfig = {
-                linkedin: {
-                    icon: 'fa-linkedin',
-                    name: 'LinkedIn',
-                    desc: 'Connect your LinkedIn account to share posts and videos'
-                },
-                tiktok: {
-                    icon: 'fa-tiktok',
-                    name: 'TikTok',
-                    desc: 'Connect your TikTok to post videos directly'
-                },
-                instagram: {
-                    icon: 'fa-instagram',
-                    name: 'Instagram',
-                    desc: 'Connect your Instagram Business or Creator account'
-                },
-                threads: {
-                    icon: 'fa-threads',
-                    name: 'Threads',
-                    desc: 'Connect your Threads account'
-                },
-                youtube: {
-                    icon: 'fa-youtube',
-                    name: 'YouTube',
-                    desc: 'Connect your YouTube channel to post Shorts'
-                }
+                linkedin: { icon: 'fa-linkedin', name: 'LinkedIn', desc: 'Connect your LinkedIn account to share posts and videos' },
+                tiktok: { icon: 'fa-tiktok', name: 'TikTok', desc: 'Connect your TikTok to post videos directly' },
+                instagram: { icon: 'fa-instagram', name: 'Instagram', desc: 'Connect your Instagram Business or Creator account' },
+                threads: { icon: 'fa-threads', name: 'Threads', desc: 'Connect your Threads account' },
+                youtube: { icon: 'fa-youtube', name: 'YouTube', desc: 'Connect your YouTube channel to post Shorts' }
             };
             const config = platformConfig[platform];
             return `
                 <div class="disconnected-state">
                     <p>${config.desc}</p>
-                    <button id="${platform}-btn" class="btn btn-primary">
+                    <button id="${platform}-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
                         <i class="fa-brands ${config.icon}"></i> Connect ${config.name}
                     </button>
                 </div>
@@ -448,7 +451,7 @@
         }
 
         function updateUI() {
-            const platforms = ['linkedin', 'tiktok', 'instagram', /* 'threads', */ 'youtube'];
+            const platforms = ['linkedin', 'tiktok', 'instagram', 'youtube'];
 
             platforms.forEach(platform => {
                 const account = connectedAccounts.find(a => a.platform === platform);
@@ -471,65 +474,26 @@
         function setupButtons() {
             document.getElementById('linkedin-btn').addEventListener('click', () => {
                 const account = connectedAccounts.find(a => a.platform === 'linkedin');
-                if (account) {
-                    disconnectAccount('linkedin');
-                } else {
-                    connectLinkedIn();
-                }
+                if (account) { disconnectAccount('linkedin'); } else { connectLinkedIn(); }
             });
-
             document.getElementById('tiktok-btn').addEventListener('click', () => {
                 const account = connectedAccounts.find(a => a.platform === 'tiktok');
-                if (account) {
-                    disconnectAccount('tiktok');
-                } else {
-                    connectTikTok();
-                }
+                if (account) { disconnectAccount('tiktok'); } else { connectTikTok(); }
             });
-
             document.getElementById('instagram-btn').addEventListener('click', () => {
                 const account = connectedAccounts.find(a => a.platform === 'instagram');
                 if (account) { disconnectAccount('instagram'); } else { connectInstagram(); }
             });
-            // document.getElementById('threads-btn').addEventListener('click', () => {
-            //     const account = connectedAccounts.find(a => a.platform === 'threads');
-            //     if (account) { disconnectAccount('threads'); } else { connectThreads(); }
-            // });
-
             document.getElementById('youtube-btn').addEventListener('click', () => {
                 const account = connectedAccounts.find(a => a.platform === 'youtube');
-                if (account) {
-                    disconnectAccount('youtube');
-                } else {
-                    connectYouTube();
-                }
+                if (account) { disconnectAccount('youtube'); } else { connectYouTube(); }
             });
-
         }
 
-        function connectLinkedIn() {
-            const state = currentSession.access_token;
-            window.location.href = `/api/broadcast/auth/linkedin?state=${encodeURIComponent(state)}`;
-        }
-
-        function connectTikTok() {
-            const state = currentSession.access_token;
-            window.location.href = `/api/broadcast/auth/tiktok?state=${encodeURIComponent(state)}`;
-        }
-
-        function connectInstagram() {
-            const state = currentSession.access_token;
-            window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`;
-        }
-        // function connectThreads() {
-        //     const state = currentSession.access_token;
-        //     window.location.href = `/api/broadcast/auth/threads?state=${encodeURIComponent(state)}`;
-        // }
-
-        function connectYouTube() {
-            const state = currentSession.access_token;
-            window.location.href = `/api/broadcast/auth/youtube?state=${encodeURIComponent(state)}`;
-        }
+        function connectLinkedIn() { const state = currentSession.access_token; window.location.href = `/api/broadcast/auth/linkedin?state=${encodeURIComponent(state)}`; }
+        function connectTikTok() { const state = currentSession.access_token; window.location.href = `/api/broadcast/auth/tiktok?state=${encodeURIComponent(state)}`; }
+        function connectInstagram() { const state = currentSession.access_token; window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`; }
+        function connectYouTube() { const state = currentSession.access_token; window.location.href = `/api/broadcast/auth/youtube?state=${encodeURIComponent(state)}`; }
 
         async function disconnectAccount(platform) {
             if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
@@ -546,24 +510,19 @@
                 return;
             }
 
-            // Clear cache and reload
             clearAccountCache();
             showToast(`${platform.charAt(0).toUpperCase() + platform.slice(1)} disconnected`, 'success');
             await loadConnectedAccounts(true);
         }
 
         function showToast(message, type = 'success') {
-            // Remove existing toast
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
 
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.style.background = type === 'success' ? '#10b981' : '#dc2626';
-            toast.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i>
-                <span>${message}</span>
-            `;
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i><span>${message}</span>`;
             document.body.appendChild(toast);
 
             setTimeout(() => {
@@ -579,20 +538,13 @@
             const platform = params.get('platform');
             const error = params.get('error');
 
-            const result = {
-                wasOAuthCallback: false,
-                success: false,
-                platform: null,
-                error: null
-            };
+            const result = { wasOAuthCallback: false, success: false, platform: null, error: null };
 
             if (success === 'true' && platform) {
                 result.wasOAuthCallback = true;
                 result.success = true;
                 result.platform = platform;
-                // Clear cache immediately so we get fresh data
                 clearAccountCache();
-                // Clean URL
                 window.history.replaceState({}, '', window.location.pathname);
             } else if (error) {
                 result.wasOAuthCallback = true;
@@ -604,20 +556,12 @@
         }
 
         function showSuccessBanner(platform) {
-            const platformNames = {
-                linkedin: 'LinkedIn',
-                tiktok: 'TikTok',
-                instagram: 'Instagram',
-                // threads: 'Threads',
-                youtube: 'YouTube'
-            };
+            const platformNames = { linkedin: 'LinkedIn', tiktok: 'TikTok', instagram: 'Instagram', youtube: 'YouTube' };
             const platformName = platformNames[platform] || platform;
 
-            // Remove any existing banner
             const existing = document.querySelector('.success-banner');
             if (existing) existing.remove();
 
-            // Create success banner
             const banner = document.createElement('div');
             banner.className = 'success-banner';
             banner.innerHTML = `
@@ -630,13 +574,11 @@
                 </div>
             `;
 
-            // Insert at top of main content
-            const main = document.getElementById('connect-main');
-            if (main) {
-                main.insertBefore(banner, main.firstChild);
+            const content = document.querySelector('[data-content]');
+            if (content) {
+                content.insertBefore(banner, content.firstChild);
             }
 
-            // Auto-dismiss after 5 seconds
             setTimeout(() => {
                 if (banner.parentElement) {
                     banner.style.opacity = '0';
@@ -647,326 +589,7 @@
         }
     </script>
 
-    <style>
-        .connect-grid {
-            display: grid;
-            gap: 1.25rem;
-        }
-
-        .connect-card {
-            background: white;
-            border: 2px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .connect-card.connected {
-            border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .card-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1.25rem;
-            border-bottom: 1px solid var(--border);
-            background: #f9fafb;
-        }
-
-        .platform-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .platform-icon.linkedin { background: #0A66C2; }
-        .platform-icon.tiktok { background: #000000; }
-        .platform-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
-        .platform-icon.threads { background: #000000; }
-        .platform-icon.youtube { background: #FF0000; }
-
-        .platform-info h3 {
-            margin: 0 0 0.125rem 0;
-            font-size: 1.1rem;
-        }
-
-        .platform-desc {
-            margin: 0;
-            font-size: 0.85rem;
-            color: var(--text-light);
-        }
-
-        .card-body {
-            padding: 1.25rem;
-        }
-
-        /* Disconnected State */
-        .disconnected-state {
-            text-align: center;
-        }
-
-        .disconnected-state p {
-            color: var(--text-light);
-            margin: 0 0 1rem 0;
-            font-size: 0.9rem;
-        }
-
-        .disconnected-state .btn {
-            width: 100%;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        /* Connected State */
-        .connected-state {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .account-profile {
-            display: flex;
-            align-items: center;
-            gap: 0.875rem;
-        }
-
-        .profile-pic {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #e5e7eb;
-        }
-
-        .profile-pic-fallback {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #9ca3af;
-            font-size: 1.25rem;
-            flex-shrink: 0;
-        }
-
-        .account-details {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .account-name {
-            font-weight: 600;
-            font-size: 1rem;
-            color: var(--text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .account-handle {
-            font-size: 0.85rem;
-            color: var(--text-light);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .account-type {
-            display: inline-block;
-            margin-top: 0.25rem;
-            padding: 0.125rem 0.5rem;
-            background: #fff5f5;
-            color: #d4838f;
-            font-size: 0.7rem;
-            font-weight: 500;
-            border-radius: 20px;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-        }
-
-        .account-stats {
-            display: flex;
-            gap: 1.5rem;
-            padding: 0.75rem 1rem;
-            background: #f9fafb;
-            border-radius: 10px;
-        }
-
-        .account-stats .stat {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .stat-value {
-            font-weight: 700;
-            font-size: 1.1rem;
-            color: var(--text);
-        }
-
-        .stat-label {
-            font-size: 0.75rem;
-            color: var(--text-light);
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-        }
-
-        .connected-actions {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-top: 0.5rem;
-            border-top: 1px solid #f3f4f6;
-        }
-
-        .connected-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.375rem;
-            font-size: 0.85rem;
-            color: #10b981;
-            font-weight: 500;
-        }
-
-        .connected-badge i {
-            font-size: 1rem;
-        }
-
-        .btn-disconnect {
-            background: transparent;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-            padding: 0.5rem 1rem;
-            font-size: 0.85rem;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-disconnect:hover {
-            background: #fef2f2;
-            border-color: #dc2626;
-        }
-
-        .action-buttons {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn-refresh {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            background: white;
-            color: #6b7280;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s ease;
-        }
-
-        .btn-refresh:hover {
-            background: #fff5f5;
-            color: #d4838f;
-            border-color: #d4838f;
-        }
-
-        .btn-refresh.spinning i {
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .btn-refresh:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        /* Toast notification for success */
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #10b981;
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            z-index: 1000;
-            animation: slideUp 0.3s ease;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-
-        /* Success Banner */
-        .success-banner {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 1rem 1.25rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            animation: slideDown 0.3s ease;
-            transition: all 0.3s ease;
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .success-banner-content {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .success-banner-content i.fa-check-circle {
-            font-size: 1.25rem;
-        }
-
-        .success-banner-content span {
-            flex: 1;
-        }
-
-        .banner-close {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-
-        .banner-close:hover {
-            background: rgba(255,255,255,0.3);
-        }
-    </style>
+    <script src="/js/config.js"></script>
+    <script src="/js/layout.js"></script>
 </body>
 </html>

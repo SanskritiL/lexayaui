@@ -1,136 +1,98 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - Lexaya</title>
+    <title>Privacy Policy — Lexaya</title>
+    <meta name="robots" content="noindex">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="style.css">
-    <style>
-        .privacy-container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        .privacy-container h1 {
-            margin-bottom: 0.5rem;
-        }
-        .privacy-container .last-updated {
-            color: var(--text-light);
-            margin-bottom: 2rem;
-        }
-        .privacy-container h2 {
-            margin-top: 2rem;
-            margin-bottom: 1rem;
-            font-size: 1.25rem;
-        }
-        .privacy-container p, .privacy-container ul {
-            margin-bottom: 1rem;
-            line-height: 1.7;
-        }
-        .privacy-container ul {
-            padding-left: 1.5rem;
-        }
-        .privacy-container li {
-            margin-bottom: 0.5rem;
-        }
-        .privacy-container a {
-            color: var(--primary);
-        }
-    </style>
+    <script src="https://cdn.tailwindcss.com?plugins=container-queries"></script>
+    <script>
+        tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary": "#2563eb", "on-surface": "#0f172a", "on-surface-variant": "#475569", "surface": "#ffffff", "surface-container-low": "#f8fafc", "outline": "#64748b", "outline-variant": "#cbd5e1" }, fontFamily: { "body": ["Manrope"] }, borderRadius: { DEFAULT: "0.125rem", "lg": "0.25rem", "xl": "0.5rem" } } } }
+    </script>
 </head>
-<body>
-    <header class="header">
-        <nav class="nav container">
-            <a href="/" class="logo">lexaya</a>
-            <div class="nav-links">
-                <a href="/">Home</a>
-                <a href="/broadcast/">Broadcast</a>
-            </div>
-        </nav>
-    </header>
+<body class="bg-surface font-body text-on-surface antialiased">
+    <div class="max-w-[800px] mx-auto px-6 py-12">
+        <a href="/" class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 hover:text-primary transition-colors mb-8 no-underline">
+            <span class="material-symbols-outlined text-sm">arrow_back</span>
+            lexaya.io
+        </a>
 
-    <main class="privacy-container">
-        <h1>Privacy Policy</h1>
-        <p class="last-updated">Last updated: January 2025</p>
+        <h1 class="text-3xl font-bold tracking-tighter text-slate-900 mb-2">Privacy Policy</h1>
+        <p class="text-sm text-slate-400 mb-8">Last updated: January 2025</p>
 
-        <p>Lexaya ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our website and services at lexaya.io.</p>
+        <div class="text-slate-600 leading-relaxed [&_h2]:text-slate-900 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-10 [&_h2]:mb-4 [&_p]:mb-4 [&_ul]:mb-6 [&_ul]:pl-6 [&_li]:mb-2 [&_a]:text-primary">
+            <p>Lexaya ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our website and services at lexaya.io.</p>
 
-        <h2>Information We Collect</h2>
-        <p>We collect information you provide directly to us, including:</p>
-        <ul>
-            <li><strong>Account Information:</strong> Email address when you sign up using magic link authentication</li>
-            <li><strong>Social Media Connections:</strong> When you connect social media accounts (TikTok, Instagram, LinkedIn, Threads, YouTube), we store access tokens to post content on your behalf</li>
-            <li><strong>Content:</strong> Videos, images, and captions you upload for publishing</li>
-            <li><strong>Payment Information:</strong> Processed securely by Stripe; we do not store credit card details</li>
-        </ul>
+            <h2>Information We Collect</h2>
+            <p>We collect information you provide directly to us, including:</p>
+            <ul>
+                <li><strong>Account Information:</strong> Email address when you sign up using magic link authentication</li>
+                <li><strong>Social Media Connections:</strong> When you connect social media accounts (TikTok, Instagram, LinkedIn, Threads, YouTube), we store access tokens to post content on your behalf</li>
+                <li><strong>Content:</strong> Videos, images, and captions you upload for publishing</li>
+                <li><strong>Payment Information:</strong> Processed securely by Stripe; we do not store credit card details</li>
+            </ul>
 
-        <h2>How We Use Your Information</h2>
-        <p>We use the information we collect to:</p>
-        <ul>
-            <li>Provide, maintain, and improve our services</li>
-            <li>Publish content to your connected social media accounts</li>
-            <li>Process transactions and send related information</li>
-            <li>Send technical notices and support messages</li>
-        </ul>
+            <h2>How We Use Your Information</h2>
+            <p>We use the information we collect to:</p>
+            <ul>
+                <li>Provide, maintain, and improve our services</li>
+                <li>Publish content to your connected social media accounts</li>
+                <li>Process transactions and send related information</li>
+                <li>Send technical notices and support messages</li>
+            </ul>
 
-        <h2>Social Media Permissions</h2>
-        <p>When you connect social media accounts, we request only the permissions necessary to:</p>
-        <ul>
-            <li><strong>YouTube:</strong> Upload videos to your channel (youtube.upload) and read channel info (youtube.readonly)</li>
-            <li><strong>TikTok:</strong> Post videos and read basic profile information</li>
-            <li><strong>Instagram:</strong> Publish posts and reels to your account</li>
-            <li><strong>LinkedIn:</strong> Share posts and videos to your profile</li>
-            <li><strong>Threads:</strong> Publish text and media posts</li>
-        </ul>
-        <p>We do not read your private messages, access your followers' data, or perform any actions without your explicit request.</p>
+            <h2>Social Media Permissions</h2>
+            <p>When you connect social media accounts, we request only the permissions necessary to publish content on your behalf. We do not read your private messages, access your followers' data, or perform any actions without your explicit request.</p>
 
-        <h2>Data Storage and Security</h2>
-        <p>Your data is stored securely using:</p>
-        <ul>
-            <li><strong>Supabase:</strong> For authentication and database storage</li>
-            <li><strong>Cloudflare R2:</strong> For temporary media file storage (deleted after publishing)</li>
-            <li><strong>Stripe:</strong> For secure payment processing</li>
-        </ul>
-        <p>We implement appropriate security measures to protect against unauthorized access, alteration, or destruction of your data.</p>
+            <h2>Data Storage and Security</h2>
+            <p>Your data is stored securely using:</p>
+            <ul>
+                <li><strong>Supabase:</strong> For authentication and database storage</li>
+                <li><strong>Cloudflare R2:</strong> For temporary media file storage (deleted after publishing)</li>
+                <li><strong>Stripe:</strong> For secure payment processing</li>
+            </ul>
+            <p>We implement appropriate security measures to protect against unauthorized access, alteration, or destruction of your data.</p>
 
-        <h2>Data Retention</h2>
-        <ul>
-            <li>Account data is retained until you delete your account</li>
-            <li>Uploaded media files are deleted immediately after successful publishing</li>
-            <li>Social media tokens are stored until you disconnect your account</li>
-        </ul>
+            <h2>Data Retention</h2>
+            <ul>
+                <li>Account data is retained until you delete your account</li>
+                <li>Uploaded media files are deleted immediately after successful publishing</li>
+                <li>Social media tokens are stored until you disconnect your account</li>
+            </ul>
 
-        <h2>Your Rights</h2>
-        <p>You have the right to:</p>
-        <ul>
-            <li>Access your personal data</li>
-            <li>Disconnect social media accounts at any time</li>
-            <li>Delete your account and associated data</li>
-            <li>Request a copy of your data</li>
-        </ul>
+            <h2>Your Rights</h2>
+            <p>You have the right to:</p>
+            <ul>
+                <li>Access your personal data</li>
+                <li>Disconnect social media accounts at any time</li>
+                <li>Delete your account and associated data</li>
+                <li>Request a copy of your data</li>
+            </ul>
 
-        <h2>Third-Party Services</h2>
-        <p>We use the following third-party services:</p>
-        <ul>
-            <li>Supabase (authentication and database)</li>
-            <li>Stripe (payments)</li>
-            <li>Cloudflare (hosting and storage)</li>
-            <li>Plausible (privacy-friendly analytics)</li>
-            <li>Social media platform APIs (TikTok, Instagram, LinkedIn, Threads, YouTube)</li>
-        </ul>
+            <h2>Third-Party Services</h2>
+            <p>We use the following third-party services:</p>
+            <ul>
+                <li>Supabase (authentication and database)</li>
+                <li>Stripe (payments)</li>
+                <li>Cloudflare (hosting and storage)</li>
+                <li>Plausible (privacy-friendly analytics)</li>
+                <li>Social media platform APIs (TikTok, Instagram, LinkedIn, Threads, YouTube)</li>
+            </ul>
 
-        <h2>Changes to This Policy</h2>
-        <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.</p>
+            <h2>Changes to This Policy</h2>
+            <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.</p>
 
-        <h2>Contact Us</h2>
-        <p>If you have any questions about this Privacy Policy, please contact us at:</p>
-        <p><a href="mailto:sans@lexaya.io">sans@lexaya.io</a></p>
-    </main>
-
-    <footer class="footer">
-        <div class="container">
-            <p>&copy; 2025 Lexaya. All rights reserved.</p>
+            <h2>Contact Us</h2>
+            <p>If you have any questions about this Privacy Policy, please contact us at <a href="mailto:sans@lexaya.io">sans@lexaya.io</a>.</p>
         </div>
-    </footer>
+
+        <div class="mt-16 pt-8 border-t border-slate-200 text-center text-xs text-slate-400">
+            &copy; 2025 Lexaya. All rights reserved.
+        </div>
+    </div>
 </body>
 </html>

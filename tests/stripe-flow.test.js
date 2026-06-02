@@ -318,7 +318,7 @@ describe('pricing.html configuration', () => {
         expect(html).not.toMatch(/successUrl:.*\/broadcast\/\?subscribed/);
     });
 
-    test('displays $2.99 one-time price', () => {
+    test('displays $2.99 one-time price', () => {ho
         expect(html).toContain('$2.99');
         expect(html).toContain('one-time');
         expect(html).not.toContain('$14.99');

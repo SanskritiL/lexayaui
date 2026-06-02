@@ -1,50 +1,19 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Smooth scrolling for navigation links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-                // Close mobile menu if open
-                if (window.innerWidth <= 768) {
-                    const navLinks = document.querySelector('.nav-links');
-                    navLinks.classList.remove('active');
-                }
-            }
-        });
-    });
-
     // Mobile menu toggle
-    const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+    const mobileBtn = document.querySelector('.mobile-menu-btn');
     const navLinks = document.querySelector('.nav-links');
 
-    if (mobileMenuBtn) {
-        mobileMenuBtn.addEventListener('click', function() {
+    if (mobileBtn && navLinks) {
+        mobileBtn.addEventListener('click', function() {
             navLinks.classList.toggle('active');
-            const icon = this.querySelector('i');
+            const icon = this.querySelector('.material-symbols-outlined');
             if (navLinks.classList.contains('active')) {
-                icon.classList.remove('fa-bars');
-                icon.classList.add('fa-times');
+                icon.textContent = 'close';
             } else {
-                icon.classList.remove('fa-times');
-                icon.classList.add('fa-bars');
+                icon.textContent = 'menu';
             }
         });
     }
-
-    // Navbar style on scroll
-    const navbar = document.querySelector('.navbar');
-    window.addEventListener('scroll', function() {
-        if (window.scrollY > 50) {
-            navbar.style.borderBottomColor = '#444';
-        } else {
-            navbar.style.borderBottomColor = '#333';
-        }
-    });
 
     // Intersection Observer for fade-in animations
     const observerOptions = {
@@ -55,13 +24,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const observer = new IntersectionObserver(function(entries) {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                entry.target.classList.add('visible');
+                entry.target.classList.add('animate-fade-up');
             }
         });
     }, observerOptions);
 
-    // Observe elements for animation
-    const animatedElements = document.querySelectorAll('.service-card, .portfolio-card, .about-content, .contact-content');
+    const animatedElements = document.querySelectorAll('.feature-card, .testimonial-card, .resource-card, .action-card');
     animatedElements.forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
@@ -69,35 +37,29 @@ document.addEventListener('DOMContentLoaded', function() {
         observer.observe(el);
     });
 
-    // Add visible class styles
+    // Style for visible + mobile nav
     const style = document.createElement('style');
     style.textContent = `
-        .visible {
+        .animate-fade-up {
             opacity: 1 !important;
             transform: translateY(0) !important;
         }
-
         @media (max-width: 768px) {
             .nav-links {
                 position: absolute;
                 top: 100%;
                 left: 0;
                 right: 0;
-                background: rgba(10, 10, 10, 0.98);
+                background: white;
                 flex-direction: column;
                 padding: 1.5rem;
                 gap: 1.5rem;
-                border-bottom: 1px solid #333;
+                border-bottom: 1px solid #e2e8f0;
                 display: none;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             }
-
             .nav-links.active {
                 display: flex;
-            }
-
-            .nav-cta {
-                width: 100%;
-                text-align: center;
             }
         }
     `;

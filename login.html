@@ -1,173 +1,94 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Lexaya</title>
+    <title>Login — Lexaya</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        .login-page {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2563eb",
+                        "primary-dim": "#1d4ed8",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#1e3a8a",
+                        "secondary": "#475569",
+                        "on-surface": "#0f172a",
+                        "on-surface-variant": "#475569",
+                        "surface": "#ffffff",
+                        "surface-container-low": "#f8fafc",
+                        "surface-container": "#f1f5f9",
+                        "outline": "#64748b",
+                        "outline-variant": "#cbd5e1",
+                        "error": "#ef4444",
+                        "error-container": "#fee2e2",
+                        "on-error-container": "#7f1d1d"
+                    },
+                    fontFamily: {
+                        "body": ["Manrope"]
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    }
+                }
+            }
         }
-
-        .login-card {
-            background: var(--bg);
-            padding: 3rem;
-            border: 3px solid var(--border);
-            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-            max-width: 450px;
-            width: 100%;
-            text-align: center;
-        }
-
-        .login-card h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-        }
-
-        .login-card p {
-            color: var(--text-secondary);
-            font-size: 1.2rem;
-            margin-bottom: 2rem;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-            text-align: left;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--text-primary);
-            font-size: 1.2rem;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1rem;
-            font-family: 'Inter', sans-serif;
-            border: 3px solid var(--border-light);
-            border-radius: 15px 255px 15px 225px/225px 15px 255px 15px;
-            background: var(--bg);
-            color: var(--text-primary);
-            transition: border-color 0.3s ease;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--border);
-        }
-
-        .form-group input::placeholder {
-            color: var(--text-muted);
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 1rem 2rem;
-            font-size: 1.1rem;
-            font-family: 'Inter', sans-serif;
-            font-weight: 600;
-            background: var(--text-primary);
-            color: white;
-            border: 3px solid var(--text-primary);
-            border-radius: 255px 15px 225px 15px/15px 225px 15px 255px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .login-btn:hover {
-            background: transparent;
-            color: var(--text-primary);
-            transform: rotate(-1deg);
-        }
-
-        .login-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .message {
-            margin-top: 1.5rem;
-            padding: 1rem;
-            border-radius: 15px;
-            font-size: 1.1rem;
-        }
-
-        .message.success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 2px solid #065f46;
-        }
-
-        .message.error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 2px solid #991b1b;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-top: 2rem;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 1.1rem;
-        }
-
-        .back-link:hover {
-            color: var(--text-primary);
-        }
-
-        .divider {
-            margin: 2rem 0;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            color: var(--text-muted);
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 2px;
-            background: var(--border-light);
-        }
-    </style>
+    </script>
 </head>
-<body>
-    <div class="login-page">
-        <div class="login-card">
-            <h1>Welcome</h1>
-            <p>Enter your email to get a magic link</p>
+<body class="bg-surface font-body text-on-surface antialiased min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-[400px]">
+        <!-- Brand -->
+        <div class="text-center mb-10">
+            <a href="/" class="text-3xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <p class="text-sm text-slate-500 mt-2">Enter your email to get a magic link</p>
+        </div>
 
+        <!-- Card -->
+        <div class="bg-white border border-slate-200 rounded-xl p-8 shadow-lg">
             <form id="loginForm">
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                <div class="mb-6">
+                    <label for="email" class="block text-xs font-bold uppercase tracking-widest text-slate-600 mb-2">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="you@example.com"
+                        required
+                        class="w-full px-4 py-3.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all font-['Manrope']"
+                    >
                 </div>
-                <button type="submit" class="login-btn" id="submitBtn">
+                <button
+                    type="submit"
+                    id="submitBtn"
+                    class="w-full py-3.5 bg-primary text-white rounded-lg text-sm font-bold uppercase tracking-widest hover:bg-primary-dim transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                     Send Magic Link
                 </button>
             </form>
 
-            <div id="message" class="message" style="display: none;"></div>
+            <div id="message" class="mt-6 px-4 py-3 rounded-lg text-sm font-medium hidden"></div>
 
-            <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to home</a>
+            <div class="mt-8 text-center">
+                <a href="/" class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined text-sm">arrow_back</span>
+                    Back to home
+                </a>
+            </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/supabase.js"></script>
     <script>
@@ -175,18 +96,16 @@
         const submitBtn = document.getElementById('submitBtn');
         const messageEl = document.getElementById('message');
 
-        // Check for error and redirect in URL
         const urlParams = new URLSearchParams(window.location.search);
         const errorMsg = urlParams.get('error');
         const redirectTo = urlParams.get('redirect') || '/members.html';
 
         if (errorMsg) {
-            messageEl.className = 'message error';
+            messageEl.className = 'mt-6 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200';
             messageEl.textContent = decodeURIComponent(errorMsg).replace(/\+/g, ' ');
-            messageEl.style.display = 'block';
+            messageEl.classList.remove('hidden');
         }
 
-        // Check if already logged in
         (async () => {
             const user = await auth.getUser();
             if (user) {
@@ -204,15 +123,15 @@
             const { data, error } = await auth.sendMagicLink(email, redirectTo);
 
             if (error) {
-                messageEl.className = 'message error';
+                messageEl.className = 'mt-6 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200';
                 messageEl.textContent = error.message;
-                messageEl.style.display = 'block';
+                messageEl.classList.remove('hidden');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Send Magic Link';
             } else {
-                messageEl.className = 'message success';
+                messageEl.className = 'mt-6 px-4 py-3 rounded-lg text-sm font-medium bg-green-50 text-green-700 border border-green-200';
                 messageEl.textContent = 'Check your email for the magic link!';
-                messageEl.style.display = 'block';
+                messageEl.classList.remove('hidden');
                 submitBtn.textContent = 'Email Sent!';
             }
         });
