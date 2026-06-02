@@ -1,23 +1,29 @@
-async function publishToTwitter(post, account) {
+async function publishToTwitter(post, account, onProgress) {
+  const p = onProgress || (async () => {});
+  await p('authenticating', 'Authenticating with Twitter/X...');
   console.log('[TWITTER] Starting publish...');
   const { access_token } = account;
 
   const mediaId = post.metadata?.twitter_media_id;
 
   if (mediaId) {
+    await p('publishing', 'Creating tweet...');
     return await createTweet(access_token, post.caption, mediaId);
   }
 
   if (post.video_url) {
     try {
-      const uploadedMediaId = await uploadVideoToTwitter(access_token, post.video_url);
+      const uploadedMediaId = await uploadVideoToTwitter(access_token, post.video_url, p);
+      await p('publishing', 'Creating tweet...');
       return await createTweet(access_token, post.caption, uploadedMediaId);
     } catch (err) {
       console.error('[TWITTER] Video upload failed, falling back to text:', err.message);
+      await p('publishing', 'Creating text-only tweet (video upload failed)...');
       return await createTweet(access_token, post.caption, null);
     }
   }
 
+  await p('publishing', 'Creating tweet...');
   return await createTweet(access_token, post.caption, null);
 }
 
@@ -36,8 +42,10 @@ async function createTweet(accessToken, text, mediaId) {
   return { status: 'success', post_id: data.data?.id, url: `https://twitter.com/i/web/status/${data.data?.id}` };
 }
 
-async function uploadVideoToTwitter(accessToken, videoUrl) {
-  // 1. INIT
+async function uploadVideoToTwitter(accessToken, videoUrl, onProgress) {
+  const p = onProgress || (async () => {});
+
+  await p('initializing', 'Initializing Twitter/X media upload...');
   const totalBytes = await getContentLength(videoUrl);
   const initRes = await fetch('https://upload.twitter.com/1.1/media/upload.json?command=INIT&media_type=video/mp4&total_bytes=' + totalBytes, {
     method: 'POST',
@@ -46,7 +54,7 @@ async function uploadVideoToTwitter(accessToken, videoUrl) {
   if (!initRes.ok) throw new Error('Twitter INIT failed: ' + (await initRes.text()));
   const { media_id_string } = await initRes.json();
 
-  // 2. APPEND in chunks
+  await p('downloading', 'Downloading video from storage...');
   const CHUNK = 5 * 1024 * 1024;
   const videoRes = await fetch(videoUrl);
   const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
@@ -55,6 +63,10 @@ async function uploadVideoToTwitter(accessToken, videoUrl) {
   for (let i = 0; i < totalChunks; i++) {
     const start = i * CHUNK;
     const chunk = videoBuffer.slice(start, start + CHUNK);
+    const pct = Math.round(((i + 1) / totalChunks) * 100);
+
+    await p('uploading', `Uploading chunk ${i + 1} of ${totalChunks} (${pct}%)...`, pct);
+
     const form = new FormData();
     form.append('command', 'APPEND');
     form.append('media_id', media_id_string);
@@ -69,7 +81,7 @@ async function uploadVideoToTwitter(accessToken, videoUrl) {
     if (!appendRes.ok) throw new Error(`Twitter APPEND chunk ${i} failed`);
   }
 
-  // 3. FINALIZE
+  await p('finalizing', 'Finalizing Twitter/X media upload...');
   const finalizeRes = await fetch('https://upload.twitter.com/1.1/media/upload.json?command=FINALIZE&media_id=' + media_id_string, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${accessToken}` },

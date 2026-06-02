@@ -70,7 +70,9 @@ app.post('/publish', async (req, res) => {
 
     console.log(`[PUBLISH] postId=${postId} platforms=${platforms.join(',')} userId=${user.id}`);
 
-    const result = await publishPost(postId, platforms, user.id);
+    const result = await publishPost(postId, platforms, user.id, (platform, stage, message, pct) => {
+      console.log(`[PROGRESS] ${platform}: ${stage} - ${message}`);
+    });
     res.json(result);
   } catch (err) {
     console.error('[PUBLISH] Error:', err.message);

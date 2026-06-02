@@ -6,7 +6,7 @@ const { publishToInstagram } = require('./platforms/instagram');
 const { publishToYouTube } = require('./platforms/youtube');
 const { publishToTwitter } = require('./platforms/twitter');
 
-async function publishPost(postId, platforms, userId) {
+async function publishPost(postId, platforms, userId, onProgress) {
   const supabase = getClient();
 
   const { data: post, error: postError } = await supabase
@@ -47,6 +47,8 @@ async function publishPost(postId, platforms, userId) {
   let hasSuccess = false;
   let hasFailure = false;
 
+  const progressFn = onProgress || (async () => {});
+
   async function updateProgress(newResults) {
     const merged = { ...existingResults, ...newResults };
     const vals = Object.values(merged);
@@ -65,6 +67,14 @@ async function publishPost(postId, platforms, userId) {
       .eq('id', post.id);
   }
 
+  const makePlatformProgress = (platform) => {
+    return async (stage, message, pct) => {
+      const progressResult = { status: 'processing', stage, message, pct: pct || 0 };
+      await updateProgress({ [platform]: progressResult });
+      await progressFn(platform, stage, message, pct);
+    };
+  };
+
   const publishPromises = platformsToPublish.map(async (platform) => {
     const account = accounts.find(a => a.platform === platform);
     if (!account) {
@@ -74,14 +84,16 @@ async function publishPost(postId, platforms, userId) {
       return { platform, result: r };
     }
 
+    const p = makePlatformProgress(platform);
+
     try {
       let result;
       switch (platform) {
-        case 'linkedin':   result = await publishToLinkedIn(post, account); break;
-        case 'tiktok':     result = await publishToTikTok(post, account, supabase); break;
-        case 'instagram':  result = await publishToInstagram(post, account); break;
-        case 'twitter':    result = await publishToTwitter(post, account); break;
-        case 'youtube':    result = await publishToYouTube(post, account, supabase); break;
+        case 'linkedin':   result = await publishToLinkedIn(post, account, p); break;
+        case 'tiktok':     result = await publishToTikTok(post, account, supabase, p); break;
+        case 'instagram':  result = await publishToInstagram(post, account, p); break;
+        case 'twitter':    result = await publishToTwitter(post, account, p); break;
+        case 'youtube':    result = await publishToYouTube(post, account, supabase, p); break;
         default:           result = { status: 'error', error: 'Unknown platform' };
       }
       results[platform] = result;

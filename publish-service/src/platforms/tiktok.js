@@ -1,10 +1,11 @@
-async function publishToTikTok(post, account, supabase) {
+async function publishToTikTok(post, account, supabase, onProgress) {
+  const p = onProgress || (async () => {});
+  await p('authenticating', 'Authenticating with TikTok...');
   console.log('[TIKTOK] Starting publish...');
   if (!post.video_url) throw new Error('No video available for TikTok');
 
   let accessToken = account.access_token;
 
-  // Refresh token if expired
   const tokenExpiresAt = new Date(account.token_expires_at);
   const isExpired = tokenExpiresAt <= new Date();
   const isExpiringSoon = tokenExpiresAt <= new Date(Date.now() + 5 * 60 * 1000);
@@ -33,7 +34,7 @@ async function publishToTikTok(post, account, supabase) {
     }
   }
 
-  // Download video from storage
+  await p('downloading', 'Downloading video from storage...');
   console.log('[TIKTOK] Downloading video:', post.video_url);
   const videoFetch = await fetch(post.video_url);
   if (!videoFetch.ok) throw new Error('Failed to fetch video from storage');
@@ -41,12 +42,11 @@ async function publishToTikTok(post, account, supabase) {
   const videoSize = videoBuffer.length;
   console.log('[TIKTOK] Video size:', (videoSize / 1024 / 1024).toFixed(2), 'MB');
 
-  // Determine chunk parameters
   const TARGET_CHUNK = 10 * 1024 * 1024;
   const chunkSize = videoSize <= TARGET_CHUNK ? videoSize : TARGET_CHUNK;
   const totalChunks = Math.ceil(videoSize / chunkSize);
 
-  // Step 1: Initialize upload
+  await p('initializing', 'Initializing TikTok upload...');
   const initRes = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
@@ -61,12 +61,14 @@ async function publishToTikTok(post, account, supabase) {
   const uploadUrl = initData.data?.upload_url;
   if (!uploadUrl) throw new Error('No upload URL from TikTok');
 
-  // Step 2: Upload chunks
   for (let i = 0; i < totalChunks; i++) {
     const start = i * chunkSize;
     const end = i === totalChunks - 1 ? videoSize : start + chunkSize;
     const chunk = videoBuffer.slice(start, end);
     const lastByte = end - 1;
+    const pct = Math.round(((i + 1) / totalChunks) * 100);
+
+    await p('uploading', `Uploading chunk ${i + 1} of ${totalChunks} (${pct}%)...`, pct);
 
     const uploadRes = await fetch(uploadUrl, {
       method: 'PUT',
@@ -84,6 +86,7 @@ async function publishToTikTok(post, account, supabase) {
     }
   }
 
+  await p('finalizing', 'Finalizing with TikTok...');
   return {
     status: 'success',
     publish_id: publishId,

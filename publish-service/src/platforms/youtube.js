@@ -1,4 +1,6 @@
-async function publishToYouTube(post, account, supabase) {
+async function publishToYouTube(post, account, supabase, onProgress) {
+  const p = onProgress || (async () => {});
+  await p('authenticating', 'Authenticating with YouTube...');
   console.log('[YOUTUBE] Starting publish...');
   if (post.metadata?.media_type !== 'video' || !post.video_url) {
     return { status: 'error', error: 'YouTube Shorts requires a video' };
@@ -6,7 +8,6 @@ async function publishToYouTube(post, account, supabase) {
 
   let { access_token, refresh_token } = account;
 
-  // Refresh token if needed
   const tokenExpiry = new Date(account.token_expires_at);
   if (tokenExpiry <= new Date()) {
     const refreshed = await refreshYouTubeToken(refresh_token);
@@ -18,21 +19,20 @@ async function publishToYouTube(post, account, supabase) {
     }).eq('id', account.id);
   }
 
-  // Download video from storage
+  await p('downloading', 'Downloading video from storage...');
   console.log('[YOUTUBE] Downloading video...');
   const videoRes = await fetch(post.video_url);
   if (!videoRes.ok) throw new Error('Failed to download video from storage');
   const videoBytes = Buffer.from(await videoRes.arrayBuffer());
   console.log('[YOUTUBE] Video size:', (videoBytes.length / 1024 / 1024).toFixed(2), 'MB');
 
-  // Prepare metadata
   let description = post.caption || '';
   if (!description.toLowerCase().includes('#shorts')) description += '\n\n#Shorts';
 
   const firstLine = post.caption?.split('\n').find(l => l.trim())?.trim() || '';
   let title = firstLine.substring(0, 100).replace(/[<>]/g, '') || 'Short video';
 
-  // Initialize resumable upload
+  await p('uploading', 'Uploading video to YouTube (0%)...', 0);
   const initRes = await fetch(
     'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status',
     {
@@ -55,17 +55,42 @@ async function publishToYouTube(post, account, supabase) {
   const uploadUrl = initRes.headers.get('location');
   if (!uploadUrl) throw new Error('No upload URL from YouTube');
 
-  // Upload video bytes
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'video/*', 'Content-Length': videoBytes.length.toString() },
-    body: videoBytes,
+  // Upload video bytes with progress
+  const uploadRes = await uploadWithProgress(uploadUrl, videoBytes, async (pct) => {
+    await p('uploading', `Uploading video to YouTube (${pct}%)...`, pct);
   });
 
   if (!uploadRes.ok) throw new Error('Failed to upload video to YouTube: ' + (await uploadRes.text()));
 
+  await p('processing', 'YouTube is processing your video...');
   const videoData = await uploadRes.json();
   return { status: 'success', post_id: videoData.id, url: `https://youtube.com/shorts/${videoData.id}` };
+}
+
+// Helper: upload a Buffer with progress reporting via a passthrough stream
+async function uploadWithProgress(url, buffer, onProgress) {
+  return new Promise((resolve, reject) => {
+    const { PassThrough } = require('stream');
+    const stream = new PassThrough();
+    let uploaded = 0;
+    const total = buffer.length;
+
+    stream.on('data', (chunk) => {
+      uploaded += chunk.length;
+      const pct = Math.round((uploaded / total) * 100);
+      onProgress(pct);
+    });
+
+    // Write buffer to stream
+    stream.end(buffer);
+
+    fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'video/*', 'Content-Length': total.toString() },
+      body: stream,
+      duplex: 'half',
+    }).then(resolve).catch(reject);
+  });
 }
 
 async function refreshYouTubeToken(refreshToken) {

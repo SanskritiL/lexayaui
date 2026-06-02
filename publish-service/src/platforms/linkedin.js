@@ -1,4 +1,6 @@
-async function publishToLinkedIn(post, account) {
+async function publishToLinkedIn(post, account, onProgress) {
+  const p = onProgress || (async () => {});
+  await p('authenticating', 'Authenticating with LinkedIn...');
   console.log('[LINKEDIN] Starting publish...');
   const mediaType = post.metadata?.media_type;
   const { access_token } = account;
@@ -19,17 +21,19 @@ async function publishToLinkedIn(post, account) {
 
   const linkedinVideoUrn = post.metadata?.linkedin_video_urn;
   if (linkedinVideoUrn) {
+    await p('publishing', 'Creating LinkedIn post...');
     return await createLinkedInVideoPost(headers, authorUrn, post, linkedinVideoUrn);
   }
 
   if (mediaType === 'video' && post.video_url) {
-    return await uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access_token);
+    return await uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access_token, p);
   }
 
   if (mediaType === 'image' && post.video_url) {
-    return await createLinkedInImagePost(headers, authorUrn, post, access_token);
+    return await createLinkedInImagePost(headers, authorUrn, post, access_token, p);
   }
 
+  await p('publishing', 'Creating LinkedIn post...');
   return await createLinkedInTextPost(headers, authorUrn, post);
 }
 
@@ -52,10 +56,11 @@ async function createLinkedInVideoPost(headers, authorUrn, post, videoUrn) {
   return { status: 'success', post_id: postId, url: `https://linkedin.com/feed/update/${postId}` };
 }
 
-async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, accessToken) {
+async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, accessToken, onProgress) {
+  const p = onProgress || (async () => {});
   console.log('[LINKEDIN] Server-side video upload flow...');
 
-  // 1. Register upload
+  await p('initializing', 'Registering upload with LinkedIn...');
   const registerRes = await fetch('https://api.linkedin.com/rest/assets?action=registerUpload', {
     method: 'POST',
     headers: {
@@ -82,12 +87,12 @@ async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access
 
   if (!uploadUrl || !assetUrn) throw new Error('Failed to get LinkedIn upload URL');
 
-  // 2. Download video from storage
+  await p('downloading', 'Downloading video from storage...');
   const videoRes = await fetch(post.video_url);
   if (!videoRes.ok) throw new Error('Failed to download video');
   const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
 
-  // 3. Upload to LinkedIn
+  await p('uploading', 'Uploading video to LinkedIn...');
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
@@ -98,12 +103,15 @@ async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access
   });
   if (!uploadRes.ok) throw new Error('LinkedIn video upload failed: ' + (await uploadRes.text()));
 
+  await p('publishing', 'Creating LinkedIn post...');
   return createLinkedInVideoPost(headers, authorUrn, post, assetUrn);
 }
 
-async function createLinkedInImagePost(headers, authorUrn, post, accessToken) {
+async function createLinkedInImagePost(headers, authorUrn, post, accessToken, onProgress) {
+  const p = onProgress || (async () => {});
   console.log('[LINKEDIN] Image upload flow...');
 
+  await p('initializing', 'Registering image upload with LinkedIn...');
   const registerRes = await fetch('https://api.linkedin.com/rest/assets?action=registerUpload', {
     method: 'POST',
     headers,
@@ -125,10 +133,12 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken) {
   const assetUrn = registerData.value?.asset;
   if (!uploadUrl || !assetUrn) throw new Error('Failed to get LinkedIn image upload URL');
 
+  await p('downloading', 'Downloading image from storage...');
   const imgRes = await fetch(post.video_url);
   if (!imgRes.ok) throw new Error('Failed to download image');
   const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
 
+  await p('uploading', 'Uploading image to LinkedIn...');
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/octet-stream' },
@@ -136,6 +146,7 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken) {
   });
   if (!uploadRes.ok) throw new Error('LinkedIn image upload failed: ' + (await uploadRes.text()));
 
+  await p('publishing', 'Creating LinkedIn post...');
   const postBody = {
     author: authorUrn,
     commentary: post.caption || '',

@@ -1,4 +1,6 @@
-async function publishToInstagram(post, account) {
+async function publishToInstagram(post, account, onProgress) {
+  const p = onProgress || (async () => {});
+  await p('authenticating', 'Authenticating with Instagram...');
   console.log('[INSTAGRAM] Starting publish...');
   const mediaType = post.metadata?.media_type || 'video';
   const { access_token, platform_user_id: igUserId } = account;
@@ -6,6 +8,8 @@ async function publishToInstagram(post, account) {
   if (!post.video_url) throw new Error('Media is required for Instagram');
 
   const isImage = mediaType === 'image';
+
+  await p('uploading', `Creating Instagram ${isImage ? 'image' : 'reel'}...`);
   const containerUrl = new URL(`https://graph.facebook.com/v18.0/${igUserId}/media`);
   containerUrl.searchParams.set('access_token', access_token);
 
@@ -26,6 +30,7 @@ async function publishToInstagram(post, account) {
   const containerData = await containerRes.json();
   console.log('[INSTAGRAM] Container created:', containerData.id);
 
+  await p('processing', 'Instagram is processing your media...');
   return {
     status: 'pending',
     container_id: containerData.id,
