@@ -1,723 +1,453 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Post - Yak Station</title>
+    <title>Create Post — Lexaya Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/broadcast/style.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="/js/config.js"></script>
-    <script src="/js/api-config.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-bright": "#f9f9f7", "tertiary": "#695781", "on-primary-fixed-variant": "#001b42",
+                        "outline": "#777c79", "primary-dim": "#0050ab", "error-dim": "#67040d",
+                        "surface-container-highest": "#e0e3e0", "surface-tint": "#005bc2", "inverse-surface": "#0d0f0e",
+                        "tertiary-container": "#e4ceff", "secondary": "#575f72", "on-primary-container": "#000e29",
+                        "on-secondary-container": "#4a5264", "on-error": "#fff7f6", "inverse-primary": "#4c8efe",
+                        "tertiary-fixed-dim": "#d6c0f0", "tertiary-fixed": "#e4ceff", "on-tertiary-fixed": "#403057",
+                        "secondary-fixed": "#dbe2f9", "on-primary": "#f9f8ff", "surface-container-high": "#e6e9e6",
+                        "on-tertiary-fixed-variant": "#5d4d75", "on-secondary-fixed": "#373f51",
+                        "surface": "#f9f9f7", "outline-variant": "#afb3b0", "on-primary-fixed": "#000000",
+                        "primary-fixed-dim": "#3c81f0", "primary-fixed": "#4c8efe", "on-secondary": "#f9f8ff",
+                        "on-tertiary-container": "#54436b", "on-background": "#2f3332", "on-surface": "#2f3332",
+                        "surface-container": "#eceeec", "error": "#a83836", "surface-variant": "#e0e3e0",
+                        "tertiary-dim": "#5c4b74", "primary": "#005bc2", "on-error-container": "#6e0a12",
+                        "background": "#f9f9f7", "surface-container-low": "#f3f4f2",
+                        "on-secondary-fixed-variant": "#545b6e", "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d7dbd8", "primary-container": "#4c8efe", "error-container": "#fa746f",
+                        "secondary-fixed-dim": "#cdd4ea", "secondary-dim": "#4b5366",
+                        "on-surface-variant": "#5c605e", "secondary-container": "#dbe2f9",
+                        "on-tertiary": "#fef6ff", "inverse-on-surface": "#9c9d9b"
+                    },
+                    borderRadius: { DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem" },
+                    fontFamily: { headline: ["Manrope"], display: ["Manrope"], body: ["Manrope"], label: ["Manrope"] }
+                }
+            }
+        }
+    </script>
     <style>
-        /* Yak Theme Overrides */
-        :root {
-            --yak-pink: #f8d7da;
-            --yak-cream: #fff5f5;
-            --yak-warm: #e8b4b8;
-            --yak-dark: #6d4c5c;
-            --yak-accent: #d4838f;
-            --yak-success: #7cb87c;
-            --yak-bg: linear-gradient(135deg, #fff9f9 0%, #fff5f5 50%, #fef0f0 100%);
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+        .glass { background: rgba(249, 249, 247, 0.8); backdrop-filter: blur(24px); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .text-headline-sm { font-size: 1.25rem; line-height: 1.4; font-weight: 800; }
+        .text-label-md { font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; }
+        .text-label-sm { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+        .ambient-shadow { box-shadow: 0px 24px 48px rgba(47, 51, 50, 0.06); }
+
+        .upload-zone-dashed { border: 2px dashed #afb3b0; transition: all 0.3s ease; }
+        .upload-zone-dashed:hover { border-color: #005bc2; background: rgba(0, 91, 194, 0.03); }
+        .upload-zone-dashed.dragover { border-color: #005bc2; background: rgba(0, 91, 194, 0.06); }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .modal-anim { animation: modalSlideIn 0.25s ease; }
+
+        @keyframes indeterminate {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .bar-indeterminate {
+            background: linear-gradient(90deg, #005bc2 0%, #4c8efe 50%, #005bc2 100%);
+            background-size: 200% 100%;
+            animation: indeterminate 1.5s ease-in-out infinite;
         }
 
-        body {
-            background: var(--yak-bg);
-            min-height: 100vh;
-        }
-
-        /* Yak Mascot Section */
-        .yak-mascot-section {
-            background: linear-gradient(135deg, #fff 0%, #fff9f9 100%);
-            border-radius: 20px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            border: 2px solid var(--yak-pink);
-            box-shadow: 0 4px 20px rgba(212, 131, 143, 0.15);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .yak-mascot-section::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 200px;
-            height: 200px;
-            background: radial-gradient(circle, var(--yak-pink) 0%, transparent 70%);
-            opacity: 0.3;
-            pointer-events: none;
-        }
-
-        .yak-image-container {
-            flex-shrink: 0;
-            position: relative;
-        }
-
-        .yak-image {
-            width: 100px;
-            height: 100px;
-            object-fit: contain;
-            transition: transform 0.3s ease;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
-        }
-
-        .yak-image:hover {
-            transform: scale(1.05) rotate(-3deg);
-        }
-
-        .yak-speech {
-            flex: 1;
-            position: relative;
-        }
-
-        .yak-speech-bubble {
-            background: white;
-            padding: 1rem 1.25rem;
-            border-radius: 16px;
-            border: 2px solid var(--yak-warm);
-            position: relative;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        .yak-speech-bubble::before {
-            content: '';
-            position: absolute;
-            left: -12px;
-            top: 50%;
-            transform: translateY(-50%);
-            border: 8px solid transparent;
-            border-right-color: var(--yak-warm);
-        }
-
-        .yak-speech-bubble::after {
-            content: '';
-            position: absolute;
-            left: -8px;
-            top: 50%;
-            transform: translateY(-50%);
-            border: 6px solid transparent;
-            border-right-color: white;
-        }
-
-        .yak-message {
-            font-family: 'Quicksand', sans-serif;
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--yak-dark);
-            margin: 0 0 0.25rem 0;
-            line-height: 1.4;
-        }
-
-        .yak-submessage {
-            font-size: 0.85rem;
-            color: #8b7082;
-            margin: 0;
-        }
-
-        /* Progress Dots */
-        .yak-progress {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 0.75rem;
-        }
-
-        .progress-dot {
-            width: 10px;
-            height: 10px;
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .mini-spinner {
+            width: 18px; height: 18px;
+            border: 2px solid #e0e3e0;
+            border-top-color: #005bc2;
             border-radius: 50%;
-            background: var(--yak-pink);
-            transition: all 0.3s ease;
+            animation: spin 0.8s linear infinite;
         }
 
-        .progress-dot.active {
-            background: var(--yak-accent);
-            transform: scale(1.2);
-        }
-
-        .progress-dot.completed {
-            background: var(--yak-success);
-        }
-
-        /* Themed Header */
-        .header {
-            text-align: center;
-            padding: 1.5rem 0;
-        }
-
-        .header h1 {
-            font-family: 'Quicksand', sans-serif;
-            color: var(--yak-dark);
-            font-size: 1.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .header .tagline {
-            color: var(--yak-accent);
-            font-weight: 500;
-        }
-
-        /* Themed Sections */
-        .section {
-            background: white;
-            border-radius: 16px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            border: 2px solid #fce4e6;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .section:hover {
-            border-color: var(--yak-warm);
-            box-shadow: 0 4px 20px rgba(212, 131, 143, 0.1);
-        }
-
-        .section.completed {
-            border-color: var(--yak-success);
-            background: linear-gradient(135deg, #fff 0%, #f0fff0 100%);
-        }
-
-        .section h2 {
-            font-family: 'Quicksand', sans-serif;
-            color: var(--yak-dark);
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .section h2 .step-icon {
-            width: 28px;
-            height: 28px;
-            background: var(--yak-pink);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            color: var(--yak-dark);
-            transition: all 0.3s ease;
-        }
-
-        .section.completed h2 .step-icon {
-            background: var(--yak-success);
-            color: white;
-        }
-
-        /* Themed Upload Zone */
-        .upload-zone {
-            border: 3px dashed var(--yak-warm);
-            border-radius: 16px;
-            padding: 2.5rem;
-            text-align: center;
-            background: linear-gradient(135deg, #fff9f9 0%, #fff 100%);
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .upload-zone:hover {
-            border-color: var(--yak-accent);
-            background: linear-gradient(135deg, #fff5f5 0%, #fff 100%);
-            transform: translateY(-2px);
-        }
-
-        .upload-zone.dragover {
-            border-color: var(--yak-accent);
-            background: var(--yak-cream);
-            transform: scale(1.01);
-        }
-
-        .upload-zone .upload-icon {
-            font-size: 3rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .upload-zone h3 {
-            font-family: 'Quicksand', sans-serif;
-            color: var(--yak-dark);
-            margin-bottom: 0.25rem;
-        }
-
-        /* Themed Platform Cards */
-        .platforms-select > div {
-            border-radius: 12px;
-            border: 2px solid #fce4e6;
-            transition: all 0.3s ease;
-        }
-
-        .platforms-select > div:hover {
-            border-color: var(--yak-warm);
-            background: var(--yak-cream);
-        }
-
-        .platforms-select input[type="checkbox"] {
-            accent-color: var(--yak-accent);
-        }
-
-        /* Themed Buttons */
-        .btn-primary {
-            background: linear-gradient(135deg, var(--yak-accent) 0%, #c77080 100%);
-            border: none;
-            border-radius: 12px;
-            padding: 0.875rem 1.5rem;
-            font-family: 'Quicksand', sans-serif;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(212, 131, 143, 0.3);
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(212, 131, 143, 0.4);
-        }
-
-        .btn-primary:disabled {
-            background: #e5e5e5;
-            box-shadow: none;
-        }
-
-        .btn-secondary {
-            border: 2px solid var(--yak-warm);
-            color: var(--yak-dark);
-            border-radius: 12px;
-            font-family: 'Quicksand', sans-serif;
-            font-weight: 600;
-        }
-
-        .btn-secondary:hover {
-            background: var(--yak-cream);
-        }
-
-        /* Confetti animation for success */
         @keyframes confetti-fall {
             0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
             100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
-
         .confetti {
-            position: fixed;
-            width: 10px;
-            height: 10px;
-            background: var(--yak-accent);
+            position: fixed; top: 0;
+            width: 10px; height: 10px;
+            background: #005bc2;
             animation: confetti-fall 3s ease-out forwards;
-            pointer-events: none;
-            z-index: 9999;
+            pointer-events: none; z-index: 9999;
         }
 
-        /* Yak bounce animation */
-        @keyframes yak-bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
+        .form-input {
+            width: 100%; padding: 0.75rem 1rem;
+            border: 1px solid #afb3b0; border-radius: 0.5rem;
+            font-size: 0.9rem; color: #2f3332;
+            background: #ffffff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .form-input:focus {
+            border-color: #005bc2;
+            box-shadow: 0 0 0 3px rgba(0, 91, 194, 0.1);
+        }
+        .form-input::placeholder { color: #9c9d9b; }
+        textarea.form-input { resize: vertical; min-height: 120px; }
+
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+        .modal-card {
+            background: #ffffff; padding: 2rem;
+            border-radius: 1rem;
+            max-width: 460px; width: 90%;
+            max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.2);
         }
 
-        .yak-image.bouncing {
-            animation: yak-bounce 0.6s ease-in-out;
+        /* Platform check card */
+        .platform-card {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 1rem; border: 1px solid #afb3b0;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .platform-card:hover { border-color: #005bc2; background: rgba(0, 91, 194, 0.03); }
+        .platform-card.selected { border-color: #005bc2; background: rgba(0, 91, 194, 0.06); }
+        .platform-card.disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .platform-icon {
+            width: 36px; height: 36px; border-radius: 0.5rem;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; font-size: 1.1rem;
+        }
+        .platform-icon.linkedin { background: #0A66C2; color: white; }
+        .platform-icon.tiktok { background: #000000; color: white; }
+        .platform-icon.youtube { background: #FF0000; color: white; }
+        .platform-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
+
+        /* Progress items */
+        .progress-item {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            background: #f3f4f2; border-radius: 0.5rem;
+            border: 1px solid transparent;
+            transition: all 0.3s;
+        }
+        .progress-item.publishing { border-color: #005bc2; background: rgba(0, 91, 194, 0.06); }
+        .progress-item.success { border-color: #22c55e; background: #f0fdf4; }
+        .progress-item.failed { border-color: #dc2626; background: #fef2f2; }
+        .progress-item.uploading { border-color: #005bc2; background: rgba(0, 91, 194, 0.06); }
+
+        .progress-bar-track {
+            width: 100%; height: 3px;
+            background: #e0e3e0; border-radius: 2px;
+            margin-top: 6px; overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%; background: #005bc2;
+            border-radius: 2px; transition: width 0.2s ease;
         }
 
-        /* Mobile responsive */
-        @media (max-width: 640px) {
-            .yak-mascot-section {
-                flex-direction: column;
-                text-align: center;
-                padding: 1.25rem;
-            }
+        /* Viral score ring */
+        .viral-score-ring { width: 120px; height: 120px; margin: 0 auto; position: relative; }
+        .viral-score-ring svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+        .score-bg { fill: none; stroke: #e0e3e0; stroke-width: 8; }
+        .score-progress {
+            fill: none; stroke: #005bc2; stroke-width: 8;
+            stroke-linecap: round; stroke-dasharray: 283; stroke-dashoffset: 283;
+            transition: stroke-dashoffset 1s ease-out, stroke 0.3s;
+        }
+        .score-value {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem; font-weight: 700;
+            color: #005bc2; transition: color 0.3s;
+        }
 
-            .yak-speech-bubble::before,
-            .yak-speech-bubble::after {
-                display: none;
-            }
-
-            .yak-image {
-                width: 80px;
-                height: 80px;
-            }
-
-            .yak-progress {
-                justify-content: center;
-            }
+        .similar-hook-card {
+            padding: 0.75rem; background: #f3f4f2;
+            border-radius: 0.5rem; border: 1px solid #afb3b0;
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <a href="./" class="logo">← Back to Dashboard</a>
-            <h1>Create New Post</h1>
-            <p class="tagline">Let's make something awesome together!</p>
-        </header>
+<body class="bg-surface text-on-surface font-body antialiased" data-page="library" data-title="Create Post" data-subtitle="Library">
+    <div id="app-shell"></div>
 
-        <!-- Yak Mascot Section -->
-        <div class="yak-mascot-section" id="yak-mascot">
-            <div class="yak-image-container">
-                <img src="/resources/images/yak-sleepy.png" alt="Yak Mascot" class="yak-image" id="yak-img">
+    <div data-content style="display: none;">
+        <!-- Media Upload -->
+        <section class="mb-10">
+            <h2 class="text-headline-sm mb-6">Upload Media</h2>
+            <p class="text-sm text-on-surface-variant mb-6">Images: JPG, PNG, WebP &nbsp;|&nbsp; Videos: MP4, MOV &nbsp;|&nbsp; Max: 500MB</p>
+
+            <div id="upload-zone" class="upload-zone-dashed rounded-xl p-12 text-center cursor-pointer">
+                <span class="material-symbols-outlined text-5xl text-outline mb-4" id="upload-icon">cloud_upload</span>
+                <h3 class="text-lg font-bold text-on-surface mb-2" id="upload-title">Drop your photo or video here</h3>
+                <p class="text-sm text-on-surface-variant" id="upload-subtitle">or click to browse</p>
+                <input type="file" id="media-input" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/mov" hidden>
             </div>
-            <div class="yak-speech">
-                <div class="yak-speech-bubble">
-                    <p class="yak-message" id="yak-message">Hey there! Ready to create something amazing?</p>
-                    <p class="yak-submessage" id="yak-submessage">Start by uploading your media below</p>
+
+            <div id="video-preview-container" style="display: none;" class="mt-6">
+                <video id="video-preview" class="w-full max-h-[400px] rounded-xl object-contain bg-black/5" controls></video>
+                <div class="flex items-center gap-4 mt-3">
+                    <p id="video-info" class="text-sm text-on-surface-variant flex-1"></p>
+                    <button type="button" id="remove-media" class="text-sm font-semibold text-error hover:underline">Remove</button>
                 </div>
-                <div class="yak-progress">
-                    <div class="progress-dot" id="dot-media"></div>
-                    <div class="progress-dot" id="dot-caption"></div>
-                    <div class="progress-dot" id="dot-platforms"></div>
-                    <div class="progress-dot" id="dot-ready"></div>
+                <button type="button" id="analyze-hook-btn" class="mt-4 px-6 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl text-sm font-bold text-primary hover:bg-surface-container transition-all flex items-center gap-3 active:scale-95">
+                    <span class="material-symbols-outlined text-lg">auto_awesome</span>
+                    Analyze Hook
+                </button>
+            </div>
+
+            <div id="image-preview-container" style="display: none;" class="mt-6">
+                <img id="image-preview" class="w-full max-h-[400px] rounded-xl object-contain bg-black/5">
+                <div class="flex items-center gap-4 mt-3">
+                    <p id="image-info" class="text-sm text-on-surface-variant flex-1"></p>
+                    <button type="button" id="remove-image" class="text-sm font-semibold text-error hover:underline">Remove</button>
+                </div>
+                <p class="text-xs text-amber-600 mt-2">
+                    <span class="material-symbols-outlined text-sm align-text-bottom">warning</span>
+                    TikTok requires video
+                </p>
+            </div>
+        </section>
+
+        <!-- Caption -->
+        <section class="mb-10">
+            <h2 class="text-headline-sm mb-6">Caption</h2>
+            <textarea id="caption" class="form-input" placeholder="Write your caption here... Include hashtags at the end!"></textarea>
+            <p class="text-xs text-on-surface-variant mt-2"><span id="char-count">0</span>/2200 characters</p>
+        </section>
+
+        <!-- Platforms -->
+        <section class="mb-10">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-headline-sm">Platforms</h2>
+            </div>
+            <div id="platforms-select" class="space-y-3">
+                <div data-platform="tiktok" class="platform-card disabled">
+                    <input type="checkbox" id="platform-tiktok" name="platforms" value="tiktok" disabled class="w-5 h-5 accent-primary rounded">
+                    <div class="platform-icon tiktok"><i class="fa-brands fa-tiktok"></i></div>
+                    <div class="flex-1">
+                        <p class="font-bold text-sm text-on-surface">TikTok</p>
+                        <p class="platform-status text-xs text-on-surface-variant">(Connect first)</p>
+                    </div>
+                </div>
+                <div data-platform="instagram" class="platform-card disabled">
+                    <input type="checkbox" id="platform-instagram" name="platforms" value="instagram" disabled class="w-5 h-5 accent-primary rounded">
+                    <div class="platform-icon instagram"><i class="fa-brands fa-instagram"></i></div>
+                    <div class="flex-1">
+                        <p class="font-bold text-sm text-on-surface">Instagram</p>
+                        <p class="platform-status text-xs text-on-surface-variant">(Connect first)</p>
+                    </div>
+                </div>
+                <div data-platform="linkedin" class="platform-card disabled">
+                    <input type="checkbox" id="platform-linkedin" name="platforms" value="linkedin" disabled class="w-5 h-5 accent-primary rounded">
+                    <div class="platform-icon linkedin"><i class="fa-brands fa-linkedin-in"></i></div>
+                    <div class="flex-1">
+                        <p class="font-bold text-sm text-on-surface">LinkedIn</p>
+                        <p class="platform-status text-xs text-on-surface-variant">(Connect first)</p>
+                    </div>
+                </div>
+                <div data-platform="youtube" class="platform-card disabled">
+                    <input type="checkbox" id="platform-youtube" name="platforms" value="youtube" disabled class="w-5 h-5 accent-primary rounded">
+                    <div class="platform-icon youtube"><i class="fa-brands fa-youtube"></i></div>
+                    <div class="flex-1">
+                        <p class="font-bold text-sm text-on-surface">YouTube Shorts</p>
+                        <p class="platform-status text-xs text-on-surface-variant">(Connect first)</p>
+                    </div>
                 </div>
             </div>
-        </div>
+            <p id="no-accounts-warning" class="text-sm text-amber-600 mt-4">
+                <span class="material-symbols-outlined text-sm align-text-bottom">link_off</span>
+                No accounts connected. <a href="connect.html" class="underline font-semibold">Connect an account</a> to start posting.
+            </p>
+        </section>
 
-        <!-- Auth Check -->
-        <div id="auth-required" class="auth-required" style="display: none;">
-            <div class="card">
-                <h2>Login Required</h2>
-                <p>Please login to create posts</p>
-                <a href="/login.html?redirect=/broadcast/upload.html" class="btn btn-primary">Login with Email</a>
+        <!-- Schedule -->
+        <section class="mb-10">
+            <h2 class="text-headline-sm mb-6">Schedule</h2>
+            <label class="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" id="schedule-toggle" class="w-5 h-5 accent-primary rounded">
+                <span class="text-sm font-semibold text-on-surface">Schedule for later</span>
+            </label>
+            <div id="schedule-fields" style="display: none;" class="mt-4">
+                <input type="datetime-local" id="schedule-date" class="form-input max-w-sm">
             </div>
-        </div>
+        </section>
 
-        <!-- Upload Form -->
-        <main id="upload-form" style="display: none;">
-            <form id="post-form" autocomplete="off">
-                <!-- Step 1: Media Upload (Video or Photo) -->
-                <section class="section" id="section-media">
-                    <h2><span class="step-icon">1</span> Upload Media <span style="font-weight: normal; font-size: 0.9rem; color: var(--text-light);">(optional for LinkedIn)</span></h2>
-                    <div class="upload-zone" id="upload-zone">
-                        <div class="upload-icon">📷</div>
-                        <h3>Drop your photo or video here</h3>
-                        <p>or click to browse</p>
-                        <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
-                            📸 Images: JPG, PNG, WebP &nbsp;|&nbsp; 🎬 Videos: MP4, MOV
-                        </p>
-                        <input type="file" id="media-input" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/mov" hidden>
-                    </div>
-                    <!-- Video Preview -->
-                    <div id="video-preview-container" style="display: none; margin-top: 1rem;">
-                        <video id="video-preview" class="video-preview" controls style="max-height: 400px; width: auto; max-width: 100%;"></video>
-                        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
-                            <p id="video-info" style="color: var(--text-light); font-size: 0.9rem; margin: 0;"></p>
-                            <button type="button" id="remove-media" class="btn btn-secondary btn-small">Remove</button>
-                        </div>
-                    </div>
-                    <!-- Image Preview -->
-                    <div id="image-preview-container" style="display: none; margin-top: 1rem;">
-                        <img id="image-preview" style="max-width: 100%; max-height: 400px; border-radius: 8px; object-fit: contain;">
-                        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.5rem;">
-                            <p id="image-info" style="color: var(--text-light); font-size: 0.9rem; margin: 0;"></p>
-                            <button type="button" id="remove-image" class="btn btn-secondary btn-small">Remove</button>
-                        </div>
-                        <p style="font-size: 0.85rem; color: #f59e0b; margin-top: 0.5rem;">
-                            ⚠️ TikTok requires video - it will be disabled for photo posts
-                        </p>
-                    </div>
-                </section>
+        <!-- Actions -->
+        <section class="flex items-center gap-4 justify-end border-t border-outline-variant/10 pt-8">
+            <button type="button" id="save-draft" class="px-8 py-3.5 rounded-xl border border-outline-variant text-sm font-bold text-on-surface hover:bg-surface-container transition-all">Save as Draft</button>
+            <button type="submit" id="publish-btn" disabled class="px-10 py-3.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:bg-primary-dim transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary/20">
+                Publish Now
+            </button>
+        </section>
+    </div>
 
-                <!-- Step 2: Caption -->
-                <section class="section" id="section-caption">
-                    <h2><span class="step-icon">2</span> Add Caption</h2>
-                    <div class="form-group">
-                        <label for="caption">Caption (will be used across all platforms)</label>
-                        <textarea id="caption" name="caption" placeholder="Write your caption here... Include hashtags at the end!"></textarea>
-                        <p style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.85rem;">
-                            <span id="char-count">0</span>/2200 characters
-                        </p>
-                    </div>
-                </section>
-
-                <!-- Step 3: Select Platforms -->
-                <section class="section" id="section-platforms">
-                    <h2><span class="step-icon">3</span> Select Platforms</h2>
-                    <div class="platforms-select" id="platforms-select" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                        <div data-platform="tiktok" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-tiktok" name="platforms" value="tiktok" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
-                            <label for="platform-tiktok" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
-                                <span style="font-size: 1.5rem;">🎵</span>
-                                <span style="font-weight: 500;">TikTok</span>
-                            </label>
-                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
-                        </div>
-                        <div data-platform="instagram" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-instagram" name="platforms" value="instagram" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
-                            <label for="platform-instagram" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
-                                <span style="font-size: 1.5rem;"><i class="fa-brands fa-instagram" style="background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></i></span>
-                                <span style="font-weight: 500;">Instagram</span>
-                            </label>
-                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
-                        </div>
-                        <div data-platform="linkedin" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-linkedin" name="platforms" value="linkedin" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
-                            <label for="platform-linkedin" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
-                                <span style="font-size: 1.5rem;">💼</span>
-                                <span style="font-weight: 500;">LinkedIn</span>
-                            </label>
-                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
-                        </div>
-                        <!-- Threads disabled - requires Facebook App approval -->
-                        <!--
-                        <div data-platform="threads" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-threads" name="platforms" value="threads" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
-                            <label for="platform-threads" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
-                                <span style="font-size: 1.5rem;">🧵</span>
-                                <span style="font-weight: 500;">Threads</span>
-                            </label>
-                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
-                        </div>
-                        -->
-                        <div data-platform="youtube" style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 2px solid #e5e7eb; border-radius: 8px;">
-                            <input type="checkbox" id="platform-youtube" name="platforms" value="youtube" disabled style="width: 20px; height: 20px; accent-color: #d4838f;">
-                            <label for="platform-youtube" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; flex: 1;">
-                                <span style="font-size: 1.5rem; color: #FF0000;"><i class="fa-brands fa-youtube"></i></span>
-                                <span style="font-weight: 500;">YouTube Shorts</span>
-                            </label>
-                            <span class="status" style="font-size: 0.85rem; color: #9ca3af;">(Connect first)</span>
-                        </div>
-                    </div>
-                    <p id="no-accounts-warning" style="margin-top: 1rem; color: var(--warning);">
-                        No accounts connected. <a href="connect.html">Connect an account</a> to start posting.
-                    </p>
-                </section>
-
-                <!-- Step 4: Schedule (Optional) -->
-                <section class="section" id="section-schedule">
-                    <h2><span class="step-icon">4</span> Schedule (Optional)</h2>
-                    <div class="form-group">
-                        <label for="schedule-toggle" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                            <input type="checkbox" id="schedule-toggle" style="width: auto;">
-                            <span>Schedule for later</span>
-                        </label>
-                    </div>
-                    <div id="schedule-fields" style="display: none;">
-                        <div class="form-group">
-                            <label for="schedule-date">Date & Time</label>
-                            <input type="datetime-local" id="schedule-date" name="schedule_date">
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Submit -->
-                <section class="section">
-                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                        <button type="button" class="btn btn-secondary" id="save-draft">Save as Draft</button>
-                        <button type="submit" class="btn btn-primary" id="publish-btn" disabled>
-                            Publish Now
-                        </button>
-                    </div>
-                </section>
-            </form>
-        </main>
-
-        <!-- Publishing Progress Modal -->
-        <div id="publishing-modal" class="modal" style="display: none;">
-            <div class="modal-content publishing-modal">
-                <div class="modal-header">
-                    <div class="modal-icon" id="modal-icon">
-                        <div class="spinner"></div>
-                    </div>
-                    <h2 id="modal-title">Publishing your post...</h2>
-                    <p id="modal-subtitle" class="modal-subtitle">This may take a moment</p>
+    <!-- Publishing Progress Modal -->
+    <div id="publishing-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card modal-anim">
+            <div class="text-center mb-6">
+                <div id="modal-icon" class="w-14 h-14 mx-auto mb-4 flex items-center justify-center">
+                    <div class="w-12 h-12 border-4 border-outline-variant border-t-primary rounded-full" style="animation: spin 1s linear infinite;"></div>
                 </div>
-                <div id="publish-progress" class="publish-progress">
-                    <!-- Progress items will be added dynamically -->
-                </div>
-                <div id="modal-actions" class="modal-actions" style="display: none;">
-                    <button id="retry-failed-btn" class="btn btn-secondary" style="display: none; margin-bottom: 0.5rem;">
-                        🔄 Retry Failed Platforms
-                    </button>
-                    <a href="./" class="btn btn-primary">Back to Dashboard</a>
-                </div>
+                <h2 id="modal-title" class="text-xl font-bold text-on-surface">Publishing your post...</h2>
+                <p id="modal-subtitle" class="text-sm text-on-surface-variant mt-1">This may take a moment</p>
+            </div>
+            <div id="publish-progress" class="space-y-3"></div>
+            <div id="modal-actions" class="mt-6 space-y-3 text-center" style="display: none;">
+                <button id="retry-failed-btn" class="w-full px-6 py-3 rounded-xl border border-outline-variant text-sm font-bold text-on-surface hover:bg-surface-container transition-all" style="display: none;">
+                    <span class="material-symbols-outlined text-lg align-text-bottom">refresh</span>
+                    Retry Failed Platforms
+                </button>
+                <a href="./" class="block w-full px-6 py-3 rounded-xl bg-primary text-on-primary text-sm font-bold hover:bg-primary-dim transition-all">Back to Dashboard</a>
             </div>
         </div>
+    </div>
 
+    <!-- Hook Analysis Modal -->
+    <div id="hook-analysis-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-card modal-anim" style="max-width: 520px;">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-bold text-on-surface">Hook Analysis</h2>
+                <button id="close-analysis-modal" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container transition-all">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+
+            <!-- Viral Score -->
+            <div class="text-center mb-8">
+                <div class="viral-score-ring">
+                    <svg>
+                        <circle class="score-bg" cx="60" cy="60" r="45"></circle>
+                        <circle class="score-progress" id="score-circle" cx="60" cy="60" r="45"></circle>
+                    </svg>
+                    <div class="score-value" id="viral-score-value">--</div>
+                </div>
+                <p class="text-xs text-on-surface-variant mt-3" id="score-label">Analyzing...</p>
+            </div>
+
+            <!-- Extracted Text -->
+            <div class="bg-surface-container rounded-xl p-4 mb-6">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Extracted Text</h3>
+                <p class="text-sm font-medium text-on-surface" id="extracted-text-display"><em>Detecting text...</em></p>
+            </div>
+
+            <!-- Strengths / Weaknesses -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div class="bg-surface-container rounded-xl p-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-green-600 mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">check_circle</span> Strengths
+                    </h3>
+                    <ul id="strengths-list" class="space-y-2 text-xs text-on-surface-variant"></ul>
+                </div>
+                <div class="bg-surface-container rounded-xl p-4">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-600 mb-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">warning</span> Weaknesses
+                    </h3>
+                    <ul id="weaknesses-list" class="space-y-2 text-xs text-on-surface-variant"></ul>
+                </div>
+            </div>
+
+            <!-- Suggestions -->
+            <div class="bg-surface-container rounded-xl p-4 mb-6">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">lightbulb</span> Suggestions
+                </h3>
+                <ul id="suggestions-list" class="space-y-2 text-xs text-on-surface-variant"></ul>
+            </div>
+
+            <!-- Similar Hooks -->
+            <div id="similar-hooks-section" style="display: none;">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-red-600 mb-3 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">trending_up</span> Similar Hooks
+                </h3>
+                <div id="similar-hooks-grid" class="space-y-3"></div>
+            </div>
+
+            <div class="mt-6 text-center">
+                <button id="close-analysis-btn" class="px-8 py-3 rounded-xl bg-surface-container text-sm font-bold text-on-surface hover:bg-surface-container-high transition-all">Close</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Config
         const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
         let selectedFile = null;
-        let selectedMediaType = null; // 'image' or 'video'
+        let selectedMediaType = null;
         let connectedAccounts = [];
         let currentUser = null;
         let videoThumbnailBlob = null;
         const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
 
-        // Retry state - stores info needed to retry failed platforms
-        let lastPublishState = {
-            postId: null,
-            failedPlatforms: [],
-            platformResults: {}
+        let lastPublishState = { postId: null, failedPlatforms: [], platformResults: {} };
+
+        const platformInfo = {
+            linkedin: { name: 'LinkedIn', icon: '<i class="fa-brands fa-linkedin-in"></i>', cls: 'linkedin' },
+            tiktok: { name: 'TikTok', icon: '<i class="fa-brands fa-tiktok"></i>', cls: 'tiktok' },
+            youtube: { name: 'YouTube', icon: '<i class="fa-brands fa-youtube"></i>', cls: 'youtube' },
+            instagram: { name: 'Instagram', icon: '<i class="fa-brands fa-instagram"></i>', cls: 'instagram' },
         };
 
-        // Yak mascot state management
-        const yakMessages = {
-            idle: {
-                image: '/resources/images/yak-sleepy.png',
-                messages: [
-                    { main: "Hey there! Ready to create something amazing?", sub: "Start by uploading your media below" },
-                    { main: "I believe in you! Let's make magic happen", sub: "Drop your video or photo to get started" },
-                    { main: "Your audience is waiting!", sub: "What will you share today?" }
-                ]
-            },
-            mediaUploaded: {
-                image: '/resources/images/yak-happy.png',
-                messages: [
-                    { main: "Ooh nice pick! That looks great!", sub: "Now write a caption that'll stop the scroll" },
-                    { main: "Love it! This is going to be good", sub: "Time to add your caption magic" },
-                    { main: "Perfect choice! You've got great taste", sub: "Let's add a killer caption next" }
-                ]
-            },
-            captionAdded: {
-                image: '/resources/images/yak-proud.png',
-                messages: [
-                    { main: "Your words are fire! Almost there...", sub: "Pick where you want to share this masterpiece" },
-                    { main: "Caption game strong! You're doing amazing", sub: "Select your platforms to continue" },
-                    { main: "Wow, that caption hits different!", sub: "Now let's choose where to post" }
-                ]
-            },
-            platformsSelected: {
-                image: '/resources/images/yak-happy.png',
-                messages: [
-                    { main: "You're all set! Hit that publish button!", sub: "Your content is about to go live!" },
-                    { main: "Let's gooo! Ready to share with the world?", sub: "One click and you're live everywhere" },
-                    { main: "This is it! Time to shine!", sub: "Publish and watch the magic happen" }
-                ]
-            },
-            confused: {
-                image: '/resources/images/yak-curious.png',
-                messages: [
-                    { main: "Hmm, need some help?", sub: "Connect your accounts first to get started" },
-                    { main: "Something's missing...", sub: "Make sure you have accounts connected" }
-                ]
-            }
-        };
-
-        function updateYakMascot() {
-            const yakImg = document.getElementById('yak-img');
-            const yakMessage = document.getElementById('yak-message');
-            const yakSubmessage = document.getElementById('yak-submessage');
-
-            // Determine current state
-            const hasMedia = !!selectedFile;
-            const hasCaption = document.getElementById('caption')?.value?.trim()?.length > 10;
-            const selectedPlatforms = document.querySelectorAll('input[name="platforms"]:checked');
-            const hasPlatforms = selectedPlatforms.length > 0;
-            const hasConnectedAccounts = connectedAccounts.length > 0;
-
-            // Update progress dots
-            document.getElementById('dot-media')?.classList.toggle('completed', hasMedia);
-            document.getElementById('dot-media')?.classList.toggle('active', !hasMedia);
-            document.getElementById('dot-caption')?.classList.toggle('completed', hasCaption);
-            document.getElementById('dot-caption')?.classList.toggle('active', hasMedia && !hasCaption);
-            document.getElementById('dot-platforms')?.classList.toggle('completed', hasPlatforms);
-            document.getElementById('dot-platforms')?.classList.toggle('active', hasCaption && !hasPlatforms);
-            document.getElementById('dot-ready')?.classList.toggle('completed', hasMedia && hasCaption && hasPlatforms);
-            document.getElementById('dot-ready')?.classList.toggle('active', hasPlatforms && hasMedia && hasCaption);
-
-            // Update section completion states
-            document.getElementById('section-media')?.classList.toggle('completed', hasMedia);
-            document.getElementById('section-caption')?.classList.toggle('completed', hasCaption);
-            document.getElementById('section-platforms')?.classList.toggle('completed', hasPlatforms);
-
-            let state = 'idle';
-            if (!hasConnectedAccounts) {
-                state = 'confused';
-            } else if (hasPlatforms && (hasMedia || hasCaption)) {
-                state = 'platformsSelected';
-            } else if (hasCaption) {
-                state = 'captionAdded';
-            } else if (hasMedia) {
-                state = 'mediaUploaded';
-            }
-
-            const yakState = yakMessages[state];
-            const randomMsg = yakState.messages[Math.floor(Math.random() * yakState.messages.length)];
-
-            // Only update if changed to avoid flickering
-            if (yakImg.src !== yakState.image) {
-                yakImg.src = yakState.image;
-                yakImg.classList.add('bouncing');
-                setTimeout(() => yakImg.classList.remove('bouncing'), 600);
-            }
-
-            yakMessage.textContent = randomMsg.main;
-            yakSubmessage.textContent = randomMsg.sub;
-        }
-
-        // Confetti celebration function
-        function launchConfetti() {
-            const colors = ['#d4838f', '#f8d7da', '#7cb87c', '#e8b4b8', '#fff5f5'];
-            for (let i = 0; i < 50; i++) {
-                const confetti = document.createElement('div');
-                confetti.className = 'confetti';
-                confetti.style.left = Math.random() * 100 + 'vw';
-                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
-                confetti.style.animationDelay = Math.random() * 0.5 + 's';
-                document.body.appendChild(confetti);
-                setTimeout(() => confetti.remove(), 4000);
-            }
-        }
-
-
-        // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log('Page loaded, initializing...');
             const { data: { user } } = await supabaseClient.auth.getUser();
             currentUser = user;
-
-            // DEV BYPASS: skip auth if not logged in
             if (!currentUser) {
                 currentUser = { id: 'dev-local', email: 'sanslamsal16@gmail.com' };
-                console.log('DEV MODE: using default user', currentUser.email);
-            } else {
-                console.log('User:', currentUser.email);
             }
 
-            // Auth & subscription checks bypassed for local dev
-            document.getElementById('auth-required').style.display = 'none';
-            document.getElementById('upload-form').style.display = 'block';
-
-            // Reset all checkboxes on page load (prevent browser form restore)
-            document.querySelectorAll('input[name="platforms"]').forEach(cb => {
-                cb.checked = false;
-            });
+            // The layout moves content into #page-content, wait for it
+            await waitForContent();
 
             await loadConnectedAccounts();
             setupEventListeners();
-            updateYakMascot();
-            console.log('Setup complete, ready to post!');
         });
 
-        // Load connected accounts and update platform checkboxes
+        function waitForContent() {
+            return new Promise(resolve => {
+                const check = () => {
+                    if (document.getElementById('upload-zone')) return resolve();
+                    setTimeout(check, 50);
+                };
+                check();
+            });
+        }
+
         async function loadConnectedAccounts() {
             if (!currentUser) return;
-
-            console.log('Loading connected accounts for user:', currentUser.id);
-
             const { data: accounts, error } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
                 .eq('user_id', currentUser.id);
-
-            if (error) {
-                console.warn('Could not load accounts (no session?):', error.message);
-            }
-
+            if (error) console.warn('Could not load accounts:', error.message);
             connectedAccounts = accounts || [];
             updatePlatformCheckboxes();
         }
 
         function updatePlatformCheckboxes() {
-            const platforms = ['tiktok', 'instagram', 'linkedin', /* 'threads', */ 'youtube'];
+            const platforms = ['tiktok', 'instagram', 'linkedin', 'youtube'];
             const warning = document.getElementById('no-accounts-warning');
             const hasMedia = !!selectedFile;
             const hasVideo = hasMedia && selectedMediaType === 'video';
@@ -728,182 +458,104 @@
             platforms.forEach(platform => {
                 const container = document.querySelector(`[data-platform="${platform}"]`);
                 const input = container.querySelector('input');
-                const status = container.querySelector('.status');
+                const status = container.querySelector('.platform-status');
                 const account = connectedAccounts.find(a => a.platform === platform);
-
-                console.log(`Platform ${platform}:`, { account: !!account, hasVideo, hasImage });
 
                 if (account) {
                     hasAnyConnected = true;
-
-                    // TikTok and YouTube require video (no image support)
                     if (platform === 'tiktok' || platform === 'youtube') {
                         if (hasImage) {
-                            input.disabled = true;
-                            input.checked = false;
-                            status.textContent = '(Video only)';
-                            status.style.color = '#f59e0b';
-                            container.style.opacity = '0.6';
+                            input.disabled = true; input.checked = false;
+                            status.textContent = '(Video only)'; status.style.color = '#d97706';
+                            container.classList.add('disabled');
                         } else if (!hasVideo) {
-                            input.disabled = true;
-                            input.checked = false;
-                            status.textContent = '(Requires video)';
-                            status.style.color = '#f59e0b';
-                            container.style.opacity = '0.6';
+                            input.disabled = true; input.checked = false;
+                            status.textContent = '(Requires video)'; status.style.color = '#d97706';
+                            container.classList.add('disabled');
                         } else {
                             input.disabled = false;
-                            status.textContent = account.account_name ? `@${account.account_name}` : '✓ Connected';
-                            status.style.color = '#10b981';
-                            container.style.opacity = '1';
+                            status.textContent = account.account_name ? `@${account.account_name}` : 'Connected';
+                            status.style.color = '#16a34a';
+                            container.classList.remove('disabled');
                         }
-                    }
-                    // Instagram supports both images and videos (Reels)
-                    // LinkedIn (and Threads when re-enabled) support text, images, and videos
-                    else {
+                    } else {
                         input.disabled = false;
-                        status.textContent = account.account_name ? `@${account.account_name}` : '✓ Connected';
-                        status.style.color = '#10b981';
-                        container.style.opacity = '1';
+                        status.textContent = account.account_name ? `@${account.account_name}` : 'Connected';
+                        status.style.color = '#16a34a';
+                        container.classList.remove('disabled');
                     }
                 } else {
                     input.disabled = true;
                     status.textContent = '(Connect first)';
-                    status.style.color = '#9ca3af';
-                    container.style.opacity = '0.6';
+                    status.style.color = '#9c9d9b';
+                    container.classList.add('disabled');
                 }
             });
 
-            if (hasAnyConnected) {
-                warning.style.display = 'none';
-            }
-
+            warning.style.display = hasAnyConnected ? 'none' : 'block';
             updatePublishButton();
         }
 
         function setupEventListeners() {
-            // Upload zone
             const uploadZone = document.getElementById('upload-zone');
             const mediaInput = document.getElementById('media-input');
 
             uploadZone.addEventListener('click', () => mediaInput.click());
 
-            uploadZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadZone.classList.add('dragover');
-            });
-
-            uploadZone.addEventListener('dragleave', () => {
-                uploadZone.classList.remove('dragover');
-            });
-
+            uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+            uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
             uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadZone.classList.remove('dragover');
+                e.preventDefault(); uploadZone.classList.remove('dragover');
                 const file = e.dataTransfer.files[0];
-                if (file && (file.type.startsWith('video/') || file.type.startsWith('image/'))) {
-                    handleFileSelect(file);
-                }
+                if (file && (file.type.startsWith('video/') || file.type.startsWith('image/'))) handleFileSelect(file);
             });
 
-            mediaInput.addEventListener('change', (e) => {
-                if (e.target.files[0]) {
-                    handleFileSelect(e.target.files[0]);
-                }
-            });
+            mediaInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFileSelect(e.target.files[0]); });
 
-            // Remove media buttons (video and image)
             document.getElementById('remove-media').addEventListener('click', clearMedia);
             document.getElementById('remove-image').addEventListener('click', clearMedia);
 
-            // Setup form event listeners
-            setupFormEventListeners();
-        }
-
-        function clearMedia() {
-            selectedFile = null;
-            selectedMediaType = null;
-            videoThumbnailBlob = null;
-
-            const uploadZone = document.getElementById('upload-zone');
-            const videoPreviewContainer = document.getElementById('video-preview-container');
-            const imagePreviewContainer = document.getElementById('image-preview-container');
-            const videoPreview = document.getElementById('video-preview');
-            const imagePreview = document.getElementById('image-preview');
-
-            uploadZone.classList.remove('has-file');
-            uploadZone.innerHTML = `
-                <div class="upload-icon">📷</div>
-                <h3>Drop your photo or video here</h3>
-                <p>or click to browse</p>
-                <p style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
-                    📸 Images: JPG, PNG, WebP &nbsp;|&nbsp; 🎬 Videos: MP4, MOV
-                </p>
-                <input type="file" id="media-input" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/mov" hidden>
-            `;
-            videoPreviewContainer.style.display = 'none';
-            imagePreviewContainer.style.display = 'none';
-            videoPreview.src = '';
-            imagePreview.src = '';
-
-            // Re-attach file input listener
-            document.getElementById('media-input').addEventListener('change', (e) => {
-                if (e.target.files[0]) handleFileSelect(e.target.files[0]);
-            });
-            // Re-attach click to open file dialog
-            document.getElementById('upload-zone').addEventListener('click', () => {
-                document.getElementById('media-input').click();
-            });
-
-            updatePlatformCheckboxes();
-            updateYakMascot();
-        }
-
-        function setupFormEventListeners() {
-            // Caption counter
             const caption = document.getElementById('caption');
             const charCount = document.getElementById('char-count');
             caption.addEventListener('input', () => {
                 charCount.textContent = caption.value.length;
                 updatePublishButton();
-                updateYakMascot();
             });
 
-            // Platform selection - listen on checkboxes directly
-            document.querySelectorAll('input[name="platforms"]').forEach(checkbox => {
-                checkbox.addEventListener('change', () => {
-                    console.log('Platform checkbox changed:', checkbox.value, checkbox.checked);
-                    updatePublishButton();
-                    updateYakMascot();
-                });
+            document.querySelectorAll('input[name="platforms"]').forEach(cb => {
+                cb.addEventListener('change', () => { updatePublishButton(); });
             });
 
-            // Schedule toggle
-            const scheduleToggle = document.getElementById('schedule-toggle');
-            const scheduleFields = document.getElementById('schedule-fields');
-            scheduleToggle.addEventListener('change', () => {
-                scheduleFields.style.display = scheduleToggle.checked ? 'block' : 'none';
+            document.getElementById('schedule-toggle').addEventListener('change', () => {
+                document.getElementById('schedule-fields').style.display =
+                    document.getElementById('schedule-toggle').checked ? 'block' : 'none';
                 updatePublishButton();
             });
 
-            // Form submit only (removed duplicate button click listener that caused triple posting)
-            document.getElementById('post-form').addEventListener('submit', handleSubmit);
+            document.getElementById('post-form')?.addEventListener('submit', handleSubmit);
+            document.getElementById('save-draft').addEventListener('click', () => handleSubmit(null, true));
 
-            // Save draft
-            document.getElementById('save-draft').addEventListener('click', () => {
-                console.log('Save draft clicked!');
-                handleSubmit(null, true);
+            document.getElementById('retry-failed-btn')?.addEventListener('click', retryFailedPlatforms);
+
+            document.getElementById('close-analysis-modal')?.addEventListener('click', () => {
+                document.getElementById('hook-analysis-modal').style.display = 'none';
             });
+            document.getElementById('close-analysis-btn')?.addEventListener('click', () => {
+                document.getElementById('hook-analysis-modal').style.display = 'none';
+            });
+            document.getElementById('hook-analysis-modal')?.addEventListener('click', (e) => {
+                if (e.target.id === 'hook-analysis-modal') document.getElementById('hook-analysis-modal').style.display = 'none';
+            });
+
+            document.getElementById('analyze-hook-btn')?.addEventListener('click', analyzeHook);
         }
 
-        // Max file size in MB
         const MAX_FILE_SIZE_MB = 500;
 
         async function handleFileSelect(file) {
             const sizeMB = file.size / (1024 * 1024);
-
-            // Check absolute max file size
             if (sizeMB > MAX_FILE_SIZE_MB) {
-                alert(`File too large! Max size is ${MAX_FILE_SIZE_MB}MB.\n\nYour file: ${sizeMB.toFixed(2)}MB`);
+                alert(`File too large! Max size is ${MAX_FILE_SIZE_MB}MB. Your file: ${sizeMB.toFixed(2)}MB`);
                 return;
             }
 
@@ -912,99 +564,74 @@
             const isVideo = file.type.startsWith('video/');
             selectedMediaType = isImage ? 'image' : 'video';
 
-            const uploadZone = document.getElementById('upload-zone');
-            const videoPreviewContainer = document.getElementById('video-preview-container');
-            const imagePreviewContainer = document.getElementById('image-preview-container');
-            const videoPreview = document.getElementById('video-preview');
-            const imagePreview = document.getElementById('image-preview');
-            const videoInfo = document.getElementById('video-info');
-            const imageInfo = document.getElementById('image-info');
+            const uc = document.getElementById('upload-zone');
+            const vpc = document.getElementById('video-preview-container');
+            const ipc = document.getElementById('image-preview-container');
+            const vp = document.getElementById('video-preview');
+            const ip = document.getElementById('image-preview');
 
-            // Hide both preview containers first
-            videoPreviewContainer.style.display = 'none';
-            imagePreviewContainer.style.display = 'none';
+            vpc.style.display = 'none';
+            ipc.style.display = 'none';
 
-            uploadZone.classList.add('has-file');
+            document.getElementById('upload-icon').textContent = isVideo ? 'videocam' : 'photo_library';
+            document.getElementById('upload-title').textContent = file.name;
+            document.getElementById('upload-subtitle').textContent = 'Click to change file';
 
             if (isImage) {
-                // Handle image
-                uploadZone.innerHTML = `
-                    <div class="upload-icon">📷</div>
-                    <h3>${file.name}</h3>
-                    <p>Click to change image</p>
-                `;
-                imagePreview.src = URL.createObjectURL(file);
-                imagePreviewContainer.style.display = 'block';
-                imageInfo.textContent = `Size: ${sizeMB.toFixed(2)} MB`;
+                ip.src = URL.createObjectURL(file);
+                ipc.style.display = 'block';
+                document.getElementById('image-info').textContent = `Size: ${sizeMB.toFixed(2)} MB`;
             } else if (isVideo) {
-                // Handle video
-                uploadZone.innerHTML = `
-                    <div class="upload-icon">🎬</div>
-                    <h3>${file.name}</h3>
-                    <p>Click to change video</p>
-                `;
-                videoPreview.src = URL.createObjectURL(file);
-                videoPreviewContainer.style.display = 'block';
-                videoInfo.textContent = `Size: ${sizeMB.toFixed(2)} MB`;
-
-                // Generate thumbnail when video loads
-                videoPreview.onloadeddata = () => generateThumbnail(videoPreview);
+                vp.src = URL.createObjectURL(file);
+                vpc.style.display = 'block';
+                document.getElementById('video-info').textContent = `Size: ${sizeMB.toFixed(2)} MB`;
+                vp.onloadeddata = () => generateThumbnail(vp);
             }
 
             updatePlatformCheckboxes();
-            updateYakMascot();
         }
 
-        // Generate thumbnail from video using canvas
+        function clearMedia() {
+            selectedFile = null;
+            selectedMediaType = null;
+            videoThumbnailBlob = null;
+
+            document.getElementById('upload-icon').textContent = 'cloud_upload';
+            document.getElementById('upload-title').textContent = 'Drop your photo or video here';
+            document.getElementById('upload-subtitle').textContent = 'or click to browse';
+            document.getElementById('video-preview-container').style.display = 'none';
+            document.getElementById('image-preview-container').style.display = 'none';
+            document.getElementById('video-preview').src = '';
+            document.getElementById('image-preview').src = '';
+
+            updatePlatformCheckboxes();
+        }
+
         async function generateThumbnail(videoElement) {
-            return new Promise((resolve) => {
-                // Seek to 1 second or 10% of video, whichever is smaller
-                const seekTime = Math.min(1, videoElement.duration * 0.1);
-                videoElement.currentTime = seekTime;
-
-                videoElement.onseeked = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = videoElement.videoWidth;
-                    canvas.height = videoElement.videoHeight;
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-                    canvas.toBlob((blob) => {
-                        videoThumbnailBlob = blob;
-                        console.log('[THUMBNAIL] Generated:', (blob.size / 1024).toFixed(2), 'KB');
-                        resolve(blob);
-                    }, 'image/jpeg', 0.8);
-                };
-            });
+            const seekTime = Math.min(1, videoElement.duration * 0.1);
+            videoElement.currentTime = seekTime;
+            videoElement.onseeked = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => { videoThumbnailBlob = blob; }, 'image/jpeg', 0.8);
+            };
         }
 
         function updatePublishButton() {
             const btn = document.getElementById('publish-btn');
             const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked'));
-            const scheduleToggle = document.getElementById('schedule-toggle');
             const caption = document.getElementById('caption').value.trim();
-
-            // Check if only text-friendly platforms are selected (LinkedIn)
-            const textFriendlyPlatforms = ['linkedin' /* , 'threads' */];
+            const textFriendlyPlatforms = ['linkedin'];
             const onlyTextFriendly = selectedPlatforms.every(p => textFriendlyPlatforms.includes(p.value));
-            const hasVideoRequired = selectedPlatforms.some(p => p.value === 'tiktok');
 
-            // Valid if: has platforms AND (has video OR only text-friendly platforms with caption)
             const isValid = selectedPlatforms.length > 0 &&
-                           (selectedFile || (onlyTextFriendly && caption.length > 0));
-
-            console.log('updatePublishButton:', {
-                selectedPlatforms: selectedPlatforms.map(p => p.value),
-                caption: caption,
-                captionLength: caption.length,
-                selectedFile: !!selectedFile,
-                onlyTextFriendly,
-                isValid
-            });
+                (selectedFile || (onlyTextFriendly && caption.length > 0));
 
             btn.disabled = !isValid;
-
+            const scheduleToggle = document.getElementById('schedule-toggle');
             if (scheduleToggle.checked) {
                 btn.textContent = 'Schedule Post';
             } else {
@@ -1012,175 +639,105 @@
             }
         }
 
-        let isSubmitting = false; // Guard against double submission
+        let isSubmitting = false;
 
         async function handleSubmit(e, isDraft = false) {
             if (e) e.preventDefault();
-            if (isSubmitting) {
-                console.log('[GUARD] Already submitting, ignoring duplicate');
-                return;
-            }
+            if (isSubmitting) return;
             isSubmitting = true;
-            console.log('========== UPLOAD SUBMIT START ==========');
 
-            if (!currentUser) {
-                console.log('[ERROR] No user!');
-                alert('Please login first');
-                return;
-            }
-            console.log('[USER] ID:', currentUser.id);
-            console.log('[USER] Email:', currentUser.email);
+            if (!currentUser) { alert('Please login first'); return; }
 
             const caption = document.getElementById('caption').value;
-            console.log('[INPUT] Caption length:', caption.length);
-            console.log('[INPUT] Selected file:', selectedFile ? `${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)` : 'none');
             const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked'))
                 .map(input => input.value);
-            console.log('[INPUT] Selected platforms:', selectedPlatforms);
-
             const scheduleToggle = document.getElementById('schedule-toggle');
             const scheduleDate = document.getElementById('schedule-date').value;
 
             if (!isDraft && selectedPlatforms.length === 0) {
-                console.log('[VALIDATION] No platforms selected');
                 alert('Please select at least one platform');
                 return;
             }
 
-            // Confirm platforms before publishing
             if (!isDraft) {
                 const platformNames = selectedPlatforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ');
-                const confirmed = confirm(`Post to: ${platformNames}\n\nAre you sure?`);
-                if (!confirmed) {
-                    console.log('[VALIDATION] User cancelled publish');
-                    return;
-                }
+                if (!confirm(`Post to: ${platformNames}\n\nAre you sure?`)) return;
             }
 
-            // Check media requirements
             const needsTikTok = selectedPlatforms.includes('tiktok');
             const needsInstagram = selectedPlatforms.includes('instagram');
+            const needsYouTube = selectedPlatforms.includes('youtube');
 
-            // TikTok requires video (no images)
             if (needsTikTok && (!selectedFile || selectedMediaType !== 'video') && !isDraft) {
-                console.log('[VALIDATION] TikTok requires video');
                 alert('TikTok requires a video. Please upload a video or deselect TikTok.');
                 return;
             }
-
-            // YouTube Shorts requires video (no images)
-            const needsYouTube = selectedPlatforms.includes('youtube');
             if (needsYouTube && (!selectedFile || selectedMediaType !== 'video') && !isDraft) {
-                console.log('[VALIDATION] YouTube requires video');
                 alert('YouTube Shorts requires a video. Please upload a video or deselect YouTube.');
                 return;
             }
-
             if (needsInstagram && !selectedFile && !isDraft) {
-                console.log('[VALIDATION] Instagram requires media');
                 alert('Instagram requires an image or video.');
                 return;
             }
-
             if (!selectedFile && !caption && !isDraft) {
-                console.log('[VALIDATION] No media and no caption');
                 alert('Please add a caption or upload media');
                 return;
             }
 
-            console.log('[VALIDATION] All checks passed, proceeding...');
             const publishBtn = document.getElementById('publish-btn');
             publishBtn.disabled = true;
             publishBtn.textContent = 'Preparing...';
 
-            // Show modal early if not a draft
-            if (!isDraft && !document.getElementById('schedule-toggle').checked) {
+            if (!isDraft && !scheduleToggle.checked) {
                 showPublishingModal(selectedPlatforms);
-                // Set all to "Preparing..." initially
                 selectedPlatforms.forEach(p => updatePlatformProgress(p, '', 'Preparing...'));
             }
 
             try {
                 let mediaUrl = null;
                 let thumbnailUrl = null;
-                let metadata = {
-                    media_type: selectedMediaType, // 'image' or 'video' or null
-                };
-
+                let metadata = { media_type: selectedMediaType };
                 const isImage = selectedMediaType === 'image';
                 const isVideo = selectedMediaType === 'video';
-
-                // Always upload to R2 when there's a file - server handles all platforms
-                // (TikTok via PULL_FROM_URL, LinkedIn/YouTube server-side upload from R2)
                 const needsR2Upload = !!selectedFile;
-
-                // Get session once upfront (avoid repeated calls)
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 const authToken = session?.access_token;
 
-                // ALL uploads run in PARALLEL: thumbnail + TikTok + R2
                 publishBtn.textContent = 'Uploading...';
                 const uploadPromises = [];
 
-                // Thumbnail upload promise
                 if (selectedFile && videoThumbnailBlob) {
                     const thumbPromise = (async () => {
-                        console.log('[THUMBNAIL] Uploading thumbnail...');
                         const thumbFileName = `${currentUser.id}/${Date.now()}_thumb.jpg`;
                         const { error: thumbError } = await supabaseClient.storage
                             .from('videos')
                             .upload(thumbFileName, videoThumbnailBlob, { contentType: 'image/jpeg' });
                         if (!thumbError) {
-                            const { data: { publicUrl } } = supabaseClient.storage
-                                .from('videos')
-                                .getPublicUrl(thumbFileName);
+                            const { data: { publicUrl } } = supabaseClient.storage.from('videos').getPublicUrl(thumbFileName);
                             thumbnailUrl = publicUrl;
-                            console.log('[THUMBNAIL] Uploaded:', thumbnailUrl);
                         }
                     })();
                     uploadPromises.push(thumbPromise);
                 }
 
-                // R2 upload promise (single upload for all platforms)
                 if (selectedFile && needsR2Upload) {
-                    const mediaTypeLabel = isImage ? 'image' : 'video';
-                    console.log(`[R2] Uploading ${mediaTypeLabel}...`);
-                    publishBtn.textContent = `Uploading ${mediaTypeLabel}...`;
-
-                    // Show upload progress on all selected platforms
-                    selectedPlatforms.forEach(p => updatePlatformProgress(p, 'uploading', 'Uploading...'));
-
                     const r2Promise = (async () => {
                         const presignRes = await fetch(API.upload(), {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${authToken}`
-                            },
-                            body: JSON.stringify({
-                                fileName: selectedFile.name,
-                                contentType: selectedFile.type
-                            })
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                            body: JSON.stringify({ fileName: selectedFile.name, contentType: selectedFile.type })
                         });
-
-                        if (!presignRes.ok) {
-                            const err = await presignRes.json();
-                            throw new Error(err.error || 'Failed to get upload URL');
-                        }
-
+                        if (!presignRes.ok) { const err = await presignRes.json(); throw new Error(err.error || 'Failed to get upload URL'); }
                         const { uploadUrl, key, publicUrl } = await presignRes.json();
-                        console.log('[R2] Got presigned URL, uploading with progress...');
 
-                        // Use XMLHttpRequest for upload progress tracking
                         await new Promise((resolve, reject) => {
                             const xhr = new XMLHttpRequest();
                             xhr.open('PUT', uploadUrl);
                             xhr.setRequestHeader('Content-Type', selectedFile.type);
-                            xhr.timeout = 300000; // 5 min timeout
-
+                            xhr.timeout = 300000;
                             let lastLoaded = 0;
                             let stallTimer = null;
-
                             xhr.upload.onprogress = (e) => {
                                 if (e.lengthComputable) {
                                     const pct = Math.round((e.loaded / e.total) * 100);
@@ -1191,58 +748,32 @@
                                         updatePlatformProgress(p, 'uploading', `Uploading ${pct}% (${loadedMB}/${totalMB} MB)`);
                                         updateProgressBar(p, pct);
                                     });
-
-                                    // Reset stall detector on progress
                                     if (e.loaded > lastLoaded) {
                                         lastLoaded = e.loaded;
                                         clearTimeout(stallTimer);
-                                        stallTimer = setTimeout(() => {
-                                            xhr.abort();
-                                            reject(new Error('Upload stalled — no progress for 30s. Check your connection and try again.'));
-                                        }, 30000);
+                                        stallTimer = setTimeout(() => { xhr.abort(); reject(new Error('Upload stalled — no progress for 30s')); }, 30000);
                                     }
                                 }
                             };
-
-                            xhr.onload = () => {
-                                clearTimeout(stallTimer);
-                                if (xhr.status >= 200 && xhr.status < 300) {
-                                    resolve();
-                                } else {
-                                    reject(new Error(`Failed to upload ${mediaTypeLabel} to R2 (status ${xhr.status})`));
-                                }
-                            };
-                            xhr.onerror = () => { clearTimeout(stallTimer); reject(new Error(`Network error uploading ${mediaTypeLabel}`)); };
+                            xhr.onload = () => { clearTimeout(stallTimer); if (xhr.status >= 200 && xhr.status < 300) resolve(); else reject(new Error(`Upload failed (status ${xhr.status})`)); };
+                            xhr.onerror = () => { clearTimeout(stallTimer); reject(new Error('Network error uploading')); };
                             xhr.ontimeout = () => { clearTimeout(stallTimer); reject(new Error('Upload timed out after 5 minutes')); };
                             xhr.send(selectedFile);
                         });
 
                         mediaUrl = publicUrl;
                         metadata.r2_key = key;
-                        console.log(`[R2] ${mediaTypeLabel} uploaded:`, mediaUrl);
-
-                        // Update all platforms to "Publishing..." after upload completes
-                        selectedPlatforms.forEach(p => {
-                            updatePlatformProgress(p, 'publishing', 'Publishing...');
-                            updateProgressBar(p, 100);
-                        });
+                        selectedPlatforms.forEach(p => { updatePlatformProgress(p, 'publishing', 'Publishing...'); updateProgressBar(p, 100); });
                     })();
                     uploadPromises.push(r2Promise);
                 }
 
-                // Wait for all uploads to finish in parallel
-                if (uploadPromises.length > 0) {
-                    console.log(`[UPLOAD] Waiting for ${uploadPromises.length} parallel uploads...`);
-                    await Promise.all(uploadPromises);
-                    console.log('[UPLOAD] All uploads complete!');
-                }
+                if (uploadPromises.length > 0) await Promise.all(uploadPromises);
 
-                // 4. Create post record
                 publishBtn.textContent = 'Creating post...';
-                console.log('[DB] Creating post record...');
                 const postData = {
                     user_id: currentUser.id,
-                    video_url: mediaUrl, // Now can be image or video URL
+                    video_url: mediaUrl,
                     thumbnail_url: thumbnailUrl,
                     caption: caption,
                     platforms: selectedPlatforms,
@@ -1251,40 +782,21 @@
                     platform_results: {},
                     metadata: metadata
                 };
-                console.log('[DB] Post data:', JSON.stringify(postData, null, 2));
 
-                const { data: post, error: postError } = await supabaseClient
-                    .from('posts')
-                    .insert(postData)
-                    .select()
-                    .single();
+                const { data: post, error: postError } = await supabaseClient.from('posts').insert(postData).select().single();
+                if (postError) throw postError;
 
-                if (postError) {
-                    console.error('[DB] Post insert failed:', postError.message);
-                    throw postError;
-                }
-
-                console.log('[DB] Post created:', post.id);
-
-                // 5. If publishing now, trigger the publish API
                 if (!isDraft && !scheduleToggle.checked) {
-                    // Show the publishing modal
                     showPublishingModal(selectedPlatforms);
-
-                    // Update each platform to "Publishing..." state
                     selectedPlatforms.forEach(p => updatePlatformProgress(p, 'publishing', 'Publishing...'));
 
-                    // Subscribe to real-time updates for this post
                     const postId = post.id;
                     let realtimeChannel = null;
                     let isCompleted = false;
 
                     const handleRealtimeUpdate = (payload) => {
-                        console.log('[REALTIME] Post updated:', payload);
                         const updatedPost = payload.new;
                         const platformResults = updatedPost.platform_results || {};
-
-                        // Update UI for each platform that has results
                         let successCount = 0;
                         let completedCount = 0;
 
@@ -1292,10 +804,8 @@
                             completedCount++;
                             if (result.status === 'success') {
                                 successCount++;
-                                const successMsg = result.url ? 'Posted!' : (result.note || 'Success!');
-                                updatePlatformProgress(platform, 'success', successMsg);
+                                updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : (result.note || 'Success!'));
                             } else if (result.status === 'pending') {
-                                // Pending = still processing, will auto-publish (Instagram)
                                 successCount++;
                                 updatePlatformProgress(platform, 'success', result.note || 'Processing...');
                             } else if (result.status === 'error') {
@@ -1303,199 +813,109 @@
                             }
                         }
 
-                        // Check if all platforms are done
                         if (completedCount >= selectedPlatforms.length && !isCompleted) {
                             isCompleted = true;
                             const status = updatedPost.status || (successCount > 0 ? 'partial' : 'failed');
                             completePublishingModal(status, successCount, selectedPlatforms.length, postId, platformResults);
-
-                            // Unsubscribe
-                            if (realtimeChannel) {
-                                supabaseClient.removeChannel(realtimeChannel);
-                            }
+                            if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
                         }
                     };
 
-                    // Subscribe to changes on this specific post
-                    realtimeChannel = supabaseClient
-                        .channel(`post-${postId}`)
-                        .on('postgres_changes', {
-                            event: 'UPDATE',
-                            schema: 'public',
-                            table: 'posts',
-                            filter: `id=eq.${postId}`,
-                        }, handleRealtimeUpdate)
+                    realtimeChannel = supabaseClient.channel(`post-${postId}`)
+                        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'posts', filter: `id=eq.${postId}` }, handleRealtimeUpdate)
                         .subscribe();
 
-                    console.log('Publishing to platforms:', selectedPlatforms);
-
-                    // Start the publish (don't await - let realtime handle updates)
                     publishToAllPlatforms(post.id, selectedPlatforms)
                         .then(publishResult => {
-                            console.log('Publish API completed:', publishResult);
-                            // Final update in case realtime missed something
                             if (!isCompleted) {
                                 isCompleted = true;
                                 let successCount = 0;
                                 const results = publishResult.results || {};
                                 for (const [platform, result] of Object.entries(results)) {
-                                    if (result.status === 'success') {
+                                    if (result.status === 'success' || result.status === 'pending') {
                                         successCount++;
-                                        updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : 'Success!');
-                                    } else if (result.status === 'pending') {
-                                        // Pending means still processing (Instagram does this)
-                                        successCount++; // Count as success since it will auto-publish
-                                        updatePlatformProgress(platform, 'success', result.note || 'Processing...');
+                                        updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : (result.note || 'Success!'));
                                     } else {
                                         updatePlatformProgress(platform, 'failed', result.error || 'Failed');
                                     }
                                 }
                                 completePublishingModal(publishResult.status, successCount, selectedPlatforms.length, post.id, results);
-                                if (realtimeChannel) {
-                                    supabaseClient.removeChannel(realtimeChannel);
-                                }
+                                if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
                             }
                         })
                         .catch(async err => {
-                            console.error('Publish error:', err);
                             if (!isCompleted) {
                                 isCompleted = true;
-                                if (realtimeChannel) {
-                                    supabaseClient.removeChannel(realtimeChannel);
-                                }
-                                // Fetch actual DB results — some platforms may have succeeded
-                                // even if the API response was lost (network error, timeout, etc.)
+                                if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
                                 let actualResults = {};
-                                let dbStatus = null;
                                 try {
-                                    const { data } = await supabaseClient
-                                        .from('posts')
-                                        .select('platform_results, status')
-                                        .eq('id', post.id)
-                                        .single();
+                                    const { data } = await supabaseClient.from('posts').select('platform_results, status').eq('id', post.id).single();
                                     actualResults = data?.platform_results || {};
-                                    dbStatus = data?.status;
-                                    console.log('[CATCH] DB platform_results:', actualResults);
-                                } catch (dbErr) {
-                                    console.warn('[CATCH] Could not fetch DB results:', dbErr);
-                                }
-
+                                } catch (dbErr) {}
                                 let successCount = 0;
-                                const finalResults = {};
                                 selectedPlatforms.forEach(p => {
                                     const r = actualResults[p];
                                     if (r?.status === 'success' || r?.status === 'pending') {
                                         successCount++;
-                                        finalResults[p] = r;
                                         updatePlatformProgress(p, 'success', r.url ? 'Posted!' : (r.note || 'Success!'));
                                     } else if (r?.status === 'error') {
-                                        finalResults[p] = r;
                                         updatePlatformProgress(p, 'failed', r.error || 'Failed');
                                     } else {
-                                        // No DB result — mark as failed with the thrown error
-                                        finalResults[p] = { status: 'error', error: err.message };
                                         updatePlatformProgress(p, 'failed', err.message || 'Error');
                                     }
                                 });
-
-                                const status = dbStatus || (successCount === selectedPlatforms.length ? 'published' : successCount > 0 ? 'partial' : 'failed');
-                                completePublishingModal(status, successCount, selectedPlatforms.length, post.id, finalResults);
+                                completePublishingModal('partial', successCount, selectedPlatforms.length, post.id, actualResults);
                             }
                         });
 
                     return;
                 }
 
-                // Redirect to dashboard
                 alert(isDraft ? 'Draft saved!' : (scheduleToggle.checked ? 'Post scheduled!' : 'Post published!'));
                 window.location.href = './';
 
             } catch (error) {
-                console.error('========== UPLOAD ERROR ==========');
-                console.error('[ERROR] Name:', error.name);
-                console.error('[ERROR] Message:', error.message);
-                console.error('[ERROR] Code:', error.code);
-                console.error('[ERROR] Details:', error.details);
-                console.error('[ERROR] Hint:', error.hint);
-                console.error('[ERROR] Full error:', JSON.stringify(error, null, 2));
-                console.error('[ERROR] Stack:', error.stack);
-
-                // More descriptive error message
                 let errorMsg = error.message || 'Unknown error';
-                if (error.message?.includes('row-level security')) {
-                    errorMsg = 'Permission denied. Check the browser console for details.';
-                }
-
-                // Hide modal if it's showing and show alert
+                if (error.message?.includes('row-level security')) errorMsg = 'Permission denied. Check console for details.';
                 const modal = document.getElementById('publishing-modal');
                 if (modal.style.display === 'flex') {
-                    // Update modal to show error state
-                    const modalIcon = document.getElementById('modal-icon');
-                    const modalTitle = document.getElementById('modal-title');
-                    const modalSubtitle = document.getElementById('modal-subtitle');
-                    const modalActions = document.getElementById('modal-actions');
-
-                    modalIcon.innerHTML = '';
-                    modalIcon.className = 'modal-icon failed';
-                    modalTitle.textContent = 'Something went wrong';
-                    modalSubtitle.textContent = errorMsg;
-                    modalActions.style.display = 'block';
+                    document.getElementById('modal-icon').innerHTML = '';
+                    document.getElementById('modal-icon').className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center text-2xl text-error';
+                    document.getElementById('modal-icon').textContent = '!';
+                    document.getElementById('modal-title').textContent = 'Something went wrong';
+                    document.getElementById('modal-subtitle').textContent = errorMsg;
+                    document.getElementById('modal-actions').style.display = 'block';
                 } else {
                     alert('Error: ' + errorMsg);
                 }
-
                 publishBtn.disabled = false;
                 publishBtn.textContent = 'Publish Now';
                 isSubmitting = false;
             }
         }
 
-        function formatPublishResults(results) {
-            return Object.entries(results).map(([platform, result]) => {
-                const icon = result.status === 'success' ? '✓' : '✗';
-                const msg = result.error || result.note || result.url || 'OK';
-                return `${icon} ${platform.toUpperCase()}: ${msg}`;
-            }).join('\n');
-        }
-
-        // Platform display info
-        const platformInfo = {
-            linkedin: { name: 'LinkedIn', icon: '<i class="fa-brands fa-linkedin"></i>' },
-            tiktok: { name: 'TikTok', icon: '<i class="fa-brands fa-tiktok"></i>' },
-            youtube: { name: 'YouTube', icon: '<i class="fa-brands fa-youtube"></i>' },
-            instagram: { name: 'Instagram', icon: '<i class="fa-brands fa-instagram"></i>' },
-            // threads: { name: 'Threads', icon: '<i class="fa-brands fa-threads"></i>' }
-        };
-
         function showPublishingModal(platforms) {
             const modal = document.getElementById('publishing-modal');
             const progressContainer = document.getElementById('publish-progress');
-            const modalIcon = document.getElementById('modal-icon');
-            const modalTitle = document.getElementById('modal-title');
-            const modalSubtitle = document.getElementById('modal-subtitle');
-            const modalActions = document.getElementById('modal-actions');
 
-            // Reset modal state
-            modalIcon.innerHTML = '<div class="spinner"></div>';
-            modalIcon.className = 'modal-icon';
-            modalTitle.textContent = 'Publishing your post...';
-            modalSubtitle.textContent = 'This may take a moment';
-            modalActions.style.display = 'none';
+            document.getElementById('modal-icon').innerHTML = '<div class="w-12 h-12 border-4 border-outline-variant border-t-primary rounded-full" style="animation: spin 1s linear infinite;"></div>';
+            document.getElementById('modal-title').textContent = 'Publishing your post...';
+            document.getElementById('modal-subtitle').textContent = 'This may take a moment';
+            document.getElementById('modal-actions').style.display = 'none';
 
-            // Build progress items
             progressContainer.innerHTML = platforms.map(platform => {
-                const info = platformInfo[platform] || { name: platform, icon: '📱' };
+                const info = platformInfo[platform] || { name: platform, icon: '📱', cls: '' };
                 return `
                     <div class="progress-item" id="progress-${platform}" data-platform="${platform}">
-                        <div class="progress-icon ${platform}">${info.icon}</div>
-                        <div class="progress-info">
-                            <h4>${info.name}</h4>
-                            <p id="progress-${platform}-status">Waiting...</p>
+                        <div class="platform-icon ${info.cls}">${info.icon}</div>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="text-sm font-bold text-on-surface">${info.name}</h4>
+                            <p class="text-xs text-on-surface-variant truncate" id="progress-${platform}-status">Waiting...</p>
                             <div class="progress-bar-track">
                                 <div class="progress-bar-fill" id="progress-${platform}-bar" style="width: 0%"></div>
                             </div>
                         </div>
-                        <div class="progress-status" id="progress-${platform}-icon">
+                        <div class="progress-status flex-shrink-0" id="progress-${platform}-icon">
                             <div class="mini-spinner"></div>
                         </div>
                     </div>
@@ -1509,45 +929,38 @@
             const item = document.getElementById(`progress-${platform}`);
             const statusText = document.getElementById(`progress-${platform}-status`);
             const statusIcon = document.getElementById(`progress-${platform}-icon`);
-
             if (!item) return;
 
             item.className = `progress-item ${status}`;
             statusText.textContent = message;
 
-            // Keep spinner for active states, clear for final states
             if (status === 'uploading' || status === 'publishing' || status === '') {
                 statusIcon.innerHTML = '<div class="mini-spinner"></div>';
-                statusIcon.className = 'progress-status';
             } else {
                 statusIcon.innerHTML = '';
-                statusIcon.className = `progress-status ${status}`;
+                if (status === 'success') statusIcon.innerHTML = '<span class="text-green-600 font-bold">✓</span>';
+                else if (status === 'failed') statusIcon.innerHTML = '<span class="text-red-600 font-bold">✗</span>';
             }
 
-            // Hide progress bar on completion states, show pulsing bar during publishing
             const bar = document.getElementById(`progress-${platform}-bar`);
             const track = bar?.parentElement;
             if (track) {
                 if (status === 'success' || status === 'failed') {
                     track.style.display = 'none';
                 } else if (status === 'publishing') {
-                    // Pulsing indeterminate bar during server publishing
                     track.style.display = 'block';
                     bar.style.width = '100%';
-                    bar.classList.add('indeterminate');
+                    bar.classList.add('bar-indeterminate');
                 } else {
                     track.style.display = 'block';
-                    bar.classList.remove('indeterminate');
+                    bar.classList.remove('bar-indeterminate');
                 }
             }
         }
 
         function updateProgressBar(platform, percent) {
             const bar = document.getElementById(`progress-${platform}-bar`);
-            if (bar) {
-                bar.classList.remove('indeterminate');
-                bar.style.width = `${percent}%`;
-            }
+            if (bar) { bar.classList.remove('bar-indeterminate'); bar.style.width = `${percent}%`; }
         }
 
         function completePublishingModal(overallStatus, successCount, totalCount, postId = null, platformResults = {}) {
@@ -1557,33 +970,32 @@
             const modalActions = document.getElementById('modal-actions');
             const retryBtn = document.getElementById('retry-failed-btn');
 
-            modalIcon.innerHTML = '';
-
-            // Find failed platforms
             const failedPlatforms = Object.entries(platformResults)
                 .filter(([_, result]) => result.status === 'error')
                 .map(([platform, _]) => platform);
 
-            // Store state for retry
             if (postId) {
                 lastPublishState.postId = postId;
                 lastPublishState.failedPlatforms = failedPlatforms;
                 lastPublishState.platformResults = platformResults;
             }
 
+            modalIcon.className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center text-3xl';
             if (overallStatus === 'published') {
-                modalIcon.className = 'modal-icon success';
+                modalIcon.textContent = '🎉';
                 modalTitle.textContent = 'Published successfully!';
                 modalSubtitle.textContent = `Posted to ${successCount} platform${successCount > 1 ? 's' : ''}`;
                 retryBtn.style.display = 'none';
-                launchConfetti(); // Celebrate!
+                launchConfetti();
             } else if (overallStatus === 'partial') {
-                modalIcon.className = 'modal-icon partial';
+                modalIcon.textContent = '⚠️';
+                modalIcon.className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center text-3xl';
                 modalTitle.textContent = 'Partially published';
                 modalSubtitle.textContent = `${successCount} of ${totalCount} succeeded. ${failedPlatforms.length} failed.`;
                 retryBtn.style.display = failedPlatforms.length > 0 ? 'block' : 'none';
             } else {
-                modalIcon.className = 'modal-icon failed';
+                modalIcon.textContent = '✗';
+                modalIcon.className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center text-3xl text-error';
                 modalTitle.textContent = 'Publishing failed';
                 modalSubtitle.textContent = 'Check the details below';
                 retryBtn.style.display = failedPlatforms.length > 0 ? 'block' : 'none';
@@ -1591,23 +1003,18 @@
 
             modalActions.style.display = 'block';
 
-            // If Instagram returned pending, background-poll to finish it
             if (postId && platformResults?.instagram?.status === 'pending' && platformResults?.instagram?.container_id) {
                 pollInstagramCompletion(postId);
             }
         }
 
         async function pollInstagramCompletion(postId) {
-            console.log('[INSTAGRAM] Starting background completion polling...');
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (!session) return;
-
             let attempts = 0;
-            const maxAttempts = 24; // 2 minutes (24 × 5s)
-
+            const maxAttempts = 24;
             const poll = async () => {
                 if (attempts >= maxAttempts) {
-                    console.log('[INSTAGRAM] Completion polling timed out');
                     updatePlatformProgress('instagram', 'failed', 'Timed out — check Instagram app');
                     return;
                 }
@@ -1619,193 +1026,104 @@
                         body: JSON.stringify({ postId }),
                     });
                     const result = await res.json();
-                    console.log('[INSTAGRAM] Completion poll result:', result);
-
-                    if (result.status === 'success') {
-                        updatePlatformProgress('instagram', 'success', 'Posted!');
-                    } else if (result.status === 'pending') {
-                        setTimeout(poll, 5000);
-                    } else {
-                        updatePlatformProgress('instagram', 'failed', result.error || 'Processing failed');
-                    }
-                } catch (err) {
-                    console.warn('[INSTAGRAM] Poll error, retrying:', err.message);
-                    setTimeout(poll, 5000);
-                }
+                    if (result.status === 'success') updatePlatformProgress('instagram', 'success', 'Posted!');
+                    else if (result.status === 'pending') setTimeout(poll, 5000);
+                    else updatePlatformProgress('instagram', 'failed', result.error || 'Processing failed');
+                } catch (err) { setTimeout(poll, 5000); }
             };
-
-            setTimeout(poll, 5000); // First check after 5s
+            setTimeout(poll, 5000);
         }
 
         async function publishToAllPlatforms(postId, platforms) {
-            console.log('Getting session for publish...');
             const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-
-            if (sessionError || !session) {
-                console.error('Session error:', sessionError);
-                throw new Error('No valid session. Please login again.');
-            }
-
-            console.log('Calling publish API...');
+            if (sessionError || !session) throw new Error('No valid session. Please login again.');
             const response = await fetch(API.publish(), {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
-                },
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
                 body: JSON.stringify({ postId, platforms })
             });
-
-            console.log('Publish API response status:', response.status);
-
-            if (!response.ok) {
-                const error = await response.json();
-                console.error('Publish API error:', error);
-                throw new Error(error.error || error.message || 'Failed to publish');
-            }
-
+            if (!response.ok) { const error = await response.json(); throw new Error(error.error || error.message || 'Failed to publish'); }
             return response.json();
         }
 
-        // ========== RETRY FAILED PLATFORMS ==========
         async function retryFailedPlatforms() {
             const { postId, failedPlatforms } = lastPublishState;
+            if (!postId || failedPlatforms.length === 0) return;
 
-            if (!postId || failedPlatforms.length === 0) {
-                console.log('[RETRY] No failed platforms to retry');
-                return;
-            }
-
-            console.log('[RETRY] Retrying platforms:', failedPlatforms);
-
-            // Reset modal state for retry
             const modalIcon = document.getElementById('modal-icon');
             const modalTitle = document.getElementById('modal-title');
             const modalSubtitle = document.getElementById('modal-subtitle');
             const modalActions = document.getElementById('modal-actions');
             const retryBtn = document.getElementById('retry-failed-btn');
 
-            modalIcon.innerHTML = '<div class="spinner"></div>';
-            modalIcon.className = 'modal-icon';
+            modalIcon.innerHTML = '<div class="w-12 h-12 border-4 border-outline-variant border-t-primary rounded-full" style="animation: spin 1s linear infinite;"></div>';
             modalTitle.textContent = 'Retrying failed platforms...';
             modalSubtitle.textContent = `Attempting ${failedPlatforms.length} platform${failedPlatforms.length > 1 ? 's' : ''}`;
             modalActions.style.display = 'none';
             retryBtn.disabled = true;
 
-            // Reset the failed platforms in the progress UI
-            failedPlatforms.forEach(platform => {
-                updatePlatformProgress(platform, 'publishing', 'Retrying...');
-            });
+            failedPlatforms.forEach(platform => updatePlatformProgress(platform, 'publishing', 'Retrying...'));
 
             try {
                 const result = await publishToAllPlatforms(postId, failedPlatforms);
-                console.log('[RETRY] Result:', result);
-
                 let successCount = 0;
                 const results = result.results || {};
-
                 for (const [platform, platformResult] of Object.entries(results)) {
-                    if (platformResult.status === 'success') {
+                    if (platformResult.status === 'success' || platformResult.status === 'pending') {
                         successCount++;
-                        updatePlatformProgress(platform, 'success', platformResult.url ? 'Posted!' : 'Success!');
-                    } else if (platformResult.status === 'pending') {
-                        successCount++;
-                        updatePlatformProgress(platform, 'success', platformResult.note || 'Processing...');
+                        updatePlatformProgress(platform, 'success', platformResult.url ? 'Posted!' : (platformResult.note || 'Success!'));
                     } else {
                         updatePlatformProgress(platform, 'failed', platformResult.error || 'Failed');
                     }
                 }
-
-                // Update overall status
                 const totalPlatforms = Object.keys(lastPublishState.platformResults).length;
-                const previousSuccess = Object.values(lastPublishState.platformResults)
-                    .filter(r => r.status === 'success' || r.status === 'pending').length;
+                const previousSuccess = Object.values(lastPublishState.platformResults).filter(r => r.status === 'success' || r.status === 'pending').length;
                 const newTotalSuccess = previousSuccess + successCount;
-
-                // Merge results
                 const mergedResults = { ...lastPublishState.platformResults, ...results };
-
-                const newStatus = newTotalSuccess === totalPlatforms ? 'published' :
-                                  newTotalSuccess > 0 ? 'partial' : 'failed';
-
+                const newStatus = newTotalSuccess === totalPlatforms ? 'published' : newTotalSuccess > 0 ? 'partial' : 'failed';
                 completePublishingModal(newStatus, newTotalSuccess, totalPlatforms, postId, mergedResults);
-
-                if (newStatus === 'published') {
-                    launchConfetti();
-                }
-
+                if (newStatus === 'published') launchConfetti();
             } catch (error) {
-                console.error('[RETRY] Error:', error);
-                failedPlatforms.forEach(platform => {
-                    updatePlatformProgress(platform, 'failed', error.message || 'Retry failed');
-                });
+                failedPlatforms.forEach(platform => updatePlatformProgress(platform, 'failed', error.message || 'Retry failed'));
                 const totalPlatforms = Object.keys(lastPublishState.platformResults).length;
-                const previousSuccess = Object.values(lastPublishState.platformResults)
-                    .filter(r => r.status === 'success' || r.status === 'pending').length;
+                const previousSuccess = Object.values(lastPublishState.platformResults).filter(r => r.status === 'success' || r.status === 'pending').length;
                 completePublishingModal('failed', previousSuccess, totalPlatforms, postId, lastPublishState.platformResults);
             }
-
             retryBtn.disabled = false;
         }
 
-        // Retry button event listener
-        document.getElementById('retry-failed-btn')?.addEventListener('click', retryFailedPlatforms);
-
-        // ========== HOOK ANALYZER ==========
         let analysisInProgress = false;
 
-        // Analyze hook handler
-        document.getElementById('analyze-hook-btn')?.addEventListener('click', async () => {
+        async function analyzeHook() {
             if (analysisInProgress) return;
-
-            // Make sure we have a thumbnail
-            if (!videoThumbnailBlob) {
-                alert('Please wait for the video to load, then try again.');
-                return;
-            }
+            if (!videoThumbnailBlob) { alert('Please wait for the video to load, then try again.'); return; }
 
             analysisInProgress = true;
             const btn = document.getElementById('analyze-hook-btn');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyzing...';
+            btn.innerHTML = '<div class="mini-spinner inline-block mr-2"></div> Analyzing...';
 
-            // Show modal with loading state
             showAnalysisLoading();
 
             try {
-                // Convert thumbnail blob to base64
                 const base64 = await blobToBase64(videoThumbnailBlob);
-
-                // Get session for auth
                 const { data: { session } } = await supabaseClient.auth.getSession();
-
-                // Call analyze API
                 const response = await fetch(API.analyzeHook(), {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${session.access_token}`
-                    },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
                     body: JSON.stringify({ frameBase64: base64 })
                 });
-
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error || 'Analysis failed');
-                }
-
+                if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Analysis failed'); }
                 const result = await response.json();
                 showAnalysisResult(result);
-
             } catch (error) {
-                console.error('[ANALYZE] Error:', error);
                 showAnalysisError(error.message);
             } finally {
                 analysisInProgress = false;
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Analyze Hook';
+                btn.innerHTML = '<span class="material-symbols-outlined text-lg align-text-bottom">auto_awesome</span> Analyze Hook';
             }
-        });
+        }
 
         function blobToBase64(blob) {
             return new Promise((resolve, reject) => {
@@ -1817,81 +1135,49 @@
         }
 
         function showAnalysisLoading() {
-            const modal = document.getElementById('hook-analysis-modal');
-
-            // Reset to loading state
             document.getElementById('viral-score-value').textContent = '--';
             document.getElementById('score-circle').style.strokeDashoffset = '283';
             document.getElementById('score-label').textContent = 'Analyzing...';
             document.getElementById('extracted-text-display').innerHTML = '<em>Detecting text...</em>';
-            document.getElementById('strengths-list').innerHTML = '<li>Analyzing...</li>';
-            document.getElementById('weaknesses-list').innerHTML = '<li>Analyzing...</li>';
-            document.getElementById('suggestions-list').innerHTML = '<li>Generating suggestions...</li>';
+            document.getElementById('strengths-list').innerHTML = '<li class="text-on-surface-variant">Analyzing...</li>';
+            document.getElementById('weaknesses-list').innerHTML = '<li class="text-on-surface-variant">Analyzing...</li>';
+            document.getElementById('suggestions-list').innerHTML = '<li class="text-on-surface-variant">Generating suggestions...</li>';
             document.getElementById('similar-hooks-section').style.display = 'none';
-
-            modal.style.display = 'flex';
+            document.getElementById('hook-analysis-modal').style.display = 'flex';
         }
 
         function showAnalysisResult(result) {
-            // Viral score with animation
             const scoreValue = document.getElementById('viral-score-value');
             const scoreCircle = document.getElementById('score-circle');
             const scoreLabel = document.getElementById('score-label');
 
             scoreValue.textContent = result.viral_score;
             scoreLabel.textContent = 'Viral Score';
-
-            // Animate circle (283 is full circumference)
             const offset = 283 - (283 * result.viral_score / 100);
             scoreCircle.style.strokeDashoffset = offset;
 
-            // Color based on score
-            if (result.viral_score >= 70) {
-                scoreCircle.style.stroke = '#16a34a';
-                scoreValue.style.color = '#16a34a';
-            } else if (result.viral_score >= 40) {
-                scoreCircle.style.stroke = '#f59e0b';
-                scoreValue.style.color = '#f59e0b';
-            } else {
-                scoreCircle.style.stroke = '#ef4444';
-                scoreValue.style.color = '#ef4444';
-            }
+            if (result.viral_score >= 70) { scoreCircle.style.stroke = '#16a34a'; scoreValue.style.color = '#16a34a'; }
+            else if (result.viral_score >= 40) { scoreCircle.style.stroke = '#f59e0b'; scoreValue.style.color = '#f59e0b'; }
+            else { scoreCircle.style.stroke = '#ef4444'; scoreValue.style.color = '#ef4444'; }
 
-            // Extracted text
             const textDisplay = document.getElementById('extracted-text-display');
-            if (result.extracted_text && result.extracted_text.trim()) {
-                textDisplay.innerHTML = `"${result.extracted_text}"`;
-            } else {
-                textDisplay.innerHTML = '<em>No text detected in hook</em>';
-            }
+            if (result.extracted_text && result.extracted_text.trim()) textDisplay.innerHTML = `"${result.extracted_text}"`;
+            else textDisplay.innerHTML = '<em>No text detected in hook</em>';
 
-            // Strengths
-            const strengthsList = document.getElementById('strengths-list');
-            strengthsList.innerHTML = (result.analysis?.strengths || [])
-                .map(s => `<li>${s}</li>`).join('') || '<li>--</li>';
+            document.getElementById('strengths-list').innerHTML = (result.analysis?.strengths || []).map(s => `<li class="text-on-surface-variant">${s}</li>`).join('') || '<li class="text-on-surface-variant">--</li>';
+            document.getElementById('weaknesses-list').innerHTML = (result.analysis?.weaknesses || []).map(w => `<li class="text-on-surface-variant">${w}</li>`).join('') || '<li class="text-on-surface-variant">--</li>';
+            document.getElementById('suggestions-list').innerHTML = (result.suggestions || []).map(s => `<li class="text-on-surface-variant">${s}</li>`).join('') || '<li class="text-on-surface-variant">No suggestions</li>';
 
-            // Weaknesses
-            const weaknessesList = document.getElementById('weaknesses-list');
-            weaknessesList.innerHTML = (result.analysis?.weaknesses || [])
-                .map(w => `<li>${w}</li>`).join('') || '<li>--</li>';
-
-            // Suggestions
-            const suggestionsList = document.getElementById('suggestions-list');
-            suggestionsList.innerHTML = (result.suggestions || [])
-                .map(s => `<li>${s}</li>`).join('') || '<li>No suggestions</li>';
-
-            // Similar hooks
             const hooksSection = document.getElementById('similar-hooks-section');
             const hooksGrid = document.getElementById('similar-hooks-grid');
-
             if (result.similar_hooks && result.similar_hooks.length > 0) {
                 hooksSection.style.display = 'block';
                 hooksGrid.innerHTML = result.similar_hooks.map(hook => `
                     <div class="similar-hook-card">
-                        <div class="hook-text">"${hook.hook_text}"</div>
-                        <div class="hook-meta">
-                            <span class="hook-category">${hook.category}</span>
-                            <span class="hook-views">${formatViews(hook.avg_views)}</span>
+                        <p class="text-sm font-medium text-on-surface mb-2">"${hook.hook_text}"</p>
+                        <div class="flex gap-2 items-center">
+                            <span class="text-[10px] font-bold uppercase px-2 py-1 rounded bg-surface-container text-on-surface-variant">${hook.category}</span>
+                            <span class="text-xs text-on-surface-variant">${formatViews(hook.avg_views)}</span>
                         </div>
                     </div>
                 `).join('');
@@ -1907,7 +1193,7 @@
             document.getElementById('extracted-text-display').innerHTML = `<em style="color: #ef4444;">${message}</em>`;
             document.getElementById('strengths-list').innerHTML = '';
             document.getElementById('weaknesses-list').innerHTML = '';
-            document.getElementById('suggestions-list').innerHTML = '<li>Please try again later</li>';
+            document.getElementById('suggestions-list').innerHTML = '<li class="text-on-surface-variant">Please try again later</li>';
         }
 
         function formatViews(views) {
@@ -1917,419 +1203,19 @@
             return views + ' avg views';
         }
 
-        // Close modal handlers
-        document.getElementById('close-analysis-modal')?.addEventListener('click', () => {
-            document.getElementById('hook-analysis-modal').style.display = 'none';
-        });
-
-        document.getElementById('close-analysis-btn')?.addEventListener('click', () => {
-            document.getElementById('hook-analysis-modal').style.display = 'none';
-        });
-
-        // Close on outside click
-        document.getElementById('hook-analysis-modal')?.addEventListener('click', (e) => {
-            if (e.target.id === 'hook-analysis-modal') {
-                document.getElementById('hook-analysis-modal').style.display = 'none';
+        function launchConfetti() {
+            const colors = ['#005bc2', '#4c8efe', '#22c55e', '#f59e0b', '#ef4444'];
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                confetti.style.animationDelay = Math.random() * 0.5 + 's';
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 4000);
             }
-        });
+        }
     </script>
-
-    <style>
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-            backdrop-filter: blur(4px);
-        }
-        .modal-content.publishing-modal {
-            background: linear-gradient(135deg, #fff 0%, #fff9f9 100%);
-            padding: 2rem;
-            border-radius: 20px;
-            max-width: 420px;
-            width: 90%;
-            box-shadow: 0 20px 60px rgba(212, 131, 143, 0.3);
-            animation: modalSlideIn 0.3s ease;
-            border: 2px solid var(--yak-pink, #f8d7da);
-        }
-        @keyframes modalSlideIn {
-            from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .modal-header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        .modal-icon {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-icon .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid var(--yak-pink, #f8d7da);
-            border-top-color: var(--yak-accent, #d4838f);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .modal-icon.success {
-            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            border-radius: 50%;
-            border: 3px solid #7cb87c;
-        }
-        .modal-icon.success::after {
-            content: '🎉';
-            font-size: 2rem;
-        }
-        .modal-icon.partial {
-            background: #fef3c7;
-            border-radius: 50%;
-        }
-        .modal-icon.partial::after {
-            content: '⚠';
-            font-size: 2rem;
-        }
-        .modal-icon.failed {
-            background: #fee2e2;
-            border-radius: 50%;
-        }
-        .modal-icon.failed::after {
-            content: '✗';
-            font-size: 2rem;
-            color: #dc2626;
-        }
-        .modal-header h2 {
-            font-size: 1.25rem;
-            margin-bottom: 0.25rem;
-        }
-        .modal-subtitle {
-            color: #6b7280;
-            font-size: 0.9rem;
-            margin: 0;
-        }
-        .publish-progress {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .progress-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 0.875rem 1rem;
-            background: #f9fafb;
-            border-radius: 10px;
-            border: 1px solid #e5e7eb;
-            transition: all 0.3s ease;
-        }
-        .progress-item.publishing {
-            border-color: var(--yak-accent, #d4838f);
-            background: var(--yak-cream, #fff5f5);
-        }
-        .progress-item.success {
-            border-color: var(--yak-success, #7cb87c);
-            background: #f0fdf4;
-        }
-        .progress-item.failed {
-            border-color: #dc2626;
-            background: #fef2f2;
-        }
-        .progress-item.uploading {
-            border-color: var(--yak-accent, #d4838f);
-            background: var(--yak-cream, #fff5f5);
-        }
-        .progress-bar-track {
-            width: 100%;
-            height: 3px;
-            background: #e5e7eb;
-            border-radius: 2px;
-            margin-top: 6px;
-            overflow: hidden;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            background: var(--yak-accent, #d4838f);
-            border-radius: 2px;
-            transition: width 0.2s ease;
-        }
-        .progress-bar-fill.indeterminate {
-            width: 100% !important;
-            background: linear-gradient(90deg, var(--yak-accent, #d4838f) 0%, var(--yak-warm, #e8b4b8) 50%, var(--yak-accent, #d4838f) 100%);
-            background-size: 200% 100%;
-            animation: indeterminate 1.5s ease-in-out infinite;
-        }
-        @keyframes indeterminate {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-        .progress-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            flex-shrink: 0;
-        }
-        .progress-icon.linkedin { background: #0A66C2; color: white; }
-        .progress-icon.tiktok { background: #000000; color: white; }
-        .progress-icon.youtube { background: #FF0000; color: white; }
-        .progress-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
-        /* .progress-icon.threads { background: #000000; color: white; } */
-        .progress-info {
-            flex: 1;
-            min-width: 0;
-        }
-        .progress-info h4 {
-            font-size: 0.95rem;
-            margin: 0 0 0.125rem 0;
-        }
-        .progress-info p {
-            font-size: 0.8rem;
-            color: #6b7280;
-            margin: 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .progress-status {
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .progress-status .mini-spinner {
-            width: 20px;
-            height: 20px;
-            border: 2px solid #e5e7eb;
-            border-top-color: #d4838f;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        .progress-status.success::after {
-            content: '✓';
-            color: #16a34a;
-            font-weight: bold;
-            font-size: 1rem;
-        }
-        .progress-status.failed::after {
-            content: '✗';
-            color: #dc2626;
-            font-weight: bold;
-            font-size: 1rem;
-        }
-        .modal-actions {
-            margin-top: 1.5rem;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        .modal-actions .btn {
-            width: 100%;
-        }
-        .modal-actions .btn-secondary {
-            background: white;
-        }
-        .modal-actions .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        /* Hook Analysis Modal Styles */
-        .hook-analysis-modal {
-            max-width: 520px;
-            max-height: 90vh;
-            overflow-y: auto;
-            position: relative;
-            background: white;
-            padding: 2rem;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            animation: modalSlideIn 0.3s ease;
-        }
-        .modal-close {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #9ca3af;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background 0.2s;
-        }
-        .modal-close:hover {
-            background: #f3f4f6;
-            color: #374151;
-        }
-
-        /* Viral Score Ring */
-        .viral-score-container {
-            text-align: center;
-            margin: 1.5rem 0;
-        }
-        .viral-score-ring {
-            width: 120px;
-            height: 120px;
-            margin: 0 auto;
-            position: relative;
-        }
-        .viral-score-ring svg {
-            transform: rotate(-90deg);
-            width: 100%;
-            height: 100%;
-        }
-        .score-bg {
-            fill: none;
-            stroke: #e5e7eb;
-            stroke-width: 8;
-        }
-        .score-progress {
-            fill: none;
-            stroke: #d4838f;
-            stroke-width: 8;
-            stroke-linecap: round;
-            stroke-dasharray: 283;
-            stroke-dashoffset: 283;
-            transition: stroke-dashoffset 1s ease-out, stroke 0.3s;
-        }
-        .score-value {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 2rem;
-            font-weight: 700;
-            color: #d4838f;
-            transition: color 0.3s;
-        }
-        .score-label {
-            font-size: 0.9rem;
-            color: #6b7280;
-            margin-top: 0.5rem;
-        }
-
-        /* Analysis Sections */
-        .analysis-section {
-            background: #f9fafb;
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-        .analysis-section h3 {
-            font-size: 0.95rem;
-            font-weight: 600;
-            margin: 0 0 0.75rem 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: #374151;
-        }
-        .analysis-section h3 i {
-            font-size: 0.9rem;
-        }
-        .analysis-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
-        .strengths h3 i { color: #16a34a; }
-        .weaknesses h3 i { color: #f59e0b; }
-        .suggestions h3 i { color: #d4838f; }
-        .similar-hooks h3 i { color: #ef4444; }
-
-        .analysis-section ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .analysis-section li {
-            font-size: 0.85rem;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #e5e7eb;
-            color: #4b5563;
-        }
-        .analysis-section li:last-child {
-            border-bottom: none;
-        }
-        .extracted-text {
-            font-size: 1rem;
-            font-weight: 500;
-            padding: 0.75rem;
-            background: white;
-            border-radius: 6px;
-            border: 1px solid #e5e7eb;
-            color: #1f2937;
-        }
-
-        /* Similar Hooks Grid */
-        .similar-hooks-grid {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .similar-hook-card {
-            padding: 0.75rem;
-            background: white;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-        }
-        .similar-hook-card .hook-text {
-            font-size: 0.9rem;
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            color: #1f2937;
-        }
-        .similar-hook-card .hook-meta {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
-        .similar-hook-card .hook-category {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.5rem;
-            background: #fef0f0;
-            color: #d4838f;
-            border-radius: 4px;
-            text-transform: capitalize;
-        }
-        .similar-hook-card .hook-views {
-            font-size: 0.75rem;
-            color: #6b7280;
-        }
-
-        @media (max-width: 640px) {
-            .analysis-row {
-                grid-template-columns: 1fr;
-            }
-            .hook-analysis-modal {
-                max-width: 95%;
-                padding: 1.5rem;
-            }
-        }
-    </style>
 </body>
 </html>
