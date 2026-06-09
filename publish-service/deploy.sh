@@ -14,6 +14,18 @@ if ! command -v gcloud &>/dev/null; then
   exit 1
 fi
 
+get_env_var() {
+  local name="$1"
+  local value
+  value="$(grep -E "^(export[[:space:]]+)?${name}=" ../.env.local | tail -n1 | cut -d'=' -f2-)"
+  value="${value%$'\r'}"
+  value="${value#\"}"
+  value="${value%\"}"
+  value="${value#\'}"
+  value="${value%\'}"
+  printf '%s' "$value"
+}
+
 gcloud config set project "$PROJECT_ID" >/dev/null 2>&1
 echo -e "${GREEN}[✓]${NC} Project: $PROJECT_ID"
 
@@ -30,10 +42,10 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances=0 \
   --max-instances=10 \
   --allow-unauthenticated \
-  --set-env-vars="SUPABASE_URL=https://bcyhcsphmqizzvzmdqxc.supabase.co" \
-  --set-env-vars="SUPABASE_SERVICE_KEY=$(grep SUPABASE_SERVICE_KEY ../.env.local | cut -d'=' -f2)" \
-  --set-env-vars="YOUTUBE_CLIENT_ID=$(grep YOUTUBE_CLIENT_ID ../.env.local | cut -d'=' -f2)" \
-  --set-env-vars="YOUTUBE_CLIENT_SECRET=$(grep YOUTUBE_CLIENT_SECRET ../.env.local | cut -d'=' -f2)" \
+  --set-env-vars="SUPABASE_URL=$(get_env_var SUPABASE_URL)" \
+  --set-env-vars="SUPABASE_SERVICE_KEY=$(get_env_var SUPABASE_SERVICE_KEY)" \
+  --set-env-vars="YOUTUBE_CLIENT_ID=$(get_env_var YOUTUBE_CLIENT_ID)" \
+  --set-env-vars="YOUTUBE_CLIENT_SECRET=$(get_env_var YOUTUBE_CLIENT_SECRET)" \
   --quiet
 
 SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \

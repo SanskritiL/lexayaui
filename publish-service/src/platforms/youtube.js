@@ -58,37 +58,29 @@ async function publishToYouTube(post, account, supabase, onProgress, fileBuffer)
     await p('uploading', `Uploading video to YouTube (${pct}%)...`, pct);
   });
 
-  if (!uploadRes.ok) throw new Error('Failed to upload video to YouTube: ' + (await uploadRes.text()));
+  if (!uploadRes.ok) {
+    const errorText = await uploadRes.text();
+    console.error('[YOUTUBE] Upload failed:', uploadRes.status, errorText);
+    throw new Error('Failed to upload video to YouTube: ' + errorText);
+  }
 
   await p('processing', 'YouTube is processing your video...');
   const videoData = await uploadRes.json();
+  console.log('[YOUTUBE] Upload complete:', videoData.id);
   return { status: 'success', post_id: videoData.id, url: `https://youtube.com/shorts/${videoData.id}` };
 }
 
-// Helper: upload a Buffer with progress reporting via a passthrough stream
+// Helper: upload a Buffer. Avoid reading a stream before fetch consumes it; Node
+// rejects disturbed/locked request bodies.
 async function uploadWithProgress(url, buffer, onProgress) {
-  return new Promise((resolve, reject) => {
-    const { PassThrough } = require('stream');
-    const stream = new PassThrough();
-    let uploaded = 0;
-    const total = buffer.length;
-
-    stream.on('data', (chunk) => {
-      uploaded += chunk.length;
-      const pct = Math.round((uploaded / total) * 100);
-      onProgress(pct);
-    });
-
-    // Write buffer to stream
-    stream.end(buffer);
-
-    fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'video/*', 'Content-Length': total.toString() },
-      body: stream,
-      duplex: 'half',
-    }).then(resolve).catch(reject);
+  const total = buffer.length;
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'video/*', 'Content-Length': total.toString() },
+    body: buffer,
   });
+  await onProgress(100);
+  return res;
 }
 
 async function refreshYouTubeToken(refreshToken) {

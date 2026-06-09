@@ -135,12 +135,31 @@ app.all('/broadcast/publish', async (req, res) => {
 // ── Auth helper ──
 async function verifyPublishAuth(req) {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  if (!authHeader) {
+    console.warn('[AUTH] Missing Authorization header');
+    return null;
+  }
+  if (!authHeader.startsWith('Bearer ')) {
+    console.warn('[AUTH] Invalid Authorization header format');
+    return null;
+  }
 
   const token = authHeader.replace('Bearer ', '');
+  if (!token) {
+    console.warn('[AUTH] Empty bearer token');
+    return null;
+  }
+
   const supabase = getClient();
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return null;
+  if (error || !user) {
+    console.warn('[AUTH] Supabase rejected token', {
+      error: error?.message || null,
+      status: error?.status || null,
+      hasUser: Boolean(user),
+    });
+    return null;
+  }
   return user;
 }
 
