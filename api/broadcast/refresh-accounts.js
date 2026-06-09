@@ -8,28 +8,27 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    // Get user from auth header
+    // Verify authentication
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const token = authHeader.replace('Bearer ', '');
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Verify user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-        return res.status(401).json({ error: 'Invalid token' });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+        return res.status(401).json({ error: 'Unauthorized' });
     }
+    const userId = user.id;
 
-    console.log('[RefreshAccounts] Refreshing for user:', user.id);
+    console.log('[RefreshAccounts] Refreshing for user:', userId);
 
     // Get connected accounts
     const { data: accounts, error: fetchError } = await supabase
         .from('connected_accounts')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', userId);
 
     if (fetchError || !accounts) {
         return res.status(500).json({ error: 'Failed to fetch accounts' });

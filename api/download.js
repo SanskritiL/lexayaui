@@ -4,9 +4,9 @@
 //   - resource: for free downloads (requires auth)
 //   - test=true: test mode for paid downloads
 
-const { createClient } = require('@supabase/supabase-js');
+const getClient = require('./_supabase');
 
-const supabase = createClient(
+const supabase = getClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 );

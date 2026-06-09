@@ -10,13 +10,12 @@
         navItems: [
             { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/broadcast/' },
             { id: 'accounts', label: 'Accounts', icon: 'hub', href: '/broadcast/connect.html' },
-            { id: 'scheduler', label: 'Scheduler', icon: 'calendar_today', href: '/broadcast/calendar.html' },
+            { id: 'scheduler', label: 'Scheduler', icon: 'calendar_today', href: '/broadcast/scheduled.html' },
             { id: 'library', label: 'Library', icon: 'video_library', href: '/broadcast/upload.html' },
-            { id: 'analytics', label: 'Analytics', icon: 'insights', href: '#' },
         ],
         bottomNavItems: [
             { id: 'dashboard', icon: 'dashboard', label: 'Studio', href: '/broadcast/' },
-            { id: 'scheduler', icon: 'calendar_today', label: 'Plan', href: '/broadcast/calendar.html' },
+            { id: 'scheduler', icon: 'calendar_today', label: 'Plan', href: '/broadcast/scheduled.html' },
             { id: 'create', icon: 'add', label: '', href: '/broadcast/upload.html', isFab: true },
             { id: 'library', icon: 'video_library', label: 'Assets', href: '/broadcast/upload.html' },
             { id: 'account', icon: 'person', label: 'Account', href: '/members.html' },
@@ -38,7 +37,9 @@
 
         activePage = document.body.dataset.page || 'dashboard';
         supabaseClient = window.supabase?.createClient
-            ? window.supabase.createClient(LAYOUT_CONFIG.supabaseUrl, LAYOUT_CONFIG.supabaseKey)
+            ? window.supabase.createClient(LAYOUT_CONFIG.supabaseUrl, LAYOUT_CONFIG.supabaseKey, {
+                realtime: { transport: window.WebSocket }
+            })
             : null;
 
         if (!supabaseClient) {
@@ -60,7 +61,7 @@
             ${renderSidebar(user)}
             <main class="md:ml-72 min-h-screen bg-surface" id="main-content">
                 ${renderHeader(user)}
-                <div id="page-content" class="px-8 md:px-16 py-12 max-w-7xl mx-auto"></div>
+                <div id="page-content" class="px-8 md:px-16 py-6 max-w-7xl mx-auto"></div>
                 ${renderFooter()}
             </main>
             ${renderMobileNav()}

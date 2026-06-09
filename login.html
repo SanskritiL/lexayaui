@@ -120,7 +120,7 @@
             submitBtn.disabled = true;
             submitBtn.textContent = 'Sending...';
 
-            const { data, error } = await auth.sendMagicLink(email, redirectTo);
+            const { error } = await auth.sendMagicLink(email, redirectTo);
 
             if (error) {
                 messageEl.className = 'mt-6 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200';

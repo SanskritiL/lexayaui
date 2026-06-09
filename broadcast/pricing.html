@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/broadcast/style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/config.js"></script>
 </head>
 <body>
     <div class="container">
@@ -94,22 +95,16 @@
         // Config
         const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
 
         // Stripe Price ID for Broadcast Pro ($2.99 one-time)
         const BROADCAST_PRICE_ID = 'price_1T1ogBA1WPL5LnBtEQBc2ZXx';
 
         let currentUser = null;
-        let currentSession = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const [userRes, sessionRes] = await Promise.all([
-                supabaseClient.auth.getUser(),
-                supabaseClient.auth.getSession()
-            ]);
-            currentUser = userRes.data.user;
-            currentSession = sessionRes.data.session;
-
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            currentUser = user;
             if (!currentUser) {
                 document.getElementById('login-required').style.display = 'block';
                 return;

@@ -58,9 +58,13 @@
         <nav class="w-full bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
             <div class="flex justify-between items-center px-6 md:px-12 py-5 max-w-[1200px] mx-auto">
                 <a href="/" class="text-xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
-                <button onclick="handleLogout()" class="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-primary transition-colors bg-transparent border-none cursor-pointer">
-                    Sign Out
-                </button>
+                <div class="flex items-center gap-4">
+                    <span id="user-email" class="text-xs text-slate-400 hidden md:inline"></span>
+                    <span id="account-status" class="text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full"></span>
+                    <button onclick="handleLogout()" class="text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-primary transition-colors bg-transparent border-none cursor-pointer">
+                        Sign Out
+                    </button>
+                </div>
             </div>
         </nav>
 
@@ -82,29 +86,7 @@
                     <p class="text-sm text-slate-500 leading-relaxed">Post to TikTok, Instagram, LinkedIn, and Threads in one click</p>
                 </a>
 
-                <a href="/blog/" class="action-card bg-white border border-slate-200 rounded-xl p-8 flex flex-col items-center text-center hover:border-primary/30 hover:shadow-xl shadow-sm">
-                    <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
-                        <span class="material-symbols-outlined text-primary text-3xl">menu_book</span>
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-900 mb-2">Read UGC Blogs</h3>
-                    <p class="text-sm text-slate-500 leading-relaxed">Tips, strategies, and lessons from my UGC journey</p>
-                </a>
-
-                <a href="/resources/" class="action-card bg-white border border-slate-200 rounded-xl p-8 flex flex-col items-center text-center hover:border-primary/30 hover:shadow-xl shadow-sm">
-                    <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
-                        <span class="material-symbols-outlined text-primary text-3xl">local_fire_department</span>
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-900 mb-2">Top Viral Hooks</h3>
-                    <p class="text-sm text-slate-500 leading-relaxed">See the best performing hooks this month</p>
-                </a>
-
-                <a href="/broadcast/calendar.html" class="action-card bg-white border border-slate-200 rounded-xl p-8 flex flex-col items-center text-center hover:border-primary/30 hover:shadow-xl shadow-sm">
-                    <div class="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
-                        <span class="material-symbols-outlined text-primary text-3xl">calendar_month</span>
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-900 mb-2">Your Calendar</h3>
-                    <p class="text-sm text-slate-500 leading-relaxed">Track your posting schedule and progress</p>
-                </a>
+                
             </div>
         </div>
     </div>
@@ -125,6 +107,16 @@
             if (!user) {
                 window.location.href = '/login.html';
                 return;
+            }
+
+            const email = user.email || '';
+            const userEmailEl = document.getElementById('user-email');
+            const accountStatusEl = document.getElementById('account-status');
+
+            if (userEmailEl) userEmailEl.textContent = email;
+            if (accountStatusEl) {
+                accountStatusEl.textContent = 'Signed In';
+                accountStatusEl.className = 'text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full bg-slate-100 text-slate-500';
             }
 
             document.getElementById('loading').style.display = 'none';

@@ -2,7 +2,7 @@
 // Uses Gemini 2.0 Flash to analyze video hook for viral potential
 // Stateless - no database, examples included in prompt
 
-const { createClient } = require('@supabase/supabase-js');
+const getClient = require('../_supabase');
 
 // Viral hook examples for RAG-style comparison (included in prompt)
 const VIRAL_HOOK_EXAMPLES = `
@@ -49,7 +49,7 @@ module.exports = async function handler(req, res) {
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
     const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');

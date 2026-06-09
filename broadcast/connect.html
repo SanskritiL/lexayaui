@@ -222,11 +222,11 @@
         // Config
         const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
 
         let connectedAccounts = [];
         let currentUser = null;
-        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
+        const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
         let currentSession = null;
 
         // Cache config
@@ -268,13 +268,10 @@
             // Check for OAuth callback FIRST (before anything else)
             const oauthResult = checkOAuthCallback();
 
-            // Cache both user and session once on load
-            const [userRes, sessionRes] = await Promise.all([
-                supabaseClient.auth.getUser(),
-                supabaseClient.auth.getSession()
-            ]);
-            currentUser = userRes.data.user;
-            currentSession = sessionRes.data.session;
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            currentUser = user;
+            currentSession = session;
 
             console.log('[Auth] User:', currentUser?.email || 'none');
 
@@ -306,7 +303,7 @@
             const { data: accounts } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
-                .eq('user_id', currentUser.id);
+                .eq('customer_email', currentUser.email);
 
             connectedAccounts = accounts || [];
 
@@ -321,12 +318,13 @@
         }
 
         async function refreshAccountStats() {
+            const token = currentSession?.access_token;
             try {
                 const response = await fetch('/api/broadcast/refresh-accounts', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${currentSession.access_token}`
+                        'Authorization': `Bearer ${token}`
                     }
                 });
 
@@ -490,10 +488,25 @@
             });
         }
 
-        function connectLinkedIn() { const state = currentSession.access_token; window.location.href = `/api/broadcast/auth/linkedin?state=${encodeURIComponent(state)}`; }
-        function connectTikTok() { const state = currentSession.access_token; window.location.href = `/api/broadcast/auth/tiktok?state=${encodeURIComponent(state)}`; }
-        function connectInstagram() { const state = currentSession.access_token; window.location.href = `/api/broadcast/auth/instagram?state=${encodeURIComponent(state)}`; }
-        function connectYouTube() { const state = currentSession.access_token; window.location.href = `/api/broadcast/auth/youtube?state=${encodeURIComponent(state)}`; }
+        async function getOAuthState() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            currentSession = session;
+            if (!currentSession?.access_token) {
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                return null;
+            }
+            return currentSession.access_token;
+        }
+        function getAuthApiBase() {
+            return '';
+        }
+        function getAuthUrl(platform, state) {
+            return `${getAuthApiBase()}/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;
+        }
+        async function connectLinkedIn() { const state = await getOAuthState(); if (state) window.location.href = getAuthUrl('linkedin', state); }
+        async function connectTikTok() { const state = await getOAuthState(); if (state) window.location.href = getAuthUrl('tiktok', state); }
+        async function connectInstagram() { const state = await getOAuthState(); if (state) window.location.href = getAuthUrl('instagram', state); }
+        async function connectYouTube() { const state = await getOAuthState(); if (state) window.location.href = getAuthUrl('youtube', state); }
 
         async function disconnectAccount(platform) {
             if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
@@ -502,7 +515,7 @@
             const { error } = await supabaseClient
                 .from('connected_accounts')
                 .delete()
-                .eq('user_id', currentUser.id)
+                .eq('customer_email', currentUser.email)
                 .eq('platform', platform);
 
             if (error) {

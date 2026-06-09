@@ -67,8 +67,10 @@
         </div>
     </div>
 
+    <script src="/js/config.js"></script>
+    <script src="/js/layout.js"></script>
     <script>
-        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
 
         const PLATFORM_ICONS = {
             tiktok: '<i class="fa-brands fa-tiktok"></i>',
@@ -77,15 +79,15 @@
             youtube: '<i class="fa-brands fa-youtube"></i>'
         };
         const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn', youtube: 'YouTube' };
-        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
+        const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
             currentUser = user;
-
             if (!currentUser) {
-                currentUser = { id: 'dev-local', email: 'sanslamsal16@gmail.com' };
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
             }
 
             await waitForContent();
@@ -109,7 +111,7 @@
             const { data: posts, error } = await supabaseClient
                 .from('posts')
                 .select('*')
-                .eq('user_id', currentUser.id)
+                .eq('customer_email', currentUser.email)
                 .eq('status', 'scheduled')
                 .order('scheduled_at', { ascending: true });
 

@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -82,12 +83,7 @@
                 <div class="stat-value text-primary" id="stat-scheduled">0</div>
                 <p class="text-label-sm text-on-surface-variant uppercase mt-2">Scheduled</p>
             </div>
-            <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow dash-card">
-                <span class="material-symbols-outlined text-primary mb-4 text-3xl">auto_awesome</span>
-                <div class="stat-value text-primary" id="stat-automations">0</div>
-                <p class="text-label-sm text-on-surface-variant uppercase mt-2">Automations</p>
             </div>
-        </div>
 
         <!-- Connected Accounts -->
         <section class="mb-16">
@@ -118,27 +114,14 @@
                     <h3 class="font-bold text-on-surface mb-2">Scheduled</h3>
                     <p class="text-sm text-on-surface-variant">View and manage scheduled posts</p>
                 </a>
-                <a href="/broadcast/calendar.html" class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow dash-card flex flex-col items-center text-center group">
-                    <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                        <span class="material-symbols-outlined text-primary text-3xl">calendar_month</span>
-                    </div>
-                    <h3 class="font-bold text-on-surface mb-2">Calendar</h3>
-                    <p class="text-sm text-on-surface-variant">Track your posting consistency</p>
-                </a>
-                <a href="/broadcast/media-kit.html" class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow dash-card flex flex-col items-center text-center group">
-                    <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                        <span class="material-symbols-outlined text-primary text-3xl">badge</span>
-                    </div>
-                    <h3 class="font-bold text-on-surface mb-2">Media Kit</h3>
-                    <p class="text-sm text-on-surface-variant">Shareable stats card for brands</p>
-                </a>
+                
             </div>
         </section>
 
         <!-- Recent Posts -->
-        <section>
-            <h2 class="text-headline-sm mb-8">Recent Posts</h2>
-            <div id="recent-posts" class="space-y-4">
+        <section class="mb-8">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">Recent Posts</h2>
+            <div id="recent-posts" class="space-y-3">
                 <div class="text-on-surface-variant">Loading recent posts...</div>
             </div>
         </section>
@@ -148,7 +131,7 @@
         // Config
         const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
 
         const PLATFORM_ICONS = {
             tiktok: '<i class="fa-brands fa-tiktok"></i>',
@@ -158,7 +141,7 @@
             youtube: '<i class="fa-brands fa-youtube"></i>'
         };
         const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn', /* threads: 'Threads', */ youtube: 'YouTube' };
-        const ADMIN_EMAILS = ['sanslamsal16@gmail.com'];
+        const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
         let currentUser = null;
         let currentSession = null;
         let connectedAccounts = [];
@@ -184,31 +167,33 @@
             localStorage.setItem(key, JSON.stringify({ value, timestamp: Date.now() }));
         }
 
+        function isUsableProfileImage(url) {
+            if (!url) return false;
+            try {
+                const host = new URL(url).hostname;
+                return !host.includes('scontent-');
+            } catch (_) {
+                return false;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Check for OAuth callback first
             const oauthResult = checkOAuthCallback();
 
-            const [userRes, sessionRes] = await Promise.all([
-                supabaseClient.auth.getUser(),
-                supabaseClient.auth.getSession()
-            ]);
-            currentUser = userRes.data.user;
-            currentSession = sessionRes.data.session;
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            currentUser = user;
+            currentSession = session;
 
-            const authRequired = document.getElementById('auth-required');
-            const dashboard = document.getElementById('dashboard');
-
-            // DEV BYPASS: skip auth if not logged in
             if (!currentUser) {
-                currentUser = { id: 'dev-local', email: 'sanslamsal16@gmail.com' };
-                console.log('DEV MODE: using default user', currentUser.email);
-            } else {
-                console.log('[Auth] User email:', currentUser.email);
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
             }
 
-            // Auth & subscription checks bypassed for local dev
-            if (authRequired) authRequired.style.display = 'none';
-            if (dashboard) dashboard.style.display = 'block';
+            console.log('[Auth] User email:', currentUser.email);
+            localStorage.removeItem(ACCOUNTS_CACHE_KEY);
+            localStorage.removeItem(POSTS_CACHE_KEY);
 
             // Show member badge
             showMemberBadge();
@@ -295,14 +280,23 @@
             }, 3000);
         }
 
-        // Connect functions
-        function connectPlatform(platform) {
-            if (!currentSession?.access_token) {
-                showToast('Session expired. Please refresh.', 'error');
+        function getAuthApiBase() {
+            return '';
+        }
+
+        async function connectPlatform(platform) {
+            if (!currentUser) {
+                showToast('Please sign in first.', 'error');
                 return;
             }
-            const state = currentSession.access_token;
-            window.location.href = `/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            currentSession = session;
+            const state = currentSession?.access_token;
+            if (!state) {
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+            }
+            window.location.href = `${getAuthApiBase()}/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;
         }
 
         async function disconnectPlatform(platform, event) {
@@ -312,7 +306,7 @@
             const { error } = await supabaseClient
                 .from('connected_accounts')
                 .delete()
-                .eq('user_id', currentUser.id)
+                .eq('customer_email', currentUser.email)
                 .eq('platform', platform);
 
             if (error) {
@@ -336,20 +330,10 @@
             const grid = document.getElementById('accounts-grid');
             if (!grid || !currentUser) return;
 
-            // Try cache first
-            if (!forceRefresh) {
-                const cached = getCachedData(ACCOUNTS_CACHE_KEY);
-                if (cached) {
-                    console.log('[Cache] Using cached accounts');
-                    renderAccounts(grid, cached);
-                    return;
-                }
-            }
-
             const { data: accounts, error } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
-                .eq('user_id', currentUser.id);
+                .eq('customer_email', currentUser.email);
 
             if (error) {
                 console.warn('Could not load accounts (no session?):', error.message);
@@ -379,6 +363,7 @@
                 if (isConnected) {
                     const metadata = account.metadata || {};
                     const profilePic = metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url;
+                    const showProfilePic = isUsableProfileImage(profilePic);
                     const followers = metadata.followers_count || metadata.follower_count || metadata.subscribers_count;
                     const following = metadata.following_count || metadata.friends_count;
                     const username = account.account_name || metadata.username || metadata.display_name;
@@ -399,7 +384,7 @@
                             </div>
                             <div class="account-card-body">
                                 <div class="profile-section">
-                                    ${profilePic
+                                    ${showProfilePic
                                         ? `<img src="${profilePic}" alt="${username}" class="profile-avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                            <div class="profile-avatar-fallback" style="display:none;"><i class="fas fa-user"></i></div>`
                                         : `<div class="profile-avatar-fallback"><i class="fas fa-user"></i></div>`
@@ -456,20 +441,10 @@
             const container = document.getElementById('recent-posts');
             if (!container || !currentUser) return;
 
-            // Try cache first
-            if (!forceRefresh) {
-                const cached = getCachedData(POSTS_CACHE_KEY);
-                if (cached) {
-                    console.log('[Cache] Using cached posts');
-                    renderPosts(container, cached);
-                    return;
-                }
-            }
-
             const { data: posts, error } = await supabaseClient
                 .from('posts')
                 .select('*')
-                .eq('user_id', currentUser.id)
+                .eq('customer_email', currentUser.email)
                 .order('created_at', { ascending: false })
                 .limit(3);
 

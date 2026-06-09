@@ -2,7 +2,7 @@
 // Handles TikTok and LinkedIn video upload initialization
 // Query param: ?platform=tiktok or ?platform=linkedin
 
-const { createClient } = require('@supabase/supabase-js');
+const getClient = require('../_supabase');
 
 module.exports = async function handler(req, res) {
     console.log('========== INIT VIDEO API ==========');
@@ -18,20 +18,19 @@ module.exports = async function handler(req, res) {
 
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Verify authentication
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.log('[AUTH] No authorization header');
         return res.status(401).json({ error: 'Unauthorized' });
     }
-
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
     if (userError || !user) {
-        console.log('[AUTH] User verification failed:', userError);
-        return res.status(401).json({ error: 'Invalid token' });
+        console.log('[AUTH] Verification failed');
+        return res.status(401).json({ error: 'Unauthorized' });
     }
     console.log('[AUTH] User verified:', user.id);
 
@@ -146,8 +145,10 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
         console.log('[TIKTOK] Small file, single chunk upload');
     } else {
         // Multi-chunk upload - use 10MB chunks
+        // TikTok requires total_chunk_count = floor(video_size / chunk_size)
+        // The final chunk absorbs trailing bytes and can exceed chunk_size (up to 128MB)
         calculatedChunkSize = DEFAULT_CHUNK_SIZE;
-        calculatedChunkCount = Math.ceil(fileSizeBytes / calculatedChunkSize);
+        calculatedChunkCount = Math.floor(fileSizeBytes / calculatedChunkSize);
         console.log(`[TIKTOK] Large file, using ${calculatedChunkCount} chunks of ${calculatedChunkSize / 1024 / 1024}MB`);
     }
 

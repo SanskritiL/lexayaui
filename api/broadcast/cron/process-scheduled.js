@@ -1,12 +1,12 @@
 // Cron Job: Process Scheduled Posts
 // Runs every minute to check for posts that need to be published
 
-const { createClient } = require('@supabase/supabase-js');
+const getClient = require('../../_supabase');
 
 module.exports = async function handler(req, res) {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Verify this is a cron request (Vercel adds this header)
     const authHeader = req.headers.authorization;
