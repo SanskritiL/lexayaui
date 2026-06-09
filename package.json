@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "start": "npx serve .",
+    "dev": "npx serve .",
+    "vercel:dev": "npx vercel dev --listen 3000",
     "test": "jest"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.0.0",
-    "@aws-sdk/s3-request-presigner": "^3.0.0",
     "@supabase/supabase-js": "^2.39.0",
     "stripe": "^14.0.0"
   },

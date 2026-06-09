@@ -16,11 +16,11 @@ async function getUserState(supabase, state) {
   return null;
 }
 
-async function upsertAccount(supabase, data, email, platform) {
+async function upsertAccount(supabase, data, userId, platform) {
   const { data: existing } = await supabase
     .from('connected_accounts')
     .select('id, refresh_token')
-    .eq('customer_email', email)
+    .eq('user_id', userId)
     .eq('platform', platform)
     .maybeSingle();
   if (existing) {
@@ -157,7 +157,6 @@ async function handleLinkedIn(req, res) {
 
         const { error: saveError } = await upsertAccount(supabase, {
             user_id: userId,
-            customer_email: userState.email,
             platform: 'linkedin',
             platform_user_id: profile.sub,
             account_name: profile.name || userState.email,
@@ -173,7 +172,7 @@ async function handleLinkedIn(req, res) {
                 account_type: 'Personal',
                 followers_count: followersCount,
             },
-        }, userState.email, 'linkedin');
+        }, userId, 'linkedin');
 
         if (saveError) {
             console.error('[LinkedIn] Save error:', saveError);
@@ -316,7 +315,6 @@ async function handleInstagram(req, res) {
 
         const { error: saveError } = await upsertAccount(supabase, {
             user_id: dbUserId,
-            customer_email: userState.email,
             platform: 'instagram',
             platform_user_id: instagramAccount.id,
             account_name: instagramAccount.username,
@@ -334,7 +332,7 @@ async function handleInstagram(req, res) {
                 media_count: instagramAccount.media_count,
                 account_type: 'Business',
             },
-        }, userState.email, 'instagram');
+        }, dbUserId, 'instagram');
 
         if (saveError) {
             console.error('[Instagram] Save error:', saveError);
@@ -431,7 +429,6 @@ async function handleTikTok(req, res) {
 
         const { error: saveError } = await upsertAccount(supabase, {
             user_id: userId,
-            customer_email: userState.email,
             platform: 'tiktok',
             platform_user_id: open_id,
             account_name: userInfo.display_name || userInfo.username,
@@ -451,7 +448,7 @@ async function handleTikTok(req, res) {
                 account_type: 'Creator',
                 refresh_expires_in: refresh_expires_in,
             },
-        }, userState.email, 'tiktok');
+        }, userId, 'tiktok');
 
         if (saveError) {
             console.error('[TikTok] Save error:', saveError);
@@ -584,7 +581,6 @@ async function handleTwitter(req, res) {
 
         const { error: saveError } = await upsertAccount(supabase, {
             user_id: userId,
-            customer_email: userState.email,
             platform: 'twitter',
             platform_user_id: profile.id,
             account_name: profile.username,
@@ -603,7 +599,7 @@ async function handleTwitter(req, res) {
                 verified: profile.verified,
                 account_type: profile.verified ? 'Verified' : 'Personal',
             },
-        }, userState.email, 'twitter');
+        }, userId, 'twitter');
 
         if (saveError) {
             console.error('[Twitter] Save error:', saveError);
@@ -721,7 +717,6 @@ async function handleThreads(req, res) {
 
         const { error: saveError } = await upsertAccount(supabase, {
             user_id: dbUserId,
-            customer_email: userState.email,
             platform: 'threads',
                 platform_user_id: userId,
                 account_name: profileData.username || 'Threads User',
@@ -737,7 +732,7 @@ async function handleThreads(req, res) {
                     bio: profileData.threads_biography,
                     account_type: 'Personal',
                 },
-        }, userState.email, 'threads');
+        }, dbUserId, 'threads');
 
         if (saveError) {
             console.error('[Threads] Save error:', saveError);
@@ -850,7 +845,6 @@ async function handleYouTube(req, res) {
 
         const { error: saveError } = await upsertAccount(supabase, {
             user_id: userId,
-            customer_email: userState.email,
             platform: 'youtube',
             platform_user_id: channelId,
             account_name: channelTitle,
@@ -866,7 +860,7 @@ async function handleYouTube(req, res) {
                 subscribers_count: parseInt(subscriberCount) || 0,
                 video_count: parseInt(videoCount) || 0,
             },
-        }, userState.email, 'youtube');
+        }, userId, 'youtube');
 
         if (saveError) {
             console.error('[YouTube] Save error:', saveError);

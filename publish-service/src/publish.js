@@ -1,12 +1,11 @@
 const { getClient } = require('./supabase');
-const { deleteFile } = require('./storage');
 const { publishToLinkedIn } = require('./platforms/linkedin');
 const { publishToTikTok } = require('./platforms/tiktok');
 const { publishToInstagram } = require('./platforms/instagram');
 const { publishToYouTube } = require('./platforms/youtube');
 const { publishToTwitter } = require('./platforms/twitter');
 
-async function publishPost(postId, platforms, userId, onProgress) {
+async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
   const supabase = getClient();
 
   const { data: post, error: postError } = await supabase
@@ -89,11 +88,11 @@ async function publishPost(postId, platforms, userId, onProgress) {
     try {
       let result;
       switch (platform) {
-        case 'linkedin':   result = await publishToLinkedIn(post, account, p); break;
-        case 'tiktok':     result = await publishToTikTok(post, account, supabase, p); break;
-        case 'instagram':  result = await publishToInstagram(post, account, p); break;
-        case 'twitter':    result = await publishToTwitter(post, account, p); break;
-        case 'youtube':    result = await publishToYouTube(post, account, supabase, p); break;
+        case 'linkedin':   result = await publishToLinkedIn(post, account, p, fileBuffer); break;
+        case 'tiktok':     result = await publishToTikTok(post, account, supabase, p, fileBuffer); break;
+        case 'instagram':  result = await publishToInstagram(post, account, p, fileBuffer); break;
+        case 'twitter':    result = await publishToTwitter(post, account, p, fileBuffer); break;
+        case 'youtube':    result = await publishToYouTube(post, account, supabase, p, fileBuffer); break;
         default:           result = { status: 'error', error: 'Unknown platform' };
       }
       results[platform] = result;
@@ -128,18 +127,6 @@ async function publishPost(postId, platforms, userId, onProgress) {
       published_at: hasSuccess ? new Date().toISOString() : null,
     })
     .eq('id', postId);
-
-  // Cleanup: delete media from storage after successful publish
-  if (hasSuccess && post.video_url) {
-    try {
-      if (post.metadata?.r2_key) {
-        await deleteFile(post.metadata.r2_key);
-      }
-      await supabase.from('posts').update({ video_url: null }).eq('id', postId);
-    } catch (err) {
-      console.error('[CLEANUP] Error:', err.message);
-    }
-  }
 
   return { success: hasSuccess, status: overallStatus, results: finalResults };
 }

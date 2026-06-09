@@ -1,4 +1,4 @@
-async function publishToTwitter(post, account, onProgress) {
+async function publishToTwitter(post, account, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with Twitter/X...');
   console.log('[TWITTER] Starting publish...');
@@ -11,9 +11,9 @@ async function publishToTwitter(post, account, onProgress) {
     return await createTweet(access_token, post.caption, mediaId);
   }
 
-  if (post.video_url) {
+  if (fileBuffer) {
     try {
-      const uploadedMediaId = await uploadVideoToTwitter(access_token, post.video_url, p);
+      const uploadedMediaId = await uploadVideoToTwitter(access_token, fileBuffer, p);
       await p('publishing', 'Creating tweet...');
       return await createTweet(access_token, post.caption, uploadedMediaId);
     } catch (err) {
@@ -42,11 +42,11 @@ async function createTweet(accessToken, text, mediaId) {
   return { status: 'success', post_id: data.data?.id, url: `https://twitter.com/i/web/status/${data.data?.id}` };
 }
 
-async function uploadVideoToTwitter(accessToken, videoUrl, onProgress) {
+async function uploadVideoToTwitter(accessToken, videoBuffer, onProgress) {
   const p = onProgress || (async () => {});
 
   await p('initializing', 'Initializing Twitter/X media upload...');
-  const totalBytes = await getContentLength(videoUrl);
+  const totalBytes = videoBuffer.length;
   const initRes = await fetch('https://upload.twitter.com/1.1/media/upload.json?command=INIT&media_type=video/mp4&total_bytes=' + totalBytes, {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${accessToken}` },
@@ -54,10 +54,7 @@ async function uploadVideoToTwitter(accessToken, videoUrl, onProgress) {
   if (!initRes.ok) throw new Error('Twitter INIT failed: ' + (await initRes.text()));
   const { media_id_string } = await initRes.json();
 
-  await p('downloading', 'Downloading video from storage...');
   const CHUNK = 5 * 1024 * 1024;
-  const videoRes = await fetch(videoUrl);
-  const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
   const totalChunks = Math.ceil(videoBuffer.length / CHUNK);
 
   for (let i = 0; i < totalChunks; i++) {
@@ -89,11 +86,6 @@ async function uploadVideoToTwitter(accessToken, videoUrl, onProgress) {
   if (!finalizeRes.ok) throw new Error('Twitter FINALIZE failed');
 
   return media_id_string;
-}
-
-async function getContentLength(url) {
-  const head = await fetch(url, { method: 'HEAD' });
-  return parseInt(head.headers.get('content-length') || '0');
 }
 
 module.exports = { publishToTwitter };

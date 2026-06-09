@@ -1,25 +1,34 @@
-async function publishToInstagram(post, account, onProgress) {
+const FB_API_VERSION = 'v18.0';
+const FB_HOST = 'https://graph.facebook.com';
+const RUPLOAD_HOST = 'https://rupload.facebook.com';
+
+async function publishToInstagram(post, account, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with Instagram...');
   console.log('[INSTAGRAM] Starting publish...');
   const mediaType = post.metadata?.media_type || 'video';
   const { access_token, platform_user_id: igUserId } = account;
-
-  if (!post.video_url) throw new Error('Media is required for Instagram');
-
   const isImage = mediaType === 'image';
+  const isVideo = mediaType === 'video';
 
-  await p('uploading', `Creating Instagram ${isImage ? 'image' : 'reel'}...`);
-  const containerUrl = new URL(`https://graph.facebook.com/v18.0/${igUserId}/media`);
+  if (!fileBuffer) throw new Error('Media data is required for Instagram');
+
+  // Step 1: Create container
+  await p('uploading', `Creating Instagram ${isImage ? 'image' : 'reel'} container...`);
+  const containerUrl = new URL(`${FB_HOST}/${FB_API_VERSION}/${igUserId}/media`);
   containerUrl.searchParams.set('access_token', access_token);
 
   if (isImage) {
-    containerUrl.searchParams.set('image_url', post.video_url);
+    // Images still need a public URL for now — upload via resumable isn't available for images
+    // Keep image_url param, but we embed the bytes via the container creation
+    // Actually, Instagram's image API still requires image_url (public URL)
+    // For images, we could upload to a temp location or use a different approach
+    throw new Error('Image posts are not supported in direct mode yet');
   } else {
     containerUrl.searchParams.set('media_type', 'REELS');
-    containerUrl.searchParams.set('video_url', post.video_url);
+    containerUrl.searchParams.set('upload_type', 'resumable');
+    containerUrl.searchParams.set('caption', post.caption || '');
   }
-  containerUrl.searchParams.set('caption', post.caption || '');
 
   const containerRes = await fetch(containerUrl.toString(), { method: 'POST' });
   if (!containerRes.ok) {
@@ -28,12 +37,38 @@ async function publishToInstagram(post, account, onProgress) {
   }
 
   const containerData = await containerRes.json();
-  console.log('[INSTAGRAM] Container created:', containerData.id);
+  const containerId = containerData.id;
+  console.log('[INSTAGRAM] Container created:', containerId);
+
+  // Step 2: Upload video binary to rupload.facebook.com
+  await p('uploading', `Uploading video to Instagram (${(fileBuffer.length / 1024 / 1024).toFixed(1)} MB)...`);
+  const uploadUrl = `${RUPLOAD_HOST}/ig-api-upload/${FB_API_VERSION}/${containerId}`;
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `OAuth ${access_token}`,
+      'offset': '0',
+      'file_size': fileBuffer.length.toString(),
+    },
+    body: fileBuffer,
+  });
+
+  if (!uploadRes.ok) {
+    const errText = await uploadRes.text();
+    throw new Error('Instagram upload failed: ' + errText);
+  }
+
+  const uploadResult = await uploadRes.json();
+  console.log('[INSTAGRAM] Upload result:', uploadResult);
+
+  if (!uploadResult.success) {
+    throw new Error('Instagram upload failed: ' + JSON.stringify(uploadResult));
+  }
 
   await p('processing', 'Instagram is processing your media...');
   return {
     status: 'pending',
-    container_id: containerData.id,
+    container_id: containerId,
     note: 'Instagram is processing your video...',
   };
 }
@@ -65,7 +100,7 @@ async function completeInstagram(postId, userId) {
   let isReady = false;
   for (let i = 0; i < 25; i++) {
     await new Promise(r => setTimeout(r, 1000));
-    const statusUrl = new URL(`https://graph.facebook.com/v18.0/${containerId}`);
+    const statusUrl = new URL(`${FB_HOST}/${FB_API_VERSION}/${containerId}`);
     statusUrl.searchParams.set('fields', 'status_code,status');
     statusUrl.searchParams.set('access_token', access_token);
     const statusData = await fetch(statusUrl.toString()).then(r => r.json());
@@ -80,7 +115,7 @@ async function completeInstagram(postId, userId) {
   if (!isReady) return { status: 'pending', note: 'Still processing' };
 
   // Publish
-  const publishUrl = new URL(`https://graph.facebook.com/v18.0/${igUserId}/media_publish`);
+  const publishUrl = new URL(`${FB_HOST}/${FB_API_VERSION}/${igUserId}/media_publish`);
   publishUrl.searchParams.set('access_token', access_token);
   publishUrl.searchParams.set('creation_id', containerId);
   const publishRes = await fetch(publishUrl.toString(), { method: 'POST' });

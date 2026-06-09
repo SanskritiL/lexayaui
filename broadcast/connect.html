@@ -303,7 +303,7 @@
             const { data: accounts } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
-                .eq('customer_email', currentUser.email);
+                .eq('user_id', currentUser.id);
 
             connectedAccounts = accounts || [];
 
@@ -515,7 +515,7 @@
             const { error } = await supabaseClient
                 .from('connected_accounts')
                 .delete()
-                .eq('customer_email', currentUser.email)
+                .eq('user_id', currentUser.id)
                 .eq('platform', platform);
 
             if (error) {

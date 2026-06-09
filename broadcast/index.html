@@ -306,7 +306,7 @@
             const { error } = await supabaseClient
                 .from('connected_accounts')
                 .delete()
-                .eq('customer_email', currentUser.email)
+                .eq('user_id', currentUser.id)
                 .eq('platform', platform);
 
             if (error) {
@@ -333,7 +333,7 @@
             const { data: accounts, error } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
-                .eq('customer_email', currentUser.email);
+                .eq('user_id', currentUser.id);
 
             if (error) {
                 console.warn('Could not load accounts (no session?):', error.message);
@@ -444,7 +444,7 @@
             const { data: posts, error } = await supabaseClient
                 .from('posts')
                 .select('*')
-                .eq('customer_email', currentUser.email)
+                .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false })
                 .limit(3);
 

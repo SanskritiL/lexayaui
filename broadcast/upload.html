@@ -502,7 +502,7 @@
             const { data: accounts, error } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
-                .eq('customer_email', currentUser.email);
+                .eq('user_id', currentUser.id);
             if (error) console.warn('Could not load accounts:', error.message);
             connectedAccounts = accounts || [];
             updatePlatformCheckboxes();
@@ -762,31 +762,13 @@
                 let metadata = { media_type: selectedMediaType };
                 const isImage = selectedMediaType === 'image';
                 const isVideo = selectedMediaType === 'video';
-                const needsR2Upload = !!selectedFile;
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 const authToken = session?.access_token;
 
                 publishBtn.textContent = 'Creating post...';
-                const uploadPromises = [];
-
-                if (selectedFile && videoThumbnailBlob) {
-                    const thumbPromise = (async () => {
-                        const thumbFileName = `${currentUser.email || 'unknown'}/${Date.now()}_thumb.jpg`;
-                        const { error: thumbError } = await supabaseClient.storage
-                            .from('videos')
-                            .upload(thumbFileName, videoThumbnailBlob, { contentType: 'image/jpeg' });
-                        if (!thumbError) {
-                            const { data: { publicUrl } } = supabaseClient.storage.from('videos').getPublicUrl(thumbFileName);
-                            thumbnailUrl = publicUrl;
-                        }
-                    })();
-                    uploadPromises.push(thumbPromise);
-                }
-
-                if (uploadPromises.length > 0) await Promise.all(uploadPromises);
 
                 const postData = {
-                    customer_email: currentUser.email,
+                    user_id: currentUser.id,
                     video_url: null,
                     thumbnail_url: thumbnailUrl,
                     caption: caption,

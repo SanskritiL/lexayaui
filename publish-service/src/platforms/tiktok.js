@@ -1,8 +1,12 @@
-async function publishToTikTok(post, account, supabase, onProgress) {
+async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with TikTok...');
   console.log('[TIKTOK] Starting publish...');
-  if (!post.video_url) throw new Error('No video available for TikTok');
+
+  const videoBuffer = fileBuffer;
+  if (!videoBuffer) throw new Error('No video data available for TikTok');
+  const videoSize = videoBuffer.length;
+  console.log('[TIKTOK] Video size:', (videoSize / 1024 / 1024).toFixed(2), 'MB');
 
   let accessToken = account.access_token;
 
@@ -34,17 +38,19 @@ async function publishToTikTok(post, account, supabase, onProgress) {
     }
   }
 
-  await p('downloading', 'Downloading video from storage...');
-  console.log('[TIKTOK] Downloading video:', post.video_url);
-  const videoFetch = await fetch(post.video_url);
-  if (!videoFetch.ok) throw new Error('Failed to fetch video from storage');
-  const videoBuffer = Buffer.from(await videoFetch.arrayBuffer());
-  const videoSize = videoBuffer.length;
-  console.log('[TIKTOK] Video size:', (videoSize / 1024 / 1024).toFixed(2), 'MB');
-
   const TARGET_CHUNK = 10 * 1024 * 1024;
-  const chunkSize = videoSize <= TARGET_CHUNK ? videoSize : TARGET_CHUNK;
-  const totalChunks = Math.ceil(videoSize / chunkSize);
+  let chunkSize, totalChunks;
+  if (videoSize <= TARGET_CHUNK) {
+    chunkSize = videoSize;
+    totalChunks = 1;
+  } else {
+    chunkSize = TARGET_CHUNK;
+    totalChunks = Math.floor(videoSize / chunkSize);
+    if (totalChunks < 2) {
+      chunkSize = videoSize;
+      totalChunks = 1;
+    }
+  }
 
   await p('initializing', 'Initializing TikTok upload...');
   const initRes = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {

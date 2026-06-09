@@ -267,19 +267,20 @@ body {
 
 .post-item {
     display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    border: 2px solid var(--border);
-    border-radius: 10px;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
     align-items: center;
 }
 
 .post-thumbnail {
-    width: 80px;
-    height: 80px;
+    width: 28px;
+    height: 28px;
     background: var(--border);
     border-radius: 8px;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .post-thumbnail video,
@@ -294,19 +295,19 @@ body {
 }
 
 .post-info h3 {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     font-weight: 500;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
 .post-meta {
     display: flex;
-    gap: 1rem;
-    font-size: 0.8rem;
+    gap: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-light);
 }
 
@@ -320,10 +321,10 @@ body {
 }
 
 .post-status {
-    padding: 0.25rem 0.75rem;
+    padding: 0.125rem 0.5rem;
     border-radius: 1rem;
-    font-size: 0.75rem;
-    font-weight: 500;
+    font-size: 0.625rem;
+    font-weight: 600;
 }
 
 .post-status.published {

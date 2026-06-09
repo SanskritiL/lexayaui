@@ -1,10 +1,14 @@
-async function publishToYouTube(post, account, supabase, onProgress) {
+async function publishToYouTube(post, account, supabase, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with YouTube...');
   console.log('[YOUTUBE] Starting publish...');
-  if (post.metadata?.media_type !== 'video' || !post.video_url) {
+  if (post.metadata?.media_type !== 'video') {
     return { status: 'error', error: 'YouTube Shorts requires a video' };
   }
+
+  const videoBytes = fileBuffer;
+  if (!videoBytes) throw new Error('No video data available for YouTube');
+  console.log('[YOUTUBE] Video size:', (videoBytes.length / 1024 / 1024).toFixed(2), 'MB');
 
   let { access_token, refresh_token } = account;
 
@@ -19,14 +23,8 @@ async function publishToYouTube(post, account, supabase, onProgress) {
     }).eq('id', account.id);
   }
 
-  await p('downloading', 'Downloading video from storage...');
-  console.log('[YOUTUBE] Downloading video...');
-  const videoRes = await fetch(post.video_url);
-  if (!videoRes.ok) throw new Error('Failed to download video from storage');
-  const videoBytes = Buffer.from(await videoRes.arrayBuffer());
-  console.log('[YOUTUBE] Video size:', (videoBytes.length / 1024 / 1024).toFixed(2), 'MB');
-
   let description = post.caption || '';
+  description = description.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\u200B-\u200F\u2028-\u202F\uFEFF]/g, '').trim();
   if (!description.toLowerCase().includes('#shorts')) description += '\n\n#Shorts';
 
   const firstLine = post.caption?.split('\n').find(l => l.trim())?.trim() || '';
