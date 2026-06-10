@@ -63,32 +63,26 @@ async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access
   const videoBuffer = fileBuffer;
   if (!videoBuffer) throw new Error('No video data available');
 
-  await p('initializing', 'Registering upload with LinkedIn...');
-  const registerRes = await fetch('https://api.linkedin.com/rest/assets?action=registerUpload', {
+  await p('initializing', 'Initializing video upload with LinkedIn...');
+  const initRes = await fetch('https://api.linkedin.com/rest/videos?action=initializeUpload', {
     method: 'POST',
-    headers: {
-      ...headers,
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({
-      registerUploadRequest: {
-        recipes: ['urn:li:digitalmediaRecipe:feedshare-video'],
+      initializeUploadRequest: {
         owner: authorUrn,
-        serviceRelationships: [{
-          relationshipType: 'OWNER',
-          identifier: 'urn:li:userGeneratedContent',
-        }],
-        supportedUploadMechanism: ['SYNCHRONOUS_UPLOAD'],
+        fileSizeBytes: videoBuffer.length,
+        uploadCaptions: false,
+        uploadThumbnail: false,
       },
     }),
   });
 
-  if (!registerRes.ok) throw new Error('LinkedIn register upload failed: ' + (await registerRes.text()));
-  const registerData = await registerRes.json();
-  const uploadUrl = registerData.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl;
-  const assetUrn = registerData.value?.asset;
+  if (!initRes.ok) throw new Error('LinkedIn video upload init failed: ' + (await readLinkedInError(initRes)));
+  const initData = await initRes.json();
+  const uploadUrl = initData.value?.uploadInstructions?.[0]?.uploadUrl;
+  const videoUrn = initData.value?.video;
 
-  if (!uploadUrl || !assetUrn) throw new Error('Failed to get LinkedIn upload URL');
+  if (!uploadUrl || !videoUrn) throw new Error('Failed to get LinkedIn video upload URL');
 
   await p('uploading', 'Uploading video to LinkedIn...');
   const uploadRes = await fetch(uploadUrl, {
@@ -99,10 +93,10 @@ async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access
     },
     body: videoBuffer,
   });
-  if (!uploadRes.ok) throw new Error('LinkedIn video upload failed: ' + (await uploadRes.text()));
+  if (!uploadRes.ok) throw new Error('LinkedIn video upload failed: ' + (await readLinkedInError(uploadRes)));
 
   await p('publishing', 'Creating LinkedIn post...');
-  return createLinkedInVideoPost(headers, authorUrn, post, assetUrn);
+  return createLinkedInVideoPost(headers, authorUrn, post, videoUrn);
 }
 
 async function createLinkedInImagePost(headers, authorUrn, post, accessToken, onProgress, fileBuffer) {
@@ -112,27 +106,21 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken, on
   const imgBuffer = fileBuffer;
   if (!imgBuffer) throw new Error('No image data available');
 
-  await p('initializing', 'Registering image upload with LinkedIn...');
-  const registerRes = await fetch('https://api.linkedin.com/rest/assets?action=registerUpload', {
+  await p('initializing', 'Initializing image upload with LinkedIn...');
+  const initRes = await fetch('https://api.linkedin.com/rest/images?action=initializeUpload', {
     method: 'POST',
     headers,
     body: JSON.stringify({
-      registerUploadRequest: {
-        recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+      initializeUploadRequest: {
         owner: authorUrn,
-        serviceRelationships: [{
-          relationshipType: 'OWNER',
-          identifier: 'urn:li:userGeneratedContent',
-        }],
-        supportedUploadMechanism: ['SYNCHRONOUS_UPLOAD'],
       },
     }),
   });
-  if (!registerRes.ok) throw new Error('LinkedIn register image upload failed: ' + (await registerRes.text()));
-  const registerData = await registerRes.json();
-  const uploadUrl = registerData.value?.uploadMechanism?.['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest']?.uploadUrl;
-  const assetUrn = registerData.value?.asset;
-  if (!uploadUrl || !assetUrn) throw new Error('Failed to get LinkedIn image upload URL');
+  if (!initRes.ok) throw new Error('LinkedIn image upload init failed: ' + (await readLinkedInError(initRes)));
+  const initData = await initRes.json();
+  const uploadUrl = initData.value?.uploadUrl;
+  const imageUrn = initData.value?.image;
+  if (!uploadUrl || !imageUrn) throw new Error('Failed to get LinkedIn image upload URL');
 
   await p('uploading', 'Uploading image to LinkedIn...');
   const uploadRes = await fetch(uploadUrl, {
@@ -140,7 +128,7 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken, on
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/octet-stream' },
     body: imgBuffer,
   });
-  if (!uploadRes.ok) throw new Error('LinkedIn image upload failed: ' + (await uploadRes.text()));
+  if (!uploadRes.ok) throw new Error('LinkedIn image upload failed: ' + (await readLinkedInError(uploadRes)));
 
   await p('publishing', 'Creating LinkedIn post...');
   const postBody = {
@@ -148,7 +136,7 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken, on
     commentary: post.caption || '',
     visibility: 'PUBLIC',
     distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
-    content: { media: { id: assetUrn } },
+    content: { media: { id: imageUrn } },
     lifecycleState: 'PUBLISHED',
   };
 
@@ -158,6 +146,17 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken, on
   if (!res.ok) throw new Error('Failed to create LinkedIn image post: ' + (await res.text()));
 
   return { status: 'success', url: 'https://linkedin.com/feed/' };
+}
+
+async function readLinkedInError(res) {
+  const text = await res.text();
+  if (!text) return `HTTP ${res.status}`;
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.message || parsed.error_description || parsed.error || text;
+  } catch (e) {
+    return text;
+  }
 }
 
 async function createLinkedInTextPost(headers, authorUrn, post) {

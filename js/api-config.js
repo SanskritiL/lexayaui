@@ -1,7 +1,11 @@
 // API endpoints
-// Local dev with `serve` → API calls go to production Vercel (which rewrites to Cloud Run)
-// Local dev with `vercel dev` → change BASE_URL to '' to use local serverless functions
-const BASE_URL = '';
+// Production uses same-origin Vercel rewrites. Static local previews do not have
+// those rewrites, so send API calls to production unless BASE_URL is overridden.
+const BASE_URL = (() => {
+  if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
+  const isLocalStaticPreview = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+  return isLocalStaticPreview || window.location.protocol === 'file:' ? 'https://lexaya.io' : '';
+})();
 
 const API = {
   publishWithFile:    () => `${BASE_URL}/api/publish/publish/with-file`,

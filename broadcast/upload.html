@@ -1189,25 +1189,41 @@
             }
 
             if (!response.ok) {
-                let errorMsg = `HTTP ${response.status}`;
-                try {
-                    const body = await response.text();
-                    let parsed;
-                    try { parsed = JSON.parse(body); } catch (e) { parsed = null; }
-                    errorMsg = parsed?.error || parsed?.message || body || errorMsg;
-                } catch (e) {
-                    errorMsg = `HTTP ${response.status} (unable to read response body)`;
-                }
-                throw new Error(errorMsg);
+                throw new Error(await readPublishError(response));
             }
 
             let result;
             try {
                 result = await response.json();
             } catch (parseErr) {
-                throw new Error(`Invalid response from publish service: ${parseErr.message}`);
+                throw new Error(`Publish service returned an invalid response from ${response.url || 'the API route'}. Check that the publish API route is reachable.`);
             }
             return result;
+        }
+
+        async function readPublishError(response) {
+            const fallback = `Publish API failed with HTTP ${response.status}`;
+            let body = '';
+
+            try {
+                body = await response.text();
+            } catch (e) {
+                return `${fallback} and the response body could not be read.`;
+            }
+
+            if (!body) return fallback;
+
+            try {
+                const parsed = JSON.parse(body);
+                return parsed?.error || parsed?.message || fallback;
+            } catch (e) {
+                const looksLikeHtml = /^\s*<!doctype html/i.test(body) || /^\s*<html/i.test(body) || /<head[\s>]/i.test(body) || /<meta[\s>]/i.test(body);
+                if (looksLikeHtml) {
+                    return `${fallback}. The server returned an HTML page instead of JSON from ${response.url || 'the API route'}. This usually means the publish route is not configured for this host, or the request hit a fallback page.`;
+                }
+
+                return body.length > 300 ? `${body.slice(0, 300)}...` : body;
+            }
         }
 
         async function retryFailedPlatforms() {
