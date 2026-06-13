@@ -85,13 +85,27 @@
         .calendar-shell { display: grid; gap: 1rem; }
         .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.35rem; }
         .calendar-weekdays span { color: #6b7280; font-size: 0.68rem; font-weight: 900; text-transform: uppercase; text-align: center; }
-        .calendar-day { min-height: 86px; border: 1px solid #eef0ee; border-radius: 10px; background: #fff; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; }
+        .calendar-day { position: relative; min-height: 96px; border: 1px solid #eef0ee; border-radius: 10px; background: #fff; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+        .calendar-day:hover { border-color: #9fc6f5; background: #f7fbff; }
         .calendar-day.muted { background: #fbfbfa; color: #a0a7a3; }
+        .calendar-day.muted:hover { background: #f7fbff; color: #6b7280; }
         .calendar-day.today { border-color: #005bc2; box-shadow: inset 0 0 0 1px rgba(0, 91, 194, 0.16); }
         .day-number { font-size: 0.74rem; font-weight: 900; }
+        .day-head { display: flex; align-items: center; justify-content: space-between; gap: 0.35rem; }
+        .day-add { width: 22px; height: 22px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #005bc2; background: #eef5ff; border: 1px solid #d7e8ff; opacity: 0; transform: scale(0.92); transition: opacity 0.16s ease, transform 0.16s ease, background 0.16s ease; }
+        .day-add .material-symbols-outlined { font-size: 1rem; }
+        .calendar-day:hover .day-add, .calendar-day:focus-visible .day-add, .calendar-day.has-posts .day-add { opacity: 1; transform: scale(1); }
+        .calendar-day:hover .day-add { background: #005bc2; color: #fff; border-color: #005bc2; }
+        .calendar-day.schedule-disabled { cursor: default; }
+        .calendar-day.schedule-disabled .day-add { display: none; }
+        .calendar-day.schedule-disabled:hover { border-color: #eef0ee; background: #fff; }
+        .calendar-day.schedule-disabled.muted:hover { background: #fbfbfa; color: #a0a7a3; }
         .calendar-event { display: block; border-radius: 6px; background: #eef5ff; color: #005bc2; padding: 0.22rem 0.35rem; font-size: 0.64rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .schedule-list { display: grid; gap: 0.55rem; margin-top: 1rem; }
-        .schedule-row { border: 1px solid #eef0ee; border-radius: 10px; padding: 0.75rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.75rem; align-items: center; }
+        .schedule-list { display: grid; gap: 0.7rem; margin-top: 1rem; }
+        .schedule-row { border: 1px solid #eef0ee; border-radius: 10px; padding: 0.7rem; display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 0.75rem; align-items: center; text-decoration: none; color: inherit; }
+        .schedule-row:hover { border-color: #9fc6f5; background: #f7fbff; }
+        .schedule-thumb { width: 56px; height: 56px; border-radius: 9px; background: #eef0ee; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #7b837f; }
+        .schedule-thumb img, .schedule-thumb video { width: 100%; height: 100%; object-fit: cover; }
         .schedule-title { font-size: 0.84rem; font-weight: 900; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .schedule-date { font-size: 0.72rem; color: #6b7280; margin-top: 0.15rem; }
         .platform-dots { display: flex; gap: 0.25rem; }
@@ -108,8 +122,12 @@
             .add-menu { left: 0; right: auto; width: min(100%, 240px); }
             .calendar-actions { width: 100%; justify-content: stretch; }
             .calendar-actions a, .calendar-actions button { flex: 1; justify-content: center; }
-            .calendar-day { min-height: 64px; padding: 0.38rem; }
+            .calendar-day { min-height: 70px; padding: 0.38rem; }
+            .day-add { opacity: 1; width: 20px; height: 20px; }
             .calendar-event { display: none; }
+            .schedule-row { grid-template-columns: 48px minmax(0, 1fr); }
+            .schedule-row .platform-dots { grid-column: 2; }
+            .schedule-thumb { width: 48px; height: 48px; }
         }
     </style>
 </head>
@@ -165,7 +183,7 @@
                         <p class="panel-meta" id="calendar-summary">Loading scheduled posts...</p>
                     </div>
                     <div class="calendar-actions">
-                        <a class="btn-secondary" href="/broadcast/upload.html?scheduled=true">
+                        <a class="btn-secondary" href="/broadcast/upload.html?scheduled=true" id="schedule-post-link" style="display: none;">
                             <span class="material-symbols-outlined text-base">event</span>
                             Schedule post
                         </a>
@@ -202,6 +220,7 @@
         let currentUser = null;
         let currentSession = null;
         let scheduledPosts = [];
+        const SCHEDULING_ENABLED = false;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const oauthResult = checkOAuthCallback();
@@ -381,10 +400,13 @@
                 const key = dateKey(cellDate);
                 const dayPosts = posts.filter(post => dateKey(new Date(post.scheduled_at)) === key);
                 cells.push(`
-                    <div class="calendar-day ${cellDate.getMonth() === month ? '' : 'muted'} ${key === todayKey ? 'today' : ''}">
-                        <span class="day-number">${cellDate.getDate()}</span>
-                        ${dayPosts.slice(0, 2).map(post => `<span class="calendar-event">${escapeHtml(post.caption || 'Scheduled post')}</span>`).join('')}
-                    </div>
+                    <button type="button" class="calendar-day ${cellDate.getMonth() === month ? '' : 'muted'} ${key === todayKey ? 'today' : ''} ${dayPosts.length ? 'has-posts' : ''} ${SCHEDULING_ENABLED ? '' : 'schedule-disabled'}" ${SCHEDULING_ENABLED ? `onclick="openScheduleComposer('${key}')"` : ''} title="${SCHEDULING_ENABLED ? `Schedule a post on ${key}` : 'Scheduling is currently off'}">
+                        <span class="day-head">
+                            <span class="day-number">${cellDate.getDate()}</span>
+                            <span class="day-add" aria-hidden="true"><span class="material-symbols-outlined">add</span></span>
+                        </span>
+                        ${dayPosts.slice(0, 2).map(post => `<span class="calendar-event">${escapeHtml(formatEventTime(post.scheduled_at))} ${escapeHtml(post.caption || 'Scheduled post')}</span>`).join('')}
+                    </button>
                 `);
             }
             grid.innerHTML = cells.join('');
@@ -398,14 +420,17 @@
                     <div class="empty-state">
                         <span class="material-symbols-outlined">event_available</span>
                         <p class="font-extrabold text-on-surface mb-1">Nothing scheduled</p>
-                        <p class="text-sm">Use Schedule post to pick a channel, caption, and publish time.</p>
+                        <p class="text-sm">${SCHEDULING_ENABLED ? 'Use Schedule post to pick a channel, caption, and publish time.' : 'Scheduled publishing is currently off.'}</p>
                     </div>
                 `;
                 return;
             }
 
             list.innerHTML = posts.slice(0, 5).map(post => `
-                <div class="schedule-row">
+                <a class="schedule-row" href="/broadcast/scheduled.html" title="View scheduled post details">
+                    <div class="schedule-thumb">
+                        ${renderPostThumb(post)}
+                    </div>
                     <div class="min-w-0">
                         <div class="schedule-title">${escapeHtml(post.caption || 'Scheduled post')}</div>
                         <div class="schedule-date">${formatScheduledDate(post.scheduled_at)}</div>
@@ -415,8 +440,22 @@
                             <span class="platform-dot ${escapeHtml(platform)}" title="${escapeHtml(PLATFORM_NAMES[platform] || platform)}">${PLATFORM_ICONS[platform] || '<i class="fas fa-link"></i>'}</span>
                         `).join('')}
                     </div>
-                </div>
+                </a>
             `).join('');
+        }
+
+        function openScheduleComposer(date) {
+            window.location.href = `/broadcast/upload.html?scheduled=true&date=${encodeURIComponent(date)}`;
+        }
+
+        function renderPostThumb(post) {
+            const mediaType = post.metadata?.media_type || '';
+            const thumb = post.thumbnail_url || '';
+            const media = post.video_url || '';
+            if (thumb) return `<img src="${escapeHtml(thumb)}" alt="">`;
+            if (mediaType === 'image' && media) return `<img src="${escapeHtml(media)}" alt="">`;
+            if (mediaType === 'video' && media) return `<video src="${escapeHtml(media)}" muted preload="metadata"></video>`;
+            return '<span class="material-symbols-outlined">article</span>';
         }
 
         function getSafeAvatarUrl(url) {
@@ -440,6 +479,10 @@
             const date = new Date(dateStr);
             return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
                 ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        }
+
+        function formatEventTime(dateStr) {
+            return new Date(dateStr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         }
 
         function escapeHtml(value) {

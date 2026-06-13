@@ -260,21 +260,70 @@
             padding: 0.75rem; background: #f3f4f2;
             border-radius: 0.5rem; border: 1px solid #afb3b0;
         }
+        .compose-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.92fr);
+            gap: 1rem;
+            align-items: start;
+        }
+        .compose-main, .compose-side { display: grid; gap: 1rem; }
+        .compose-panel {
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 18px 40px rgba(47, 51, 50, 0.05);
+        }
+        .compose-panel h2 { margin-bottom: 0.8rem; }
+        .compose-helper { color: #6b7280; font-size: 0.78rem; margin-bottom: 0.85rem; }
+        .compose-actions {
+            position: sticky;
+            bottom: 1rem;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 0.85rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.65rem;
+            box-shadow: 0 18px 40px rgba(47, 51, 50, 0.08);
+        }
+        #upload-zone { min-height: 78px; display: grid; grid-template-columns: 46px minmax(0, 1fr); align-items: center; gap: 0.8rem; padding: 0.8rem 0.9rem; text-align: left; }
+        .upload-plus { width: 46px; height: 46px; border-radius: 12px; background: #eef5ff; color: #005bc2; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .upload-plus .material-symbols-outlined { font-size: 1.55rem; }
+        #upload-zone:hover .upload-plus, #upload-zone.dragover .upload-plus { background: #005bc2; color: #fff; }
+        #video-preview-container video, #image-preview-container img { max-height: 260px; }
+        .youtube-fields { display: none; }
+        .youtube-fields.visible { display: block; }
+        @media (max-width: 980px) {
+            .compose-grid { grid-template-columns: 1fr; }
+            .compose-actions { position: static; }
+        }
+        @media (max-width: 640px) {
+            .compose-panel { padding: 0.85rem; }
+            #upload-zone { min-height: 72px; padding: 0.75rem; }
+            .compose-actions { flex-direction: column-reverse; }
+            .compose-actions button { width: 100%; }
+        }
     </style>
 </head>
 <body class="bg-surface text-on-surface font-body antialiased" data-page="library" data-title="Create Post" data-subtitle="Library">
     <div id="app-shell"></div>
 
     <div data-content style="display: none;">
+        <div class="compose-grid">
+            <div class="compose-main">
         <!-- Media Upload -->
-        <section class="mb-10">
-            <h2 class="text-headline-sm mb-6">Upload Media</h2>
-            <p class="text-sm text-on-surface-variant mb-6">Images: JPG, PNG, WebP &nbsp;|&nbsp; Videos: MP4, MOV &nbsp;|&nbsp; Max: 500MB</p>
+        <section class="compose-panel">
+            <h2 class="text-headline-sm">Media</h2>
+            <p class="compose-helper">Images: JPG, PNG, WebP &nbsp;|&nbsp; Videos: MP4, MOV &nbsp;|&nbsp; Max: 500MB</p>
 
-            <div id="upload-zone" class="upload-zone-dashed rounded-xl p-12 text-center cursor-pointer">
-                <span class="material-symbols-outlined text-5xl text-outline mb-4" id="upload-icon">cloud_upload</span>
-                <h3 class="text-lg font-bold text-on-surface mb-2" id="upload-title">Drop your photo or video here</h3>
-                <p class="text-sm text-on-surface-variant" id="upload-subtitle">or click to browse</p>
+            <div id="upload-zone" class="upload-zone-dashed rounded-xl cursor-pointer">
+                <span class="upload-plus"><span class="material-symbols-outlined" id="upload-icon">add</span></span>
+                <div class="min-w-0">
+                    <h3 class="text-sm font-extrabold text-on-surface truncate" id="upload-title">Add media</h3>
+                    <p class="text-xs text-on-surface-variant" id="upload-subtitle">Click or drop a photo/video</p>
+                </div>
                 <input type="file" id="media-input" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/mov" hidden>
             </div>
 
@@ -304,15 +353,34 @@
         </section>
 
         <!-- Caption -->
-        <section class="mb-10">
-            <h2 class="text-headline-sm mb-6">Caption</h2>
+        <section class="compose-panel">
+            <h2 class="text-headline-sm">Caption</h2>
             <textarea id="caption" class="form-input" placeholder="Write your caption here... Include hashtags at the end!"></textarea>
             <p class="text-xs text-on-surface-variant mt-2"><span id="char-count">0</span>/2200 characters</p>
         </section>
 
+        <section class="compose-panel youtube-fields" id="youtube-fields">
+            <h2 class="text-headline-sm">YouTube Details</h2>
+            <p class="compose-helper">Used only when a YouTube channel is selected.</p>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-on-surface mb-2" for="youtube-title">Title</label>
+                    <input type="text" id="youtube-title" class="form-input" maxlength="100" placeholder="Shorts title">
+                    <p class="text-xs text-on-surface-variant mt-1"><span id="youtube-title-count">0</span>/100 characters</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-on-surface mb-2" for="youtube-description">Description</label>
+                    <textarea id="youtube-description" class="form-input" placeholder="Description for YouTube. #Shorts is added automatically if missing."></textarea>
+                </div>
+            </div>
+        </section>
+            </div>
+
+            <aside class="compose-side">
+
         <!-- Platforms -->
-        <section class="mb-10">
-            <div class="flex items-center justify-between mb-6">
+        <section class="compose-panel">
+            <div class="flex items-center justify-between mb-3">
                 <h2 class="text-headline-sm">Channels</h2>
             </div>
             <p class="platform-help">Choose the exact connected channels that should receive this post.</p>
@@ -333,8 +401,8 @@
         </section>
 
         <!-- Schedule -->
-        <section class="mb-10">
-            <h2 class="text-headline-sm mb-6">Schedule</h2>
+        <section class="compose-panel" id="schedule-panel" style="display: none;">
+            <h2 class="text-headline-sm">Schedule</h2>
             <label class="flex items-center gap-3 cursor-pointer">
                 <input type="checkbox" id="schedule-toggle" class="w-5 h-5 accent-primary rounded">
                 <span class="text-sm font-semibold text-on-surface">Schedule for later</span>
@@ -345,12 +413,14 @@
         </section>
 
         <!-- Actions -->
-        <section class="flex items-center gap-4 justify-end border-t border-outline-variant/10 pt-8">
+        <section class="compose-actions">
             <button type="button" id="save-draft" class="px-8 py-3.5 rounded-xl border border-outline-variant text-sm font-bold text-on-surface hover:bg-surface-container transition-all">Save as Draft</button>
             <button type="button" id="publish-btn" disabled class="px-10 py-3.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:bg-primary-dim transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-primary/20">
                 Publish Now
             </button>
         </section>
+            </aside>
+        </div>
     </div>
 
     <!-- Publishing Progress Modal -->
@@ -471,6 +541,7 @@
         let connectedAccounts = [];
         let currentUser = null;
         let videoThumbnailBlob = null;
+        const SCHEDULING_ENABLED = false;
         const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
 
         let lastPublishState = { postId: null, failedPlatforms: [], platformResults: {} };
@@ -495,6 +566,7 @@
 
             await loadConnectedAccounts();
             setupEventListeners();
+            applySchedulingAvailability();
             applyInitialScheduleState();
         });
 
@@ -679,6 +751,7 @@
                 const selectedCount = getSelectedPublishTargets().length;
                 selectedCountEl.textContent = `${selectedCount} selected`;
             }
+            syncYouTubeFields();
             updatePublishButton();
         }
 
@@ -703,6 +776,14 @@
                     selectAll.disabled = enabledInputs.length === 0;
                 }
             });
+            syncYouTubeFields();
+        }
+
+        function syncYouTubeFields() {
+            const fields = document.getElementById('youtube-fields');
+            if (!fields) return;
+            const hasYouTube = getSelectedPublishTargets().some(target => target.platform === 'youtube');
+            fields.classList.toggle('visible', hasYouTube);
         }
 
         function setupEventListeners() {
@@ -731,6 +812,13 @@
                 updatePublishButton();
             });
 
+            const youtubeTitle = document.getElementById('youtube-title');
+            const youtubeTitleCount = document.getElementById('youtube-title-count');
+            youtubeTitle?.addEventListener('input', () => {
+                if (youtubeTitleCount) youtubeTitleCount.textContent = youtubeTitle.value.length;
+                updatePublishButton();
+            });
+
             document.getElementById('platforms-select').addEventListener('change', (e) => {
                 if (e.target.name !== 'platformAccounts') return;
                 refreshChannelSelectionSummary();
@@ -749,6 +837,7 @@
             });
 
             document.getElementById('schedule-toggle').addEventListener('change', () => {
+                if (!SCHEDULING_ENABLED) return;
                 document.getElementById('schedule-fields').style.display =
                     document.getElementById('schedule-toggle').checked ? 'block' : 'none';
                 updatePublishButton();
@@ -772,7 +861,20 @@
             document.getElementById('analyze-hook-btn')?.addEventListener('click', analyzeHook);
         }
 
+        function applySchedulingAvailability() {
+            const panel = document.getElementById('schedule-panel');
+            const toggle = document.getElementById('schedule-toggle');
+            const fields = document.getElementById('schedule-fields');
+            if (panel) panel.style.display = SCHEDULING_ENABLED ? 'block' : 'none';
+            if (toggle) {
+                toggle.checked = false;
+                toggle.disabled = !SCHEDULING_ENABLED;
+            }
+            if (fields) fields.style.display = 'none';
+        }
+
         function applyInitialScheduleState() {
+            if (!SCHEDULING_ENABLED) return;
             const params = new URLSearchParams(window.location.search);
             if (params.get('scheduled') !== 'true') return;
 
@@ -782,6 +884,12 @@
 
             toggle.checked = true;
             fields.style.display = 'block';
+            const dateParam = params.get('date');
+            const datetimeParam = params.get('datetime');
+            const input = document.getElementById('schedule-date');
+            if (input && (datetimeParam || dateParam)) {
+                input.value = datetimeParam || `${dateParam}T09:00`;
+            }
             updatePublishButton();
         }
 
@@ -810,7 +918,7 @@
 
             document.getElementById('upload-icon').textContent = isVideo ? 'videocam' : 'photo_library';
             document.getElementById('upload-title').textContent = file.name;
-            document.getElementById('upload-subtitle').textContent = 'Click to change file';
+            document.getElementById('upload-subtitle').textContent = `${sizeMB.toFixed(2)} MB · click to replace`;
 
             if (isImage) {
                 ip.src = URL.createObjectURL(file);
@@ -831,9 +939,9 @@
             selectedMediaType = null;
             videoThumbnailBlob = null;
 
-            document.getElementById('upload-icon').textContent = 'cloud_upload';
-            document.getElementById('upload-title').textContent = 'Drop your photo or video here';
-            document.getElementById('upload-subtitle').textContent = 'or click to browse';
+            document.getElementById('upload-icon').textContent = 'add';
+            document.getElementById('upload-title').textContent = 'Add media';
+            document.getElementById('upload-subtitle').textContent = 'Click or drop a photo/video';
             document.getElementById('video-preview-container').style.display = 'none';
             document.getElementById('image-preview-container').style.display = 'none';
             document.getElementById('video-preview').src = '';
@@ -861,13 +969,16 @@
             const caption = document.getElementById('caption').value.trim();
             const textFriendlyPlatforms = ['linkedin'];
             const onlyTextFriendly = selectedTargets.every(target => textFriendlyPlatforms.includes(target.platform));
+            const needsYouTube = selectedTargets.some(target => target.platform === 'youtube');
+            const youtubeTitle = document.getElementById('youtube-title')?.value.trim() || '';
 
             const isValid = selectedTargets.length > 0 &&
-                (selectedFile || (onlyTextFriendly && caption.length > 0));
+                (selectedFile || (onlyTextFriendly && caption.length > 0)) &&
+                (!needsYouTube || youtubeTitle.length > 0);
 
             btn.disabled = !isValid;
             const scheduleToggle = document.getElementById('schedule-toggle');
-            if (scheduleToggle.checked) {
+            if (SCHEDULING_ENABLED && scheduleToggle.checked) {
                 btn.textContent = 'Schedule Post';
             } else {
                 btn.textContent = selectedFile ? 'Publish Now' : 'Post Text';
@@ -893,7 +1004,10 @@
                 return acc;
             }, {});
             const scheduleToggle = document.getElementById('schedule-toggle');
+            const shouldSchedule = SCHEDULING_ENABLED && scheduleToggle.checked;
             const scheduleDate = document.getElementById('schedule-date').value;
+            const youtubeTitle = document.getElementById('youtube-title')?.value.trim() || '';
+            const youtubeDescription = document.getElementById('youtube-description')?.value.trim() || '';
 
             if (!isDraft && selectedTargets.length === 0) {
                 alert('Please select at least one account');
@@ -917,6 +1031,10 @@
                 alert('YouTube Shorts requires a video. Please upload a video or deselect YouTube.');
                 return;
             }
+            if (needsYouTube && !youtubeTitle && !isDraft) {
+                alert('YouTube requires a title.');
+                return;
+            }
             if (needsInstagram && !selectedFile && !isDraft) {
                 alert('Instagram requires an image or video.');
                 return;
@@ -930,7 +1048,7 @@
             publishBtn.disabled = true;
             publishBtn.textContent = 'Preparing...';
 
-            if (!isDraft && !scheduleToggle.checked) {
+            if (!isDraft && !shouldSchedule) {
                 showPublishingModal(selectedPlatforms);
                 selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Preparing...', 'preparing'));
             }
@@ -938,30 +1056,44 @@
             try {
                 let mediaUrl = null;
                 let thumbnailUrl = null;
-                let metadata = { media_type: selectedMediaType };
+                let metadata = {
+                    media_type: selectedMediaType,
+                    youtube_title: youtubeTitle,
+                    youtube_description: youtubeDescription,
+                };
                 const isImage = selectedMediaType === 'image';
                 const isVideo = selectedMediaType === 'video';
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 const authToken = session?.access_token;
+                if (!authToken) throw new Error('No valid session. Please login again.');
+
+                if (selectedFile) {
+                    publishBtn.textContent = 'Uploading media...';
+                    const upload = await uploadMediaToR2(selectedFile, authToken);
+                    mediaUrl = upload.publicUrl;
+                    metadata.r2_key = upload.key;
+                    metadata.file_size_bytes = selectedFile.size;
+                    metadata.content_type = selectedFile.type;
+                }
 
                 publishBtn.textContent = 'Creating post...';
 
                 const postData = {
                     user_id: currentUser.id,
-                    video_url: null,
+                    video_url: mediaUrl,
                     thumbnail_url: thumbnailUrl,
                     caption: caption,
                     platforms: selectedPlatforms,
-                    status: isDraft ? 'draft' : (scheduleToggle.checked ? 'scheduled' : 'publishing'),
-                    scheduled_at: scheduleToggle.checked ? scheduleDate : null,
+                    status: isDraft ? 'draft' : (shouldSchedule ? 'scheduled' : 'publishing'),
+                    scheduled_at: shouldSchedule ? scheduleDate : null,
                     platform_results: {},
-                    metadata: { media_type: selectedMediaType, account_selections: accountSelections }
+                    metadata: { ...metadata, media_type: selectedMediaType, account_selections: accountSelections }
                 };
 
                 const { data: post, error: postError } = await supabaseClient.from('posts').insert(postData).select().single();
                 if (postError) throw postError;
 
-                if (!isDraft && !scheduleToggle.checked) {
+                if (!isDraft && !shouldSchedule) {
                     showPublishingModal(selectedPlatforms);
                     selectedPlatforms.forEach(p => updatePlatformProgress(p, 'publishing', 'Publishing...'));
 
@@ -1065,8 +1197,8 @@
                     return;
                 }
 
-                alert(isDraft ? 'Draft saved!' : (scheduleToggle.checked ? 'Post scheduled!' : 'Post published!'));
-                window.location.href = './';
+                alert(isDraft ? 'Draft saved!' : (shouldSchedule ? 'Post scheduled!' : 'Post published!'));
+                window.location.href = shouldSchedule ? './scheduled.html' : './';
 
             } catch (error) {
                 console.error('[PUBLISH ERROR]', error);
@@ -1340,31 +1472,18 @@
         }
 
         async function publishToAllPlatforms(postId, platforms) {
-            // Text-only or no-file publish (uses existing post.video_url or no media)
+            // Media is already uploaded directly to R2; publish service receives only post metadata.
             const { data: { session } } = await supabaseClient.auth.getSession();
             const authToken = session?.access_token;
             if (!authToken) throw new Error('No valid session. Please login again.');
 
             let response;
             try {
-                if (selectedFile) {
-                    // Direct file upload + publish in one multipart request
-                    const formData = new FormData();
-                    formData.append('postId', postId);
-                    formData.append('platforms', JSON.stringify(platforms));
-                    formData.append('file', selectedFile);
-                    response = await fetch(API.publishWithFile(), {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${authToken}` },
-                        body: formData
-                    });
-                } else {
-                    response = await fetch(API.publish(), {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                        body: JSON.stringify({ postId, platforms })
-                    });
-                }
+                response = await fetch(API.publish(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({ postId, platforms })
+                });
             } catch (netErr) {
                 throw new Error(`Network error — could not reach publish service: ${netErr.message}`);
             }
@@ -1380,6 +1499,37 @@
                 throw new Error(`Publish service returned an invalid response from ${response.url || 'the API route'}. Check that the publish API route is reachable.`);
             }
             return result;
+        }
+
+        async function uploadMediaToR2(file, authToken) {
+            const presignRes = await fetch(API.r2Upload(), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                body: JSON.stringify({
+                    fileName: file.name,
+                    contentType: file.type,
+                    fileSizeBytes: file.size,
+                }),
+            });
+
+            if (!presignRes.ok) {
+                throw new Error(await readPublishError(presignRes));
+            }
+
+            const upload = await presignRes.json();
+            const putRes = await fetch(upload.uploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': file.type,
+                },
+                body: file,
+            });
+
+            if (!putRes.ok) {
+                throw new Error(`R2 upload failed: HTTP ${putRes.status}`);
+            }
+
+            return upload;
         }
 
         async function readPublishError(response) {

@@ -80,7 +80,7 @@ CREATE POLICY "Users can delete own posts" ON posts
 -- Go to Storage > Create new bucket
 -- Name: videos
 -- Public: Yes (or use signed URLs)
--- File size limit: 500MB
+-- File size limit: 500MB when using R2 direct uploads
 -- Allowed MIME types: video/mp4, video/quicktime, video/webm
 
 -- IMPORTANT: Storage bucket RLS policies (run in SQL Editor)

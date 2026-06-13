@@ -12,11 +12,5 @@
     "api/broadcast/init-video.js": {
       "maxDuration": 60
     }
-  },
-  "crons": [
-    {
-      "path": "/api/broadcast/cron/process-scheduled",
-      "schedule": "0 0 * * *"
-    }
-  ]
+  }
 }

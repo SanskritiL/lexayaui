@@ -4,6 +4,8 @@ const multer = require('multer');
 const { getClient } = require('./supabase');
 const { publishPost } = require('./publish');
 const { completeInstagram } = require('./platforms/instagram');
+const { createR2Upload } = require('./storage');
+const { processScheduledPosts, verifySchedulerAuth } = require('./scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -76,6 +78,26 @@ app.post('/publish/with-file', upload.single('file'), async (req, res) => {
   }
 });
 
+// ── Direct media upload: return a presigned R2 PUT URL ──
+app.post('/uploads/r2-url', async (req, res) => {
+  try {
+    const user = await verifyPublishAuth(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const upload = await createR2Upload({
+      userId: user.id,
+      fileName: req.body?.fileName,
+      contentType: req.body?.contentType,
+      fileSizeBytes: req.body?.fileSizeBytes,
+    });
+
+    res.json(upload);
+  } catch (err) {
+    console.error('[R2-UPLOAD] Error:', err.message);
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+});
+
 // ── Instagram completion (called from UI polling) ──
 app.post('/instagram-complete', async (req, res) => {
   try {
@@ -104,6 +126,17 @@ app.all('/broadcast/publish', async (req, res) => {
     const action = req.query.action;
     const method = req.method;
 
+    // POST /broadcast/publish?action=upload
+    if (method === 'POST' && action === 'upload') {
+      const upload = await createR2Upload({
+        userId: user.id,
+        fileName: req.body?.fileName,
+        contentType: req.body?.contentType,
+        fileSizeBytes: req.body?.fileSizeBytes,
+      });
+      return res.json(upload);
+    }
+
     // POST /broadcast/publish (no action) → main publish
     if (method === 'POST' && !action) {
       const { postId, platforms } = req.body;
@@ -128,6 +161,33 @@ app.all('/broadcast/publish', async (req, res) => {
     return res.status(400).json({ error: 'Invalid request' });
   } catch (err) {
     console.error('[BROADCAST-PUBLISH] Error:', err.message);
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+});
+
+// ── Scheduler: called by Google Cloud Scheduler ──
+app.post('/scheduler/process', async (req, res) => {
+  if (!verifySchedulerAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const limit = Math.min(Number(req.body?.limit || 5), 25);
+    const result = await processScheduledPosts({ limit });
+    res.json(result);
+  } catch (err) {
+    console.error('[SCHEDULER] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/broadcast/scheduler/process', async (req, res) => {
+  if (!verifySchedulerAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+  try {
+    const limit = Math.min(Number(req.body?.limit || 5), 25);
+    const result = await processScheduledPosts({ limit });
+    res.json(result);
+  } catch (err) {
+    console.error('[BROADCAST-SCHEDULER] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -163,7 +223,11 @@ async function verifyPublishAuth(req) {
   return user;
 }
 
-app.listen(PORT, () => {
-  console.log(`[SERVER] Lexaya publish service running on port ${PORT}`);
-  console.log(`[SERVER] Health: http://localhost:${PORT}/health`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`[SERVER] Lexaya publish service running on port ${PORT}`);
+    console.log(`[SERVER] Health: http://localhost:${PORT}/health`);
+  });
+}
+
+module.exports = app;

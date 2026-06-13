@@ -11,19 +11,39 @@ async function publishToInstagram(post, account, onProgress, fileBuffer) {
   const isImage = mediaType === 'image';
   const isVideo = mediaType === 'video';
 
-  if (!fileBuffer) throw new Error('Media data is required for Instagram');
+  if (!fileBuffer && !post.video_url) throw new Error('Media URL is required for Instagram');
 
   // Step 1: Create container
   await p('uploading', `Creating Instagram ${isImage ? 'image' : 'reel'} container...`);
   const containerUrl = new URL(`${FB_HOST}/${FB_API_VERSION}/${igUserId}/media`);
   containerUrl.searchParams.set('access_token', access_token);
 
+  if (!fileBuffer) {
+    if (isImage) {
+      containerUrl.searchParams.set('image_url', post.video_url);
+    } else {
+      containerUrl.searchParams.set('media_type', 'REELS');
+      containerUrl.searchParams.set('video_url', post.video_url);
+    }
+    containerUrl.searchParams.set('caption', post.caption || '');
+
+    const containerRes = await fetch(containerUrl.toString(), { method: 'POST' });
+    if (!containerRes.ok) {
+      const err = await containerRes.json();
+      throw new Error(err.error?.message || 'Failed to create Instagram container');
+    }
+
+    const containerData = await containerRes.json();
+    await p('processing', 'Instagram is processing your media...');
+    return {
+      status: 'pending',
+      container_id: containerData.id,
+      note: 'Instagram is processing your media...',
+    };
+  }
+
   if (isImage) {
-    // Images still need a public URL for now — upload via resumable isn't available for images
-    // Keep image_url param, but we embed the bytes via the container creation
-    // Actually, Instagram's image API still requires image_url (public URL)
-    // For images, we could upload to a temp location or use a different approach
-    throw new Error('Image posts are not supported in direct mode yet');
+    throw new Error('Image posts require a public media URL');
   } else {
     containerUrl.searchParams.set('media_type', 'REELS');
     containerUrl.searchParams.set('upload_type', 'resumable');

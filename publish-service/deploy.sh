@@ -44,6 +44,12 @@ gcloud run deploy "$SERVICE_NAME" \
   --allow-unauthenticated \
   --set-env-vars="SUPABASE_URL=$(get_env_var SUPABASE_URL)" \
   --set-env-vars="SUPABASE_SERVICE_KEY=$(get_env_var SUPABASE_SERVICE_KEY)" \
+  --set-env-vars="CRON_SECRET=$(get_env_var CRON_SECRET)" \
+  --set-env-vars="R2_ACCOUNT_ID=$(get_env_var R2_ACCOUNT_ID)" \
+  --set-env-vars="R2_ACCESS_KEY_ID=$(get_env_var R2_ACCESS_KEY_ID)" \
+  --set-env-vars="R2_SECRET_ACCESS_KEY=$(get_env_var R2_SECRET_ACCESS_KEY)" \
+  --set-env-vars="R2_BUCKET_NAME=$(get_env_var R2_BUCKET_NAME)" \
+  --set-env-vars="R2_PUBLIC_URL=$(get_env_var R2_PUBLIC_URL)" \
   --set-env-vars="YOUTUBE_CLIENT_ID=$(get_env_var YOUTUBE_CLIENT_ID)" \
   --set-env-vars="YOUTUBE_CLIENT_SECRET=$(get_env_var YOUTUBE_CLIENT_SECRET)" \
   --quiet

@@ -1,3 +1,5 @@
+const { fetchMediaStream, getMediaInfo } = require('../media');
+
 async function publishToLinkedIn(post, account, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with LinkedIn...');
@@ -25,11 +27,11 @@ async function publishToLinkedIn(post, account, onProgress, fileBuffer) {
     return await createLinkedInVideoPost(headers, authorUrn, post, linkedinVideoUrn);
   }
 
-  if (mediaType === 'video' && fileBuffer) {
+  if (mediaType === 'video' && (fileBuffer || post.video_url)) {
     return await uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access_token, p, fileBuffer);
   }
 
-  if (mediaType === 'image' && fileBuffer) {
+  if (mediaType === 'image' && (fileBuffer || post.video_url)) {
     return await createLinkedInImagePost(headers, authorUrn, post, access_token, p, fileBuffer);
   }
 
@@ -60,8 +62,10 @@ async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access
   const p = onProgress || (async () => {});
   console.log('[LINKEDIN] Server-side video upload flow...');
 
-  const videoBuffer = fileBuffer;
-  if (!videoBuffer) throw new Error('No video data available');
+  const media = fileBuffer
+    ? { size: fileBuffer.length, body: fileBuffer, contentType: 'application/octet-stream' }
+    : await getMediaInfo(post);
+  if (!media.size) throw new Error('No video data available');
 
   await p('initializing', 'Initializing video upload with LinkedIn...');
   const initRes = await fetch('https://api.linkedin.com/rest/videos?action=initializeUpload', {
@@ -70,7 +74,7 @@ async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access
     body: JSON.stringify({
       initializeUploadRequest: {
         owner: authorUrn,
-        fileSizeBytes: videoBuffer.length,
+        fileSizeBytes: media.size,
         uploadCaptions: false,
         uploadThumbnail: false,
       },
@@ -85,13 +89,18 @@ async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access
   if (!uploadUrl || !videoUrn) throw new Error('Failed to get LinkedIn video upload URL');
 
   await p('uploading', 'Uploading video to LinkedIn...');
+  const uploadMedia = fileBuffer
+    ? media
+    : await fetchMediaStream(post);
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/octet-stream',
+      'Content-Length': media.size.toString(),
     },
-    body: videoBuffer,
+    body: uploadMedia.body,
+    duplex: 'half',
   });
   if (!uploadRes.ok) throw new Error('LinkedIn video upload failed: ' + (await readLinkedInError(uploadRes)));
 
@@ -103,8 +112,7 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken, on
   const p = onProgress || (async () => {});
   console.log('[LINKEDIN] Image upload flow...');
 
-  const imgBuffer = fileBuffer;
-  if (!imgBuffer) throw new Error('No image data available');
+  if (!fileBuffer && !post.video_url) throw new Error('No image data available');
 
   await p('initializing', 'Initializing image upload with LinkedIn...');
   const initRes = await fetch('https://api.linkedin.com/rest/images?action=initializeUpload', {
@@ -123,10 +131,18 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken, on
   if (!uploadUrl || !imageUrn) throw new Error('Failed to get LinkedIn image upload URL');
 
   await p('uploading', 'Uploading image to LinkedIn...');
+  const uploadMedia = fileBuffer
+    ? { body: fileBuffer, size: fileBuffer.length }
+    : await fetchMediaStream(post);
   const uploadRes = await fetch(uploadUrl, {
     method: 'PUT',
-    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/octet-stream' },
-    body: imgBuffer,
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': uploadMedia.size.toString(),
+    },
+    body: uploadMedia.body,
+    duplex: 'half',
   });
   if (!uploadRes.ok) throw new Error('LinkedIn image upload failed: ' + (await readLinkedInError(uploadRes)));
 

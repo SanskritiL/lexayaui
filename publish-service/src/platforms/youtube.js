@@ -1,3 +1,5 @@
+const { fetchMediaStream, getMediaInfo } = require('../media');
+
 async function publishToYouTube(post, account, supabase, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with YouTube...');
@@ -6,9 +8,11 @@ async function publishToYouTube(post, account, supabase, onProgress, fileBuffer)
     return { status: 'error', error: 'YouTube Shorts requires a video' };
   }
 
-  const videoBytes = fileBuffer;
-  if (!videoBytes) throw new Error('No video data available for YouTube');
-  console.log('[YOUTUBE] Video size:', (videoBytes.length / 1024 / 1024).toFixed(2), 'MB');
+  const media = fileBuffer
+    ? { size: fileBuffer.length, body: fileBuffer, contentType: 'video/*' }
+    : await getMediaInfo(post);
+  if (!media.size) throw new Error('No video data available for YouTube');
+  console.log('[YOUTUBE] Video size:', (media.size / 1024 / 1024).toFixed(2), 'MB');
 
   let { access_token, refresh_token } = account;
 
@@ -23,11 +27,11 @@ async function publishToYouTube(post, account, supabase, onProgress, fileBuffer)
     }).eq('id', account.id);
   }
 
-  let description = post.caption || '';
+  let description = post.metadata?.youtube_description || post.caption || '';
   description = description.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\u200B-\u200F\u2028-\u202F\uFEFF]/g, '').trim();
   if (!description.toLowerCase().includes('#shorts')) description += '\n\n#Shorts';
 
-  const firstLine = post.caption?.split('\n').find(l => l.trim())?.trim() || '';
+  const firstLine = post.metadata?.youtube_title || post.caption?.split('\n').find(l => l.trim())?.trim() || '';
   let title = firstLine.substring(0, 100).replace(/[<>]/g, '') || 'Short video';
 
   await p('uploading', 'Uploading video to YouTube (0%)...', 0);
@@ -38,7 +42,7 @@ async function publishToYouTube(post, account, supabase, onProgress, fileBuffer)
       headers: {
         'Authorization': `Bearer ${access_token}`,
         'Content-Type': 'application/json',
-        'X-Upload-Content-Length': videoBytes.length.toString(),
+        'X-Upload-Content-Length': media.size.toString(),
         'X-Upload-Content-Type': 'video/*',
       },
       body: JSON.stringify({
@@ -54,7 +58,10 @@ async function publishToYouTube(post, account, supabase, onProgress, fileBuffer)
   if (!uploadUrl) throw new Error('No upload URL from YouTube');
 
   // Upload video bytes with progress
-  const uploadRes = await uploadWithProgress(uploadUrl, videoBytes, async (pct) => {
+  const uploadMedia = fileBuffer
+    ? media
+    : await fetchMediaStream(post);
+  const uploadRes = await uploadWithProgress(uploadUrl, uploadMedia, async (pct) => {
     await p('uploading', `Uploading video to YouTube (${pct}%)...`, pct);
   });
 
@@ -72,12 +79,13 @@ async function publishToYouTube(post, account, supabase, onProgress, fileBuffer)
 
 // Helper: upload a Buffer. Avoid reading a stream before fetch consumes it; Node
 // rejects disturbed/locked request bodies.
-async function uploadWithProgress(url, buffer, onProgress) {
-  const total = buffer.length;
+async function uploadWithProgress(url, media, onProgress) {
+  const total = media.size;
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'video/*', 'Content-Length': total.toString() },
-    body: buffer,
+    body: media.body,
+    duplex: 'half',
   });
   await onProgress(100);
   return res;
