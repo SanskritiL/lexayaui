@@ -21,7 +21,7 @@ BEGIN
             AND nsp.nspname = 'public'
             AND con.contype = 'u'
             AND (
-                SELECT array_agg(att.attname ORDER BY cols.ordinality)
+                SELECT array_agg(att.attname::text ORDER BY cols.ordinality)
                 FROM unnest(con.conkey) WITH ORDINALITY AS cols(attnum, ordinality)
                 JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = cols.attnum
             ) = ARRAY['user_id', 'platform']
@@ -44,7 +44,7 @@ BEGIN
                 WHERE con.conindid = ind.indexrelid
             )
             AND (
-                SELECT array_agg(att.attname ORDER BY cols.ordinality)
+                SELECT array_agg(att.attname::text ORDER BY cols.ordinality)
                 FROM unnest(ind.indkey::int2[]) WITH ORDINALITY AS cols(attnum, ordinality)
                 JOIN pg_attribute att ON att.attrelid = ind.indrelid AND att.attnum = cols.attnum
             ) = ARRAY['user_id', 'platform']
