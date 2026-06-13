@@ -124,18 +124,6 @@
             box-shadow: 0 24px 60px rgba(0,0,0,0.2);
         }
 
-        /* Platform check card */
-        .platform-card {
-            display: flex; align-items: center; gap: 0.75rem;
-            padding: 1rem; border: 1px solid #afb3b0;
-            border-radius: 0.5rem;
-            transition: all 0.2s;
-            cursor: pointer;
-        }
-        .platform-card:hover { border-color: #005bc2; background: rgba(0, 91, 194, 0.03); }
-        .platform-card.selected { border-color: #005bc2; background: rgba(0, 91, 194, 0.06); }
-        .platform-card.disabled { opacity: 0.5; cursor: not-allowed; }
-
         .platform-icon {
             width: 36px; height: 36px; border-radius: 0.5rem;
             display: flex; align-items: center; justify-content: center;
@@ -145,6 +133,50 @@
         .platform-icon.tiktok { background: #000000; color: white; }
         .platform-icon.youtube { background: #FF0000; color: white; }
         .platform-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
+        .platform-help { margin-top: -0.75rem; margin-bottom: 1rem; color: #6b7280; font-size: 0.82rem; }
+        .channels-select-panel { border: 1px solid #e5e7eb; border-radius: 0.75rem; background: #fff; overflow: hidden; box-shadow: 0 18px 42px rgba(47, 51, 50, 0.05); }
+        .channels-select-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 1rem; background: #fbfbfa; border-bottom: 1px solid #eef0ee; }
+        .channels-select-title { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+        .channels-select-title span:first-child { font-size: 0.78rem; font-weight: 800; color: #374151; text-transform: uppercase; letter-spacing: 0.04em; }
+        .channels-select-hint { color: #8b9490; font-size: 0.74rem; font-weight: 700; white-space: nowrap; }
+        .channels-select-count { padding: 0.28rem 0.65rem; border-radius: 999px; background: #eef5ff; color: #005bc2; font-size: 0.72rem; font-weight: 900; white-space: nowrap; }
+        .channels-list { display: grid; gap: 0; }
+        .channel-group { border-bottom: 1px solid #eef0ee; }
+        .channel-group:last-child { border-bottom: 0; }
+        .channel-group-title { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; padding: 0.85rem 1rem 0.65rem; color: #4b5563; }
+        .channel-group-heading { display: flex; align-items: center; gap: 0.62rem; min-width: 0; }
+        .channel-group-title .platform-icon { width: 28px; height: 28px; border-radius: 8px; font-size: 0.86rem; }
+        .channel-platform-name { color: #1f2937; font-size: 0.88rem; font-weight: 900; }
+        .channel-platform-meta { color: #7b837f; font-size: 0.72rem; font-weight: 700; }
+        .channel-group-actions { display: flex; align-items: center; gap: 0.45rem; flex-shrink: 0; }
+        .channel-select-all { border: 1px solid #d7e5f8; border-radius: 999px; background: #ffffff; color: #005bc2; cursor: pointer; font-size: 0.7rem; font-weight: 900; padding: 0.3rem 0.62rem; transition: all 0.2s ease; }
+        .channel-select-all:hover { background: #f4f9ff; border-color: #9fc6f5; }
+        .channel-select-all:disabled { color: #9ca3af; border-color: #e5e7eb; cursor: not-allowed; background: #f9fafb; }
+        .channel-add-link { color: #6b7280; font-size: 0.7rem; font-weight: 800; text-decoration: none; white-space: nowrap; }
+        .channel-add-link:hover { color: #005bc2; text-decoration: underline; }
+        .channel-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.65rem; padding: 0 1rem 1rem; }
+        .channel-option { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.75rem; min-height: 74px; padding: 0.72rem 0.82rem; border: 1px solid #e5e7eb; border-radius: 0.62rem; background: #ffffff; cursor: pointer; transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease; }
+        .channel-option:hover { border-color: #b8d5ff; background: #f9fcff; }
+        .channel-option:has(input:checked) { border-color: #005bc2; background: #f4f8ff; box-shadow: inset 0 0 0 1px rgba(0, 91, 194, 0.18); }
+        .channel-option.disabled { opacity: 0.66; cursor: not-allowed; background: #fbfbfa; }
+        .channel-option input { position: absolute; top: 0.7rem; left: 0.72rem; width: 1rem; height: 1rem; accent-color: #005bc2; }
+        .channel-avatar-wrap { position: relative; width: 44px; height: 44px; margin-left: 1.35rem; }
+        .channel-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: #e5e7eb; color: #9ca3af; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; font-weight: 900; flex-shrink: 0; }
+        .channel-platform-badge { position: absolute; right: -3px; bottom: -3px; width: 18px; height: 18px; border: 2px solid #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.58rem; }
+        .channel-platform-badge.linkedin { background: #0A66C2; }
+        .channel-platform-badge.tiktok { background: #000000; }
+        .channel-platform-badge.youtube { background: #FF0000; }
+        .channel-platform-badge.instagram { background: #cc2366; }
+        .channel-main { min-width: 0; display: grid; gap: 0.12rem; }
+        .channel-name { font-size: 0.86rem; font-weight: 900; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .channel-meta { font-size: 0.72rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .channel-state { width: fit-content; margin-top: 0.2rem; padding: 0.18rem 0.45rem; border-radius: 999px; background: #eaf8f1; color: #047857; font-size: 0.66rem; font-weight: 900; white-space: nowrap; }
+        .channel-option.disabled .channel-state { background: #fff7ed; color: #b45309; }
+        @media (max-width: 640px) {
+            .channels-select-header, .channel-group-title { align-items: flex-start; flex-direction: column; }
+            .channel-group-actions { width: 100%; justify-content: space-between; }
+            .channel-list { grid-template-columns: 1fr; }
+        }
 
         /* Progress items */
         .progress-item {
@@ -281,45 +313,22 @@
         <!-- Platforms -->
         <section class="mb-10">
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-headline-sm">Platforms</h2>
+                <h2 class="text-headline-sm">Channels</h2>
             </div>
-            <div id="platforms-select" class="space-y-3">
-                <div data-platform="tiktok" class="platform-card disabled">
-                    <input type="checkbox" id="platform-tiktok" name="platforms" value="tiktok" disabled class="w-5 h-5 accent-primary rounded">
-                    <div class="platform-icon tiktok"><i class="fa-brands fa-tiktok"></i></div>
-                    <div class="flex-1">
-                        <p class="font-bold text-sm text-on-surface">TikTok</p>
-                        <p class="platform-status text-xs text-on-surface-variant">(Connect first)</p>
+            <p class="platform-help">Choose the exact connected channels that should receive this post.</p>
+            <div id="platforms-select" class="channels-select-panel">
+                <div class="channels-select-header">
+                    <div class="channels-select-title">
+                        <span>Available channels</span>
+                        <span class="channels-select-hint">Pick one or many channels</span>
                     </div>
+                    <span class="channels-select-count" id="selected-channel-count">0 selected</span>
                 </div>
-                <div data-platform="instagram" class="platform-card disabled">
-                    <input type="checkbox" id="platform-instagram" name="platforms" value="instagram" disabled class="w-5 h-5 accent-primary rounded">
-                    <div class="platform-icon instagram"><i class="fa-brands fa-instagram"></i></div>
-                    <div class="flex-1">
-                        <p class="font-bold text-sm text-on-surface">Instagram</p>
-                        <p class="platform-status text-xs text-on-surface-variant">(Connect first)</p>
-                    </div>
-                </div>
-                <div data-platform="linkedin" class="platform-card disabled">
-                    <input type="checkbox" id="platform-linkedin" name="platforms" value="linkedin" disabled class="w-5 h-5 accent-primary rounded">
-                    <div class="platform-icon linkedin"><i class="fa-brands fa-linkedin-in"></i></div>
-                    <div class="flex-1">
-                        <p class="font-bold text-sm text-on-surface">LinkedIn</p>
-                        <p class="platform-status text-xs text-on-surface-variant">(Connect first)</p>
-                    </div>
-                </div>
-                <div data-platform="youtube" class="platform-card disabled">
-                    <input type="checkbox" id="platform-youtube" name="platforms" value="youtube" disabled class="w-5 h-5 accent-primary rounded">
-                    <div class="platform-icon youtube"><i class="fa-brands fa-youtube"></i></div>
-                    <div class="flex-1">
-                        <p class="font-bold text-sm text-on-surface">YouTube Shorts</p>
-                        <p class="platform-status text-xs text-on-surface-variant">(Connect first)</p>
-                    </div>
-                </div>
+                <div id="channels-list" class="channels-list"></div>
             </div>
             <p id="no-accounts-warning" class="text-sm text-amber-600 mt-4">
                 <span class="material-symbols-outlined text-sm align-text-bottom">link_off</span>
-                No accounts connected. <a href="connect.html" class="underline font-semibold">Connect an account</a> to start posting.
+                No channels connected. <a href="/broadcast/" class="underline font-semibold">Add a channel</a> to start posting.
             </p>
         </section>
 
@@ -452,9 +461,10 @@
     <script src="/js/api-config.js"></script>
     <script src="/js/layout.js"></script>
     <script>
-        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+        const supabaseClient = window.LEXAYA_SUPABASE_CLIENT || window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
             realtime: { transport: window.WebSocket }
         });
+        window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
 
         let selectedFile = null;
         let selectedMediaType = null;
@@ -485,6 +495,7 @@
 
             await loadConnectedAccounts();
             setupEventListeners();
+            applyInitialScheduleState();
         });
 
         function waitForContent() {
@@ -508,54 +519,190 @@
             updatePlatformCheckboxes();
         }
 
+        function accountsForPlatform(platform) {
+            return connectedAccounts.filter(account => account.platform === platform);
+        }
+
+        function getAccountDisplay(account) {
+            const metadata = account.metadata || {};
+            return account.account_name || metadata.username || metadata.display_name || metadata.channel_title || 'Connected account';
+        }
+
+        function getAccountAvatar(account) {
+            const metadata = account.metadata || {};
+            const avatar = metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url || metadata.thumbnail_url;
+            if (!avatar) return '';
+            try {
+                const parsed = new URL(avatar);
+                if (parsed.hostname.includes('fbcdn.net')) return '';
+            } catch (e) {}
+            return avatar;
+        }
+
+        function getAccountHandle(account, label) {
+            const metadata = account.metadata || {};
+            return metadata.username || metadata.channel_title || metadata.display_name || account.account_name || label;
+        }
+
+        function getAccountInitial(label) {
+            return String(label || 'A').trim().charAt(0).toUpperCase() || 'A';
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            }[char]));
+        }
+
+        function getSelectedPublishTargets() {
+            return Array.from(document.querySelectorAll('input[name="platformAccounts"]:checked:not(:disabled)')).map(input => {
+                const platform = input.dataset.platform;
+                const accountId = input.value;
+                return {
+                    platform,
+                    accountId,
+                    key: `${platform}:${accountId}`,
+                    label: input.dataset.label || platformInfo[platform]?.name || platform,
+                };
+            });
+        }
+
+        function getTargetPlatform(key) {
+            return String(key || '').split(':')[0];
+        }
+
+        function getTargetInfo(key) {
+            const platform = getTargetPlatform(key);
+            const accountId = String(key || '').includes(':') ? String(key).split(':')[1] : null;
+            const info = platformInfo[platform] || { name: platform, icon: '<i class="fa-solid fa-share-nodes"></i>', cls: '' };
+            const account = accountId ? connectedAccounts.find(a => a.id === accountId) : null;
+            return {
+                ...info,
+                name: account ? `${info.name} · ${getAccountDisplay(account)}` : info.name,
+            };
+        }
+
         function updatePlatformCheckboxes() {
             const platforms = ['tiktok', 'instagram', 'linkedin', 'youtube'];
             const warning = document.getElementById('no-accounts-warning');
+            const list = document.getElementById('channels-list');
+            const selectedCountEl = document.getElementById('selected-channel-count');
             const hasMedia = !!selectedFile;
             const hasVideo = hasMedia && selectedMediaType === 'video';
             const hasImage = hasMedia && selectedMediaType === 'image';
+            const previousSelections = new Set(
+                Array.from(document.querySelectorAll('input[name="platformAccounts"]:checked')).map(option => String(option.value))
+            );
+            const previousPlatforms = new Set(
+                Array.from(document.querySelectorAll('input[name="platformAccounts"]:checked')).map(option => option.dataset.platform)
+            );
 
             let hasAnyConnected = false;
+            let html = '';
 
             platforms.forEach(platform => {
-                const container = document.querySelector(`[data-platform="${platform}"]`);
-                const input = container.querySelector('input');
-                const status = container.querySelector('.platform-status');
-                const account = connectedAccounts.find(a => a.platform === platform);
+                const accounts = accountsForPlatform(platform);
+                if (accounts.length === 0) return;
 
-                if (account) {
-                    hasAnyConnected = true;
-                    if (platform === 'tiktok' || platform === 'youtube') {
-                        if (hasImage) {
-                            input.disabled = true; input.checked = false;
-                            status.textContent = '(Video only)'; status.style.color = '#d97706';
-                            container.classList.add('disabled');
-                        } else if (!hasVideo) {
-                            input.disabled = true; input.checked = false;
-                            status.textContent = '(Requires video)'; status.style.color = '#d97706';
-                            container.classList.add('disabled');
-                        } else {
-                            input.disabled = false;
-                            status.textContent = account.account_name ? `@${account.account_name}` : 'Connected';
-                            status.style.color = '#16a34a';
-                            container.classList.remove('disabled');
-                        }
-                    } else {
-                        input.disabled = false;
-                        status.textContent = account.account_name ? `@${account.account_name}` : 'Connected';
-                        status.style.color = '#16a34a';
-                        container.classList.remove('disabled');
-                    }
-                } else {
-                    input.disabled = true;
-                    status.textContent = '(Connect first)';
-                    status.style.color = '#9c9d9b';
-                    container.classList.add('disabled');
-                }
+                hasAnyConnected = true;
+                const info = platformInfo[platform] || { name: platform, icon: '<i class="fa-solid fa-share-nodes"></i>', cls: '' };
+                let hasCheckedInGroup = false;
+                let enabledCount = 0;
+                let selectedCount = 0;
+                const groupRows = accounts.map((account) => {
+                    const accountId = String(account.id);
+                    const label = getAccountDisplay(account);
+                    const safeLabel = escapeHtml(label);
+                    const avatar = getAccountAvatar(account);
+                    const safeAvatar = escapeHtml(avatar);
+                    const handle = escapeHtml(getAccountHandle(account, label));
+                    const initial = escapeHtml(getAccountInitial(label));
+                    const isVideoOnlyBlocked = (platform === 'tiktok' || platform === 'youtube') && !hasVideo;
+                    const isInstagramBlocked = platform === 'instagram' && !hasMedia;
+                    const isDisabled = isVideoOnlyBlocked || isInstagramBlocked;
+                    const reason = isVideoOnlyBlocked ? 'Needs video' : isInstagramBlocked ? 'Needs media' : 'Ready';
+                    const checked = !isDisabled && (previousSelections.has(accountId) || (!previousPlatforms.has(platform) && !hasCheckedInGroup));
+                    if (checked) hasCheckedInGroup = true;
+                    if (!isDisabled) enabledCount++;
+                    if (checked) selectedCount++;
+
+                    return `
+                        <label class="channel-option ${isDisabled ? 'disabled' : ''}" title="${safeLabel}">
+                            <input type="checkbox" name="platformAccounts" data-platform="${platform}" data-label="${safeLabel}" value="${accountId}" ${checked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
+                            <div class="channel-avatar-wrap">
+                                ${avatar
+                                    ? `<img src="${safeAvatar}" alt="${safeLabel}" class="channel-avatar" onerror="this.outerHTML='<div class=&quot;channel-avatar&quot;>${initial}</div>';">`
+                                    : `<div class="channel-avatar">${initial}</div>`
+                                }
+                                <span class="channel-platform-badge ${info.cls}">${info.icon}</span>
+                            </div>
+                            <div class="channel-main">
+                                <div class="channel-name">${safeLabel}</div>
+                                <div class="channel-meta">${info.name}${handle ? ` · @${handle}` : ''}</div>
+                                <span class="channel-state">${reason}</span>
+                            </div>
+                        </label>
+                    `;
+                }).join('');
+                const selectedMeta = `${selectedCount}/${accounts.length} selected`;
+                const accountMeta = `${accounts.length} ${accounts.length === 1 ? 'channel' : 'channels'}`;
+                const allEnabledSelected = enabledCount > 0 && selectedCount === enabledCount;
+                const actionLabel = allEnabledSelected ? 'Clear' : 'Select all';
+
+                html += `
+                    <div class="channel-group" data-platform="${platform}">
+                        <div class="channel-group-title">
+                            <div class="channel-group-heading">
+                                <div class="platform-icon ${info.cls}">${info.icon}</div>
+                                <div>
+                                    <div class="channel-platform-name">${info.name}</div>
+                                    <div class="channel-platform-meta" data-channel-group-meta>${accountMeta} · ${selectedMeta}</div>
+                                </div>
+                            </div>
+                            <div class="channel-group-actions">
+                                <button type="button" class="channel-select-all" data-select-platform="${platform}" ${enabledCount === 0 ? 'disabled' : ''}>${actionLabel}</button>
+                                <a class="channel-add-link" href="/broadcast/">Add channel</a>
+                            </div>
+                        </div>
+                        <div class="channel-list">${groupRows}</div>
+                    </div>
+                `;
             });
 
+            list.innerHTML = html || '<div class="p-4 text-sm text-on-surface-variant">No connected channels yet.</div>';
             warning.style.display = hasAnyConnected ? 'none' : 'block';
+            if (selectedCountEl) {
+                const selectedCount = getSelectedPublishTargets().length;
+                selectedCountEl.textContent = `${selectedCount} selected`;
+            }
             updatePublishButton();
+        }
+
+        function refreshChannelSelectionSummary() {
+            const selectedCountEl = document.getElementById('selected-channel-count');
+            if (selectedCountEl) {
+                const selectedCount = getSelectedPublishTargets().length;
+                selectedCountEl.textContent = `${selectedCount} selected`;
+            }
+
+            document.querySelectorAll('.channel-group').forEach(group => {
+                const inputs = Array.from(group.querySelectorAll('input[name="platformAccounts"]'));
+                const enabledInputs = inputs.filter(input => !input.disabled);
+                const selectedInputs = inputs.filter(input => input.checked && !input.disabled);
+                const meta = group.querySelector('[data-channel-group-meta]');
+                const selectAll = group.querySelector('.channel-select-all');
+                const accountMeta = `${inputs.length} ${inputs.length === 1 ? 'channel' : 'channels'}`;
+
+                if (meta) meta.textContent = `${accountMeta} · ${selectedInputs.length}/${inputs.length} selected`;
+                if (selectAll) {
+                    selectAll.textContent = enabledInputs.length > 0 && selectedInputs.length === enabledInputs.length ? 'Clear' : 'Select all';
+                    selectAll.disabled = enabledInputs.length === 0;
+                }
+            });
         }
 
         function setupEventListeners() {
@@ -584,8 +731,21 @@
                 updatePublishButton();
             });
 
-            document.querySelectorAll('input[name="platforms"]').forEach(cb => {
-                cb.addEventListener('change', () => { updatePublishButton(); });
+            document.getElementById('platforms-select').addEventListener('change', (e) => {
+                if (e.target.name !== 'platformAccounts') return;
+                refreshChannelSelectionSummary();
+                updatePublishButton();
+            });
+
+            document.getElementById('platforms-select').addEventListener('click', (e) => {
+                const button = e.target.closest('[data-select-platform]');
+                if (!button) return;
+                const group = button.closest('.channel-group');
+                const inputs = Array.from(group.querySelectorAll('input[name="platformAccounts"]:not(:disabled)'));
+                const shouldSelect = inputs.some(input => !input.checked);
+                inputs.forEach(input => { input.checked = shouldSelect; });
+                refreshChannelSelectionSummary();
+                updatePublishButton();
             });
 
             document.getElementById('schedule-toggle').addEventListener('change', () => {
@@ -610,6 +770,19 @@
             });
 
             document.getElementById('analyze-hook-btn')?.addEventListener('click', analyzeHook);
+        }
+
+        function applyInitialScheduleState() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('scheduled') !== 'true') return;
+
+            const toggle = document.getElementById('schedule-toggle');
+            const fields = document.getElementById('schedule-fields');
+            if (!toggle || !fields) return;
+
+            toggle.checked = true;
+            fields.style.display = 'block';
+            updatePublishButton();
         }
 
         const MAX_FILE_SIZE_MB = 500;
@@ -684,12 +857,12 @@
 
         function updatePublishButton() {
             const btn = document.getElementById('publish-btn');
-            const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked'));
+            const selectedTargets = getSelectedPublishTargets();
             const caption = document.getElementById('caption').value.trim();
             const textFriendlyPlatforms = ['linkedin'];
-            const onlyTextFriendly = selectedPlatforms.every(p => textFriendlyPlatforms.includes(p.value));
+            const onlyTextFriendly = selectedTargets.every(target => textFriendlyPlatforms.includes(target.platform));
 
-            const isValid = selectedPlatforms.length > 0 &&
+            const isValid = selectedTargets.length > 0 &&
                 (selectedFile || (onlyTextFriendly && caption.length > 0));
 
             btn.disabled = !isValid;
@@ -711,24 +884,30 @@
             if (!currentUser) { alert('Please login first'); return; }
 
             const caption = document.getElementById('caption').value;
-            const selectedPlatforms = Array.from(document.querySelectorAll('input[name="platforms"]:checked'))
-                .map(input => input.value);
+            const selectedTargets = getSelectedPublishTargets();
+            const selectedPlatforms = selectedTargets.map(target => target.key);
+            const selectedProviderNames = [...new Set(selectedTargets.map(target => target.platform))];
+            const accountSelections = selectedTargets.reduce((acc, target) => {
+                acc[target.platform] = acc[target.platform] || [];
+                acc[target.platform].push(target.accountId);
+                return acc;
+            }, {});
             const scheduleToggle = document.getElementById('schedule-toggle');
             const scheduleDate = document.getElementById('schedule-date').value;
 
-            if (!isDraft && selectedPlatforms.length === 0) {
-                alert('Please select at least one platform');
+            if (!isDraft && selectedTargets.length === 0) {
+                alert('Please select at least one account');
                 return;
             }
 
             if (!isDraft) {
-                const platformNames = selectedPlatforms.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(', ');
-                if (!confirm(`Post to: ${platformNames}\n\nAre you sure?`)) return;
+                const accountNames = selectedTargets.map(target => target.label).join(', ');
+                if (!confirm(`Post to: ${accountNames}\n\nAre you sure?`)) return;
             }
 
-            const needsTikTok = selectedPlatforms.includes('tiktok');
-            const needsInstagram = selectedPlatforms.includes('instagram');
-            const needsYouTube = selectedPlatforms.includes('youtube');
+            const needsTikTok = selectedProviderNames.includes('tiktok');
+            const needsInstagram = selectedProviderNames.includes('instagram');
+            const needsYouTube = selectedProviderNames.includes('youtube');
 
             if (needsTikTok && (!selectedFile || selectedMediaType !== 'video') && !isDraft) {
                 alert('TikTok requires a video. Please upload a video or deselect TikTok.');
@@ -776,7 +955,7 @@
                     status: isDraft ? 'draft' : (scheduleToggle.checked ? 'scheduled' : 'publishing'),
                     scheduled_at: scheduleToggle.checked ? scheduleDate : null,
                     platform_results: {},
-                    metadata: { media_type: selectedMediaType }
+                    metadata: { media_type: selectedMediaType, account_selections: accountSelections }
                 };
 
                 const { data: post, error: postError } = await supabaseClient.from('posts').insert(postData).select().single();
@@ -971,7 +1150,7 @@
             document.getElementById('elapsed-time').textContent = '0:00';
 
             progressContainer.innerHTML = platforms.map(platform => {
-                const info = platformInfo[platform] || { name: platform, icon: '📱', cls: '' };
+                const info = getTargetInfo(platform);
                 return `
                     <div class="progress-item idle" id="progress-${platform}" data-platform="${platform}">
                         <div class="flex items-center gap-2.5 min-w-0 flex-1">
@@ -1052,14 +1231,11 @@
         }
 
         function updateOverallProgress() {
-            const platforms = ['tiktok', 'instagram', 'linkedin', 'youtube'];
+            const items = Array.from(document.querySelectorAll('#publish-progress .progress-item'));
             let done = 0;
-            let total = 0;
+            let total = items.length;
 
-            platforms.forEach(p => {
-                const item = document.getElementById(`progress-${p}`);
-                if (!item) return;
-                total++;
+            items.forEach(item => {
                 if (item.classList.contains('success') || item.classList.contains('failed')) done++;
             });
 
@@ -1126,12 +1302,17 @@
 
             modalActions.style.display = 'block';
 
-            if (postId && platformResults?.instagram?.status === 'pending' && platformResults?.instagram?.container_id) {
-                pollInstagramCompletion(postId);
+            if (postId) {
+                Object.entries(platformResults || {}).forEach(([key, result]) => {
+                    const platform = result?.platform || getTargetPlatform(key);
+                    if (platform === 'instagram' && result?.status === 'pending' && result?.container_id) {
+                        pollInstagramCompletion(postId, key);
+                    }
+                });
             }
         }
 
-        async function pollInstagramCompletion(postId) {
+        async function pollInstagramCompletion(postId, resultKey = 'instagram') {
             const { data: { session } } = await supabaseClient.auth.getSession();
             const authToken = session?.access_token;
             if (!authToken) return;
@@ -1139,7 +1320,7 @@
             const maxAttempts = 24;
             const poll = async () => {
                 if (attempts >= maxAttempts) {
-                    updatePlatformProgress('instagram', 'failed', 'Timed out — check Instagram app');
+                    updatePlatformProgress(resultKey, 'failed', 'Timed out — check Instagram app');
                     return;
                 }
                 attempts++;
@@ -1147,12 +1328,12 @@
                     const res = await fetch(API.instagramComplete(), {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                        body: JSON.stringify({ postId }),
+                        body: JSON.stringify({ postId, resultKey }),
                     });
                     const result = await res.json();
-                    if (result.status === 'success') updatePlatformProgress('instagram', 'success', 'Posted!');
+                    if (result.status === 'success') updatePlatformProgress(resultKey, 'success', 'Posted!');
                     else if (result.status === 'pending') setTimeout(poll, 5000);
-                    else updatePlatformProgress('instagram', 'failed', result.error || 'Processing failed');
+                    else updatePlatformProgress(resultKey, 'failed', result.error || 'Processing failed');
                 } catch (err) { setTimeout(poll, 5000); }
             };
             setTimeout(poll, 5000);

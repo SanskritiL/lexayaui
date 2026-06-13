@@ -49,22 +49,39 @@ module.exports = async function handler(req, res) {
                     .update({ status: 'publishing' })
                     .eq('id', post.id);
 
+                const targets = (post.platforms || []).map(item => {
+                    const [platform, accountId] = String(item).split(':');
+                    return { key: item, platform, accountId: accountId || null };
+                });
+                const accountIds = targets.map(target => target.accountId).filter(Boolean);
+                const providerPlatforms = [...new Set(targets.map(target => target.platform))];
+
                 // Get connected accounts for this user
-                const { data: accounts } = await supabase
+                let accountQuery = supabase
                     .from('connected_accounts')
                     .select('*')
-                    .eq('user_id', post.user_id)
-                    .in('platform', post.platforms || []);
+                    .eq('user_id', post.user_id);
+
+                if (accountIds.length > 0) {
+                    accountQuery = accountQuery.in('id', accountIds);
+                } else {
+                    accountQuery = accountQuery.in('platform', providerPlatforms);
+                }
+
+                const { data: accounts } = await accountQuery;
 
                 const platformResults = {};
                 let hasSuccess = false;
                 let hasFailure = false;
 
-                for (const platform of (post.platforms || [])) {
-                    const account = accounts?.find(a => a.platform === platform);
+                for (const target of targets) {
+                    const { platform, key, accountId } = target;
+                    const account = accountId
+                        ? accounts?.find(a => a.id === accountId && a.platform === platform)
+                        : accounts?.find(a => a.platform === platform);
 
                     if (!account) {
-                        platformResults[platform] = {
+                        platformResults[key] = {
                             status: 'error',
                             error: 'Account not connected',
                         };
@@ -75,7 +92,7 @@ module.exports = async function handler(req, res) {
                     try {
                         // Publish to platform (simplified - in production, import from publish.js)
                         const result = await publishToPlatform(platform, post, account);
-                        platformResults[platform] = result;
+                        platformResults[key] = { ...result, platform, account_id: account.id, account_name: account.account_name };
 
                         if (result.status === 'success') {
                             hasSuccess = true;
@@ -83,8 +100,11 @@ module.exports = async function handler(req, res) {
                             hasFailure = true;
                         }
                     } catch (error) {
-                        platformResults[platform] = {
+                        platformResults[key] = {
                             status: 'error',
+                            platform,
+                            account_id: account.id,
+                            account_name: account.account_name,
                             error: error.message,
                         };
                         hasFailure = true;

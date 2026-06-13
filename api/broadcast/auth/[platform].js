@@ -17,12 +17,19 @@ async function getUserState(supabase, state) {
 }
 
 async function upsertAccount(supabase, data, userId, platform) {
-  const { data: existing } = await supabase
+  let query = supabase
     .from('connected_accounts')
     .select('id, refresh_token')
     .eq('user_id', userId)
-    .eq('platform', platform)
-    .maybeSingle();
+    .eq('platform', platform);
+
+  if (data.platform_user_id) {
+    query = query.eq('platform_user_id', data.platform_user_id);
+  } else {
+    query = query.is('platform_user_id', null);
+  }
+
+  const { data: existing } = await query.maybeSingle();
   if (existing) {
     if (!data.refresh_token && existing.refresh_token) {
       data.refresh_token = existing.refresh_token;
@@ -74,7 +81,7 @@ async function handleLinkedIn(req, res) {
 
     if (!code) {
         if (!LINKEDIN_CLIENT_ID) {
-            return res.redirect('/broadcast/connect.html?error=LinkedIn not configured');
+            return res.redirect('/broadcast/?error=LinkedIn not configured');
         }
 
         const scopes = ['openid', 'profile', 'w_member_social'].join(' ');
@@ -89,7 +96,7 @@ async function handleLinkedIn(req, res) {
     }
 
     if (oauthError) {
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(oauthError + ': ' + (error_description || ''))}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(oauthError + ': ' + (error_description || ''))}`);
     }
 
     try {
@@ -107,7 +114,7 @@ async function handleLinkedIn(req, res) {
 
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
         }
 
         const tokenData = await tokenResponse.json();
@@ -119,7 +126,7 @@ async function handleLinkedIn(req, res) {
 
         if (!profileResponse.ok) {
             const errorText = await profileResponse.text();
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Profile fetch failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Profile fetch failed: ' + errorText));
         }
 
         const profile = await profileResponse.json();
@@ -127,7 +134,7 @@ async function handleLinkedIn(req, res) {
         const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         const userState = await getUserState(supabase, state);
         if (!userState || !userState.email) {
-            return res.redirect('/broadcast/connect.html?error=Invalid session, please login again');
+            return res.redirect('/broadcast/?error=Invalid session, please login again');
         }
 
         // Try to fetch followers count from LinkedIn REST API
@@ -176,14 +183,14 @@ async function handleLinkedIn(req, res) {
 
         if (saveError) {
             console.error('[LinkedIn] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
-        return res.redirect('/broadcast/connect.html?success=true&platform=linkedin');
+        return res.redirect('/broadcast/?success=true&platform=linkedin');
 
     } catch (error) {
         console.error('LinkedIn OAuth Error:', error);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }
 
@@ -203,7 +210,7 @@ async function handleInstagram(req, res) {
 
     if (!code) {
         if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Facebook App not configured'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Facebook App not configured'));
         }
 
         // Scopes for publishing + DM automation + insights
@@ -230,7 +237,7 @@ async function handleInstagram(req, res) {
 
     if (oauthError) {
         const errorMsg = `Facebook OAuth Error: ${oauthError}. ${error_description || ''} ${error_reason || ''}`.trim();
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(errorMsg)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(errorMsg)}`);
     }
 
     try {
@@ -245,7 +252,7 @@ async function handleInstagram(req, res) {
         const tokenData = await tokenResponse.json();
 
         if (!tokenResponse.ok || tokenData.error) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + (tokenData.error?.message || JSON.stringify(tokenData))));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + (tokenData.error?.message || JSON.stringify(tokenData))));
         }
 
         const shortLivedToken = tokenData.access_token;
@@ -277,13 +284,12 @@ async function handleInstagram(req, res) {
             if (meData.accounts?.data?.length > 0) {
                 pagesData = meData.accounts;
             } else {
-                return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('No Facebook Pages found. Make sure you granted Page permissions.'));
+                return res.redirect('/broadcast/?error=' + encodeURIComponent('No Facebook Pages found. Make sure you granted Page permissions.'));
             }
         }
 
-        // Find Instagram account
-        let instagramAccount = null;
-        let pageAccessToken = null;
+        // Find Instagram accounts connected to the authorized Facebook Pages.
+        const instagramAccounts = [];
 
         for (const page of pagesData.data) {
             if (page.instagram_business_account) {
@@ -293,57 +299,65 @@ async function handleInstagram(req, res) {
                 const igData = await igResponse.json();
 
                 if (igData.id) {
-                    instagramAccount = igData;
-                    pageAccessToken = page.access_token;
-                    break;
+                    instagramAccounts.push({
+                        account: igData,
+                        pageAccessToken: page.access_token,
+                        pageId: page.id,
+                        pageName: page.name,
+                    });
                 }
             }
         }
 
-        if (!instagramAccount) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('No Instagram Business account found.'));
+        if (instagramAccounts.length === 0) {
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('No Instagram Business account found.'));
         }
 
         const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         const userState = await getUserState(supabase, state);
         if (!userState || !userState.email) {
-            return res.redirect('/broadcast/connect.html?error=Invalid session, please login again');
+            return res.redirect('/broadcast/?error=Invalid session, please login again');
         }
 
         const dbUserId = await resolveDbUserId(supabase, userState);
         const tokenExpiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
 
-        const { error: saveError } = await upsertAccount(supabase, {
-            user_id: dbUserId,
-            platform: 'instagram',
-            platform_user_id: instagramAccount.id,
-            account_name: instagramAccount.username,
-            access_token: pageAccessToken,
-            refresh_token: null,
-            token_expires_at: tokenExpiresAt,
-            scopes: ['instagram_basic', 'instagram_content_publish', 'instagram_manage_comments', 'instagram_manage_messages', 'pages_messaging'],
-            metadata: {
-                profile_picture: instagramAccount.profile_picture_url,
-                ig_user_id: instagramAccount.id,
-                display_name: instagramAccount.name || instagramAccount.username,
-                username: instagramAccount.username,
-                followers_count: instagramAccount.followers_count,
-                following_count: instagramAccount.follows_count,
-                media_count: instagramAccount.media_count,
-                account_type: 'Business',
-            },
-        }, dbUserId, 'instagram');
+        for (const item of instagramAccounts) {
+            const instagramAccount = item.account;
+            const { error: saveError } = await upsertAccount(supabase, {
+                user_id: dbUserId,
+                platform: 'instagram',
+                platform_user_id: instagramAccount.id,
+                account_name: instagramAccount.username,
+                access_token: item.pageAccessToken,
+                refresh_token: null,
+                token_expires_at: tokenExpiresAt,
+                scopes: ['instagram_basic', 'instagram_content_publish', 'instagram_manage_comments', 'instagram_manage_messages', 'pages_messaging'],
+                metadata: {
+                    profile_picture: instagramAccount.profile_picture_url,
+                    ig_user_id: instagramAccount.id,
+                    facebook_page_id: item.pageId,
+                    facebook_page_name: item.pageName,
+                    display_name: instagramAccount.name || instagramAccount.username,
+                    username: instagramAccount.username,
+                    followers_count: instagramAccount.followers_count,
+                    following_count: instagramAccount.follows_count,
+                    media_count: instagramAccount.media_count,
+                    account_type: 'Business',
+                },
+            }, dbUserId, 'instagram');
 
-        if (saveError) {
-            console.error('[Instagram] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            if (saveError) {
+                console.error('[Instagram] Save error:', saveError);
+                return res.redirect('/broadcast/?error=Failed to save account');
+            }
         }
 
-        return res.redirect('/broadcast/connect.html?success=true&platform=instagram');
+        return res.redirect(`/broadcast/?success=true&platform=instagram&accounts=${instagramAccounts.length}`);
 
     } catch (error) {
         console.error('Instagram OAuth Error:', error);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }
 
@@ -362,7 +376,7 @@ async function handleTikTok(req, res) {
 
     if (!code) {
         if (!TIKTOK_CLIENT_KEY || !TIKTOK_CLIENT_SECRET) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('TikTok not configured'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('TikTok not configured'));
         }
 
         const scopes = 'user.info.basic,user.info.stats,video.upload';
@@ -377,7 +391,7 @@ async function handleTikTok(req, res) {
     }
 
     if (oauthError) {
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error_description || oauthError)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error_description || oauthError)}`);
     }
 
     try {
@@ -395,13 +409,13 @@ async function handleTikTok(req, res) {
 
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
         }
 
         const tokenData = await tokenResponse.json();
 
         if (tokenData.error) {
-            return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
+            return res.redirect(`/broadcast/?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
         }
 
         const { access_token, expires_in, refresh_token, refresh_expires_in, open_id, scope } = tokenData;
@@ -421,7 +435,7 @@ async function handleTikTok(req, res) {
         const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         const userState = await getUserState(supabase, state);
         if (!userState || !userState.email) {
-            return res.redirect('/broadcast/connect.html?error=Invalid session, please login again');
+            return res.redirect('/broadcast/?error=Invalid session, please login again');
         }
 
         const userId = await resolveDbUserId(supabase, userState);
@@ -452,14 +466,14 @@ async function handleTikTok(req, res) {
 
         if (saveError) {
             console.error('[TikTok] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
-        return res.redirect('/broadcast/connect.html?success=true&platform=tiktok');
+        return res.redirect('/broadcast/?success=true&platform=tiktok');
 
     } catch (error) {
         console.error('TikTok OAuth Error:', error);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }
 
@@ -477,12 +491,12 @@ async function handleTwitter(req, res) {
     const redirectUri = `${baseUrl}/api/broadcast/auth/twitter`;
 
     if (oauthError) {
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(oauthError + ': ' + (error_description || 'Authorization denied'))}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(oauthError + ': ' + (error_description || 'Authorization denied'))}`);
     }
 
     if (!code) {
         if (!TWITTER_CLIENT_ID) {
-            return res.redirect('/broadcast/connect.html?error=Twitter not configured');
+            return res.redirect('/broadcast/?error=Twitter not configured');
         }
 
         const codeVerifier = crypto.randomBytes(32).toString('base64url');
@@ -506,20 +520,20 @@ async function handleTwitter(req, res) {
 
     try {
         if (!state) {
-            return res.redirect('/broadcast/connect.html?error=Invalid state');
+            return res.redirect('/broadcast/?error=Invalid state');
         }
 
         let stateData;
         try {
             stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
         } catch (e) {
-            return res.redirect('/broadcast/connect.html?error=Invalid state format');
+            return res.redirect('/broadcast/?error=Invalid state format');
         }
 
         const { userToken, codeVerifier } = stateData;
 
         if (!TWITTER_CLIENT_ID || !TWITTER_CLIENT_SECRET) {
-            return res.redirect('/broadcast/connect.html?error=Twitter credentials not configured');
+            return res.redirect('/broadcast/?error=Twitter credentials not configured');
         }
 
         const basicAuth = Buffer.from(`${TWITTER_CLIENT_ID}:${TWITTER_CLIENT_SECRET}`).toString('base64');
@@ -552,7 +566,7 @@ async function handleTwitter(req, res) {
 
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
         }
 
         const tokenData = await tokenResponse.json();
@@ -564,7 +578,7 @@ async function handleTwitter(req, res) {
 
         if (!profileResponse.ok) {
             const errorText = await profileResponse.text();
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Profile fetch failed: ' + errorText));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Profile fetch failed: ' + errorText));
         }
 
         const profileData = await profileResponse.json();
@@ -573,7 +587,7 @@ async function handleTwitter(req, res) {
         const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         const userState = await getUserState(supabase, userToken);
         if (!userState || !userState.email) {
-            return res.redirect('/broadcast/connect.html?error=Invalid session, please login again');
+            return res.redirect('/broadcast/?error=Invalid session, please login again');
         }
 
         const userId = await resolveDbUserId(supabase, userState);
@@ -603,14 +617,14 @@ async function handleTwitter(req, res) {
 
         if (saveError) {
             console.error('[Twitter] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
-        return res.redirect('/broadcast/connect.html?success=true&platform=twitter');
+        return res.redirect('/broadcast/?success=true&platform=twitter');
 
     } catch (error) {
         console.error('Twitter OAuth Error:', error);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }
 
@@ -630,7 +644,7 @@ async function handleThreads(req, res) {
 
     if (!code) {
         if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Threads not configured (requires Facebook App)'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Threads not configured (requires Facebook App)'));
         }
 
         // Threads OAuth uses threads.net domain
@@ -648,7 +662,7 @@ async function handleThreads(req, res) {
 
     if (oauthError) {
         const errorMsg = `Threads OAuth Error: ${oauthError}. ${error_description || ''}`.trim();
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(errorMsg)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(errorMsg)}`);
     }
 
     try {
@@ -672,7 +686,7 @@ async function handleThreads(req, res) {
         console.log('[Threads] Token response:', JSON.stringify(tokenData));
 
         if (!tokenResponse.ok || tokenData.error) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Token exchange failed: ' + (tokenData.error?.message || tokenData.error_message || JSON.stringify(tokenData))));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + (tokenData.error?.message || tokenData.error_message || JSON.stringify(tokenData))));
         }
 
         const shortLivedToken = tokenData.access_token;
@@ -703,13 +717,13 @@ async function handleThreads(req, res) {
         console.log('[Threads] Profile data:', JSON.stringify(profileData));
 
         if (profileData.error) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('Failed to get profile: ' + profileData.error.message));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Failed to get profile: ' + profileData.error.message));
         }
 
         const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         const userState = await getUserState(supabase, state);
         if (!userState || !userState.email) {
-            return res.redirect('/broadcast/connect.html?error=Invalid session, please login again');
+            return res.redirect('/broadcast/?error=Invalid session, please login again');
         }
 
         const dbUserId = await resolveDbUserId(supabase, userState);
@@ -736,15 +750,15 @@ async function handleThreads(req, res) {
 
         if (saveError) {
             console.error('[Threads] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
         console.log('[Threads] Successfully connected!');
-        return res.redirect('/broadcast/connect.html?success=true&platform=threads');
+        return res.redirect('/broadcast/?success=true&platform=threads');
 
     } catch (error) {
         console.error('Threads OAuth Error:', error);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }
 
@@ -764,7 +778,7 @@ async function handleYouTube(req, res) {
     // Step 1: Redirect to Google OAuth
     if (!code) {
         if (!YOUTUBE_CLIENT_ID || !YOUTUBE_CLIENT_SECRET) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('YouTube not configured'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('YouTube not configured'));
         }
 
         const scopes = [
@@ -779,7 +793,8 @@ async function handleYouTube(req, res) {
         authUrl.searchParams.set('response_type', 'code');
         authUrl.searchParams.set('scope', scopes);
         authUrl.searchParams.set('access_type', 'offline');
-        authUrl.searchParams.set('prompt', 'consent');
+        authUrl.searchParams.set('prompt', 'consent select_account');
+        authUrl.searchParams.set('include_granted_scopes', 'false');
         authUrl.searchParams.set('state', state || '');
 
         return res.redirect(authUrl.toString());
@@ -788,7 +803,7 @@ async function handleYouTube(req, res) {
     // Handle OAuth error
     if (oauthError) {
         console.error('[YouTube] OAuth error:', oauthError, error_description);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error_description || oauthError)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error_description || oauthError)}`);
     }
 
     // Step 2: Exchange code for tokens
@@ -809,7 +824,7 @@ async function handleYouTube(req, res) {
 
         if (tokenData.error) {
             console.error('[YouTube] Token error:', tokenData);
-            return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
+            return res.redirect(`/broadcast/?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
         }
 
         const { access_token, refresh_token, expires_in } = tokenData;
@@ -823,54 +838,62 @@ async function handleYouTube(req, res) {
         const channelData = await channelResponse.json();
 
         if (!channelData.items || channelData.items.length === 0) {
-            return res.redirect('/broadcast/connect.html?error=' + encodeURIComponent('No YouTube channel found for this account'));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('No YouTube channel found for this account'));
         }
-
-        const channel = channelData.items[0];
-        const channelId = channel.id;
-        const channelTitle = channel.snippet.title;
-        const channelThumbnail = channel.snippet.thumbnails?.default?.url;
-        const subscriberCount = channel.statistics?.subscriberCount;
-        const videoCount = channel.statistics?.videoCount;
 
         // Step 4: Verify user and save to database
         const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         const userState = await getUserState(supabase, state);
         if (!userState || !userState.email) {
-            return res.redirect('/broadcast/connect.html?error=Invalid session, please login again');
+            return res.redirect('/broadcast/?error=Invalid session, please login again');
         }
 
         const userId = await resolveDbUserId(supabase, userState);
         const tokenExpiresAt = new Date(Date.now() + (expires_in * 1000)).toISOString();
 
-        const { error: saveError } = await upsertAccount(supabase, {
-            user_id: userId,
-            platform: 'youtube',
-            platform_user_id: channelId,
-            account_name: channelTitle,
-            access_token: access_token,
-            refresh_token: refresh_token,
-            token_expires_at: tokenExpiresAt,
-            scopes: ['youtube.upload', 'youtube.readonly'],
-            metadata: {
-                channel_id: channelId,
-                channel_title: channelTitle,
-                profile_picture: channelThumbnail,
-                display_name: channelTitle,
-                subscribers_count: parseInt(subscriberCount) || 0,
-                video_count: parseInt(videoCount) || 0,
-            },
-        }, userId, 'youtube');
+        for (const channel of channelData.items) {
+            const channelId = channel.id;
+            const channelTitle = channel.snippet.title;
+            const channelThumbnail = channel.snippet.thumbnails?.default?.url;
+            const subscriberCount = channel.statistics?.subscriberCount;
+            const videoCount = channel.statistics?.videoCount;
 
-        if (saveError) {
-            console.error('[YouTube] Save error:', saveError);
-            return res.redirect('/broadcast/connect.html?error=Failed to save account');
+            const { error: saveError } = await upsertAccount(supabase, {
+                user_id: userId,
+                platform: 'youtube',
+                platform_user_id: channelId,
+                account_name: channelTitle,
+                access_token: access_token,
+                refresh_token: refresh_token,
+                token_expires_at: tokenExpiresAt,
+                scopes: ['youtube.upload', 'youtube.readonly'],
+                metadata: {
+                    channel_id: channelId,
+                    channel_title: channelTitle,
+                    profile_picture: channelThumbnail,
+                    display_name: channelTitle,
+                    subscribers_count: parseInt(subscriberCount) || 0,
+                    video_count: parseInt(videoCount) || 0,
+                },
+            }, userId, 'youtube');
+
+            if (saveError) {
+                console.error('[YouTube] Save error:', saveError);
+                const message = saveError.code === '23505'
+                    ? 'Database still has the old one-account-per-platform constraint. Run broadcast/multi-account-migration.sql.'
+                    : 'Failed to save YouTube channel';
+                return res.redirect('/broadcast/?error=' + encodeURIComponent(message));
+            }
         }
 
-        return res.redirect('/broadcast/connect.html?success=true&platform=youtube');
+        const connectedChannels = channelData.items
+            .map(channel => `${channel.snippet?.title || channel.id}:${channel.id}`)
+            .join(',');
+
+        return res.redirect(`/broadcast/?success=true&platform=youtube&accounts=${channelData.items.length}&channels=${encodeURIComponent(connectedChannels)}`);
 
     } catch (error) {
         console.error('YouTube OAuth Error:', error);
-        return res.redirect(`/broadcast/connect.html?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
 }

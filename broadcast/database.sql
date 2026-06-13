@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS connected_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    platform TEXT NOT NULL CHECK (platform IN ('tiktok', 'instagram', 'linkedin', 'twitter', 'threads')),
+    platform TEXT NOT NULL CHECK (platform IN ('tiktok', 'instagram', 'linkedin', 'twitter', 'threads', 'youtube')),
     platform_user_id TEXT,
     account_name TEXT,
     access_token TEXT NOT NULL,
@@ -14,10 +14,7 @@ CREATE TABLE IF NOT EXISTS connected_accounts (
     scopes TEXT[],
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-
-    -- Each user can only have one account per platform
-    UNIQUE(user_id, platform)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- 2. Posts table
@@ -41,6 +38,10 @@ CREATE TABLE IF NOT EXISTS posts (
 -- 3. Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_connected_accounts_user_id ON connected_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_connected_accounts_platform ON connected_accounts(platform);
+CREATE INDEX IF NOT EXISTS idx_connected_accounts_user_platform ON connected_accounts(user_id, platform);
+CREATE UNIQUE INDEX IF NOT EXISTS connected_accounts_user_platform_provider_uidx
+    ON connected_accounts(user_id, platform, platform_user_id)
+    WHERE platform_user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
 CREATE INDEX IF NOT EXISTS idx_posts_status ON posts(status);
 CREATE INDEX IF NOT EXISTS idx_posts_scheduled_at ON posts(scheduled_at) WHERE status = 'scheduled';

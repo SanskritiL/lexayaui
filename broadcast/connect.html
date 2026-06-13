@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Accounts — Lexaya Studio</title>
+    <title>Channel Dashboard — Lexaya Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -56,39 +56,60 @@
         .dash-card { transition: all 0.3s ease; }
         .dash-card:hover { transform: translateY(-2px); box-shadow: 0 24px 48px rgba(47, 51, 50, 0.1); }
 
-        .connect-grid { display: grid; gap: 1.25rem; }
-        .connect-card { background: white; border: 2px solid #e5e7eb; border-radius: 16px; overflow: hidden; transition: all 0.3s ease; }
-        .connect-card.connected { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
-        .card-header { display: flex; align-items: center; gap: 1rem; padding: 1.25rem; background: #f9fafb; }
-        .platform-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; flex-shrink: 0; }
+        .channels-layout { max-width: 1080px; }
+        .channels-panel { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(47, 51, 50, 0.06); }
+        .channels-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.9rem 1rem; border-bottom: 1px solid #eef0ee; background: #fbfbfa; }
+        .channels-toolbar h2 { margin: 0; font-size: 1.05rem; font-weight: 800; }
+        .channels-toolbar p { margin: 0.15rem 0 0; color: #6b7280; font-size: 0.78rem; }
+        .channels-toolbar-actions { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+        .channels-total { padding: 0.25rem 0.6rem; border-radius: 999px; background: #f3f4f6; color: #374151; font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+        .btn-create-post { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.48rem 0.75rem; border-radius: 9px; background: #005bc2; color: #ffffff; font-size: 0.76rem; font-weight: 900; text-decoration: none; white-space: nowrap; }
+        .btn-create-post:hover { background: #004a9f; }
+        .connect-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.85rem; padding: 0.9rem; }
+        .connect-card { background: #fbfbfa; border: 1px solid #eef0ee; border-radius: 12px; overflow: hidden; transition: border-color 0.2s ease, background 0.2s ease; }
+        .connect-card.connected { background: #ffffff; border-color: #d9eadf; }
+        .connect-card:hover { border-color: #d7e5f8; }
+        .card-header { display: flex; align-items: center; gap: 0.65rem; padding: 0.82rem 0.9rem; background: transparent; border-bottom: 1px solid #eef0ee; }
+        .platform-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.92rem; color: white; flex-shrink: 0; }
         .platform-icon.linkedin { background: #0A66C2; }
         .platform-icon.tiktok { background: #000; }
         .platform-icon.instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
         .platform-icon.youtube { background: #FF0000; }
-        .platform-info h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-        .platform-desc { margin: 0; font-size: 0.85rem; color: #6b7280; }
-        .card-body { padding: 1.25rem; }
-        .disconnected-state { text-align: center; }
-        .disconnected-state p { color: #6b7280; margin: 0 0 1rem 0; font-size: 0.9rem; }
-        .connected-state { display: flex; flex-direction: column; gap: 1rem; }
-        .account-profile { display: flex; align-items: center; gap: 0.875rem; }
-        .profile-pic { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid #e5e7eb; }
-        .profile-pic-fallback { width: 56px; height: 56px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 1.25rem; flex-shrink: 0; }
+        .platform-info { min-width: 0; }
+        .platform-info h3 { margin: 0; font-size: 0.9rem; font-weight: 800; }
+        .platform-desc { margin: 0; font-size: 0.72rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .account-count-pill { margin-left: auto; padding: 0.18rem 0.5rem; border-radius: 999px; background: #f3f4f6; color: #4b5563; font-size: 0.68rem; font-weight: 800; white-space: nowrap; }
+        .connect-card.connected .account-count-pill { background: #ecfdf5; color: #047857; }
+        .card-body { padding: 0.82rem 0.9rem; }
+        .disconnected-state { display: flex; align-items: center; gap: 0.6rem; justify-content: space-between; }
+        .disconnected-state p { color: #6b7280; margin: 0; font-size: 0.78rem; min-width: 0; }
+        .multi-account-note { display: none; }
+        .multi-account-note strong { color: #374151; font-weight: 700; }
+        .account-list-header { display: none; }
+        .channel-account-list { display: grid; gap: 0.35rem; }
+        .btn-connect-another { background: #f3f4f6; color: #374151; font-weight: 800; padding: 0.48rem 0.65rem; border-radius: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 0.76rem; border: 1px solid #e5e7eb; cursor: pointer; transition: all 0.2s ease; }
+        .btn-connect-another:hover { background: #e8f1ff; color: #005bc2; border-color: #b8d5ff; }
+        .disconnected-state .btn-connect-another { width: auto; flex: 0 0 auto; }
+        .connected-state { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0.55rem; padding: 0.42rem 0.42rem 0.42rem 0.5rem; border: 1px solid #eef0ee; border-radius: 9px; background: #fbfbfa; }
+        .account-profile { display: flex; align-items: center; gap: 0.55rem; min-width: 0; }
+        .profile-pic { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb; }
+        .profile-pic-fallback { width: 30px; height: 30px; border-radius: 50%; background: #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.8rem; flex-shrink: 0; }
         .account-details { flex: 1; min-width: 0; }
-        .account-name { font-weight: 600; font-size: 1rem; color: #111827; }
-        .account-handle { font-size: 0.85rem; color: #6b7280; }
-        .account-type { display: inline-block; margin-top: 0.25rem; padding: 0.125rem 0.5rem; background: #fff5f5; color: #d4838f; font-size: 0.7rem; font-weight: 500; border-radius: 20px; text-transform: uppercase; }
-        .account-stats { display: flex; gap: 1.5rem; padding: 0.75rem 1rem; background: #f9fafb; border-radius: 10px; }
+        .account-name { font-weight: 800; font-size: 0.82rem; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .account-handle { font-size: 0.7rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .account-type { display: none; }
+        .account-stats { display: none; }
         .account-stats .stat { display: flex; flex-direction: column; align-items: center; }
         .stat-value { font-weight: 700; font-size: 1.1rem; color: #111827; }
         .stat-label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; }
-        .connected-actions { display: flex; align-items: center; justify-content: space-between; padding-top: 0.5rem; border-top: 1px solid #f3f4f6; }
-        .connected-badge { display: flex; align-items: center; gap: 0.375rem; font-size: 0.85rem; color: #10b981; font-weight: 500; }
+        .connected-actions { display: flex; align-items: center; justify-content: flex-end; gap: 0.3rem; }
+        .connected-badge { display: none; }
         .connected-badge i { font-size: 1rem; }
-        .btn-disconnect { background: transparent; color: #dc2626; border: 1px solid #fecaca; padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
+        .btn-disconnect { width: 28px; height: 28px; background: transparent; color: #9ca3af; border: 1px solid transparent; padding: 0; font-size: 0; border-radius: 7px; cursor: pointer; transition: all 0.2s ease; font-family: inherit; display: flex; align-items: center; justify-content: center; }
+        .btn-disconnect::before { content: "\\f00d"; font-family: "Font Awesome 6 Free"; font-weight: 900; font-size: 0.75rem; }
         .btn-disconnect:hover { background: #fef2f2; border-color: #dc2626; }
         .action-buttons { display: flex; align-items: center; gap: 0.5rem; }
-        .btn-refresh { width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e5e7eb; background: white; color: #6b7280; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
+        .btn-refresh { width: 28px; height: 28px; border-radius: 7px; border: 1px solid transparent; background: transparent; color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; }
         .btn-refresh:hover { background: #fff5f5; color: #d4838f; border-color: #d4838f; }
         .btn-refresh.spinning i { animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -100,121 +121,105 @@
         .success-banner-content { display: flex; align-items: center; gap: 0.75rem; }
         .banner-close { background: rgba(255,255,255,0.2); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .banner-close:hover { background: rgba(255,255,255,0.3); }
+        .channels-tip { display: none; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem; box-shadow: 0 10px 30px rgba(47, 51, 50, 0.04); }
+        .channels-tip h3 { margin: 0 0 0.35rem; font-size: 0.92rem; font-weight: 800; }
+        .channels-tip p { margin: 0; color: #6b7280; font-size: 0.8rem; line-height: 1.45; }
+        .channels-tip-list { display: grid; gap: 0.5rem; margin-top: 0.85rem; }
+        .channels-tip-item { display: flex; gap: 0.5rem; align-items: flex-start; color: #4b5563; font-size: 0.78rem; line-height: 1.35; }
+        .channels-tip-item .material-symbols-outlined { color: #005bc2; font-size: 1rem; line-height: 1.1; }
+        @media (max-width: 860px) {
+            .channels-layout { max-width: 520px; }
+            .connect-grid { grid-template-columns: 1fr; }
+            .channels-toolbar { align-items: flex-start; flex-direction: column; }
+            .channels-toolbar-actions { width: 100%; justify-content: space-between; }
+        }
     </style>
 </head>
-<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container antialiased" data-page="accounts" data-title="Connect Accounts" data-subtitle="Account Setup">
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container antialiased" data-page="channels" data-title="Channel Dashboard" data-subtitle="Grouped by platform">
     <div id="app-shell"></div>
 
     <div data-content style="display: none;">
-        <div class="connect-grid">
-            <!-- LinkedIn -->
-            <div class="connect-card" id="linkedin-card" data-platform="linkedin">
-                <div class="card-header">
-                    <div class="platform-icon linkedin"><i class="fa-brands fa-linkedin"></i></div>
-                    <div class="platform-info">
-                        <h3>LinkedIn</h3>
-                        <p class="platform-desc">Share to your professional network</p>
+        <div class="channels-layout">
+            <section class="channels-panel">
+                <div class="channels-toolbar">
+                    <div>
+                        <h2>Channel Dashboard</h2>
+                        <p>Manage publishing channels grouped by platform.</p>
+                    </div>
+                    <div class="channels-toolbar-actions">
+                        <a class="btn-create-post" href="upload.html">
+                            <span class="material-symbols-outlined text-sm">add</span>
+                            Create Post
+                        </a>
+                        <span class="channels-total" id="channels-total">0 channels</span>
                     </div>
                 </div>
-                <div class="card-body" id="linkedin-body">
-                    <div class="disconnected-state">
-                        <p>Connect your LinkedIn account to share posts and videos</p>
-                        <button id="linkedin-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
-                            <i class="fa-brands fa-linkedin"></i> Connect LinkedIn
-                        </button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- TikTok -->
-            <div class="connect-card" id="tiktok-card" data-platform="tiktok">
-                <div class="card-header">
-                    <div class="platform-icon tiktok"><i class="fa-brands fa-tiktok"></i></div>
-                    <div class="platform-info">
-                        <h3>TikTok</h3>
-                        <p class="platform-desc">Post short-form videos</p>
+                <div class="connect-grid">
+                    <!-- LinkedIn -->
+                    <div class="connect-card" id="linkedin-card" data-platform="linkedin">
+                        <div class="card-header">
+                            <div class="platform-icon linkedin"><i class="fa-brands fa-linkedin"></i></div>
+                            <div class="platform-info">
+                                <h3>LinkedIn</h3>
+                                <p class="platform-desc">Professional posts</p>
+                            </div>
+                        </div>
+                        <div class="card-body" id="linkedin-body"></div>
                     </div>
-                </div>
-                <div class="card-body" id="tiktok-body">
-                    <div class="disconnected-state">
-                        <p>Connect your TikTok to post videos directly</p>
-                        <button id="tiktok-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
-                            <i class="fa-brands fa-tiktok"></i> Connect TikTok
-                        </button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- Instagram -->
-            <div class="connect-card" id="instagram-card" data-platform="instagram">
-                <div class="card-header">
-                    <div class="platform-icon instagram"><i class="fa-brands fa-instagram"></i></div>
-                    <div class="platform-info">
-                        <h3>Instagram</h3>
-                        <p class="platform-desc">Publish Reels & posts</p>
+                    <!-- TikTok -->
+                    <div class="connect-card" id="tiktok-card" data-platform="tiktok">
+                        <div class="card-header">
+                            <div class="platform-icon tiktok"><i class="fa-brands fa-tiktok"></i></div>
+                            <div class="platform-info">
+                                <h3>TikTok</h3>
+                                <p class="platform-desc">Short-form video</p>
+                            </div>
+                        </div>
+                        <div class="card-body" id="tiktok-body"></div>
                     </div>
-                </div>
-                <div class="card-body" id="instagram-body">
-                    <div class="disconnected-state">
-                        <p>Connect your Instagram Business or Creator account</p>
-                        <button id="instagram-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
-                            <i class="fa-brands fa-instagram"></i> Connect Instagram
-                        </button>
-                    </div>
-                </div>
-            </div>
 
-            <!-- YouTube -->
-            <div class="connect-card" id="youtube-card" data-platform="youtube">
-                <div class="card-header">
-                    <div class="platform-icon youtube"><i class="fa-brands fa-youtube"></i></div>
-                    <div class="platform-info">
-                        <h3>YouTube Shorts</h3>
-                        <p class="platform-desc">Upload vertical short videos</p>
+                    <!-- Instagram -->
+                    <div class="connect-card" id="instagram-card" data-platform="instagram">
+                        <div class="card-header">
+                            <div class="platform-icon instagram"><i class="fa-brands fa-instagram"></i></div>
+                            <div class="platform-info">
+                                <h3>Instagram</h3>
+                                <p class="platform-desc">Reels and posts</p>
+                            </div>
+                        </div>
+                        <div class="card-body" id="instagram-body"></div>
+                    </div>
+
+                    <!-- YouTube -->
+                    <div class="connect-card" id="youtube-card" data-platform="youtube">
+                        <div class="card-header">
+                            <div class="platform-icon youtube"><i class="fa-brands fa-youtube"></i></div>
+                            <div class="platform-info">
+                                <h3>YouTube Shorts</h3>
+                                <p class="platform-desc">Vertical videos</p>
+                            </div>
+                        </div>
+                        <div class="card-body" id="youtube-body"></div>
                     </div>
                 </div>
-                <div class="card-body" id="youtube-body">
-                    <div class="disconnected-state">
-                        <p>Connect your YouTube channel to post Shorts</p>
-                        <button id="youtube-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
-                            <i class="fa-brands fa-youtube"></i> Connect YouTube
-                        </button>
+            </section>
+
+            <aside class="channels-tip">
+                <h3>Account routing</h3>
+                <p>Each connected account appears as a channel row. When publishing, you can choose exactly which rows should receive the post.</p>
+                <div class="channels-tip-list">
+                    <div class="channels-tip-item">
+                        <span class="material-symbols-outlined">add_link</span>
+                            <span>Use Add channel to connect a second Instagram, TikTok, or YouTube channel.</span>
+                    </div>
+                    <div class="channels-tip-item">
+                        <span class="material-symbols-outlined">lock</span>
+                        <span>OAuth tokens are stored per account row and can be disconnected independently.</span>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- How it works -->
-        <section class="mt-16">
-            <h2 class="text-headline-sm mb-8">How it works</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow">
-                    <span class="material-symbols-outlined text-primary mb-4 text-3xl">link</span>
-                    <h3 class="font-bold text-lg mb-2">1. Connect your accounts</h3>
-                    <p class="text-sm text-on-surface-variant">Authorize Broadcast to post on your behalf. We only request posting permissions.</p>
-                </div>
-                <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow">
-                    <span class="material-symbols-outlined text-primary mb-4 text-3xl">upload</span>
-                    <h3 class="font-bold text-lg mb-2">2. Upload your content</h3>
-                    <p class="text-sm text-on-surface-variant">Upload a video once and write a single caption for all platforms.</p>
-                </div>
-                <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow">
-                    <span class="material-symbols-outlined text-primary mb-4 text-3xl">publish</span>
-                    <h3 class="font-bold text-lg mb-2">3. Publish or schedule</h3>
-                    <p class="text-sm text-on-surface-variant">Post immediately or schedule for the perfect time. We handle the rest.</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Security Note -->
-        <div class="mt-12 p-8 border-2 border-dashed border-outline-variant rounded-xl bg-surface-container-lowest">
-            <div class="flex items-center gap-4">
-                <span class="material-symbols-outlined text-3xl text-primary">lock</span>
-                <div>
-                    <h3 class="font-bold text-base mb-1">Your data is secure</h3>
-                    <p class="text-sm text-on-surface-variant">We use official OAuth APIs and never store your passwords. You can disconnect at any time. Access tokens are encrypted and stored securely.</p>
-                </div>
-            </div>
+            </aside>
         </div>
     </div>
 
@@ -222,7 +227,8 @@
         // Config
         const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        const supabaseClient = window.LEXAYA_SUPABASE_CLIENT || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
 
         let connectedAccounts = [];
         let currentUser = null;
@@ -372,14 +378,37 @@
             return count.toString();
         }
 
+        function getSafeAvatarUrl(url) {
+            if (!url) return '';
+            try {
+                const parsed = new URL(url);
+                if (parsed.hostname.includes('fbcdn.net')) return '';
+            } catch (e) {}
+            return url;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;',
+            }[char]));
+        }
+
         function getConnectedHTML(platform, account) {
             const metadata = account.metadata || {};
-            const profilePic = metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url;
+            const profilePic = getSafeAvatarUrl(metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url);
             const followers = metadata.followers_count || metadata.follower_count || metadata.subscribers_count;
             const following = metadata.following_count || metadata.friends_count;
             const username = account.account_name || metadata.username || metadata.display_name;
             const displayName = metadata.display_name || metadata.name || username;
             const accountType = metadata.account_type || '';
+            const safeUsername = escapeHtml(username);
+            const safeDisplayName = escapeHtml(displayName);
+            const safeAccountType = escapeHtml(accountType);
+            const safeProfilePic = escapeHtml(profilePic);
 
             const formattedFollowers = formatFollowers(followers);
             const formattedFollowing = formatFollowers(following);
@@ -388,14 +417,14 @@
                 <div class="connected-state">
                     <div class="account-profile">
                         ${profilePic
-                            ? `<img src="${profilePic}" alt="${username}" class="profile-pic" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            ? `<img src="${safeProfilePic}" alt="${safeUsername}" class="profile-pic" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                <div class="profile-pic-fallback" style="display:none;"><i class="fas fa-user"></i></div>`
                             : `<div class="profile-pic-fallback"><i class="fas fa-user"></i></div>`
                         }
                         <div class="account-details">
-                            <div class="account-name">${displayName}</div>
-                            <div class="account-handle">@${username}</div>
-                            ${accountType ? `<span class="account-type">${accountType}</span>` : ''}
+                            <div class="account-name">${safeDisplayName}</div>
+                            <div class="account-handle">@${safeUsername}</div>
+                            ${accountType ? `<span class="account-type">${safeAccountType}</span>` : ''}
                         </div>
                     </div>
                     ${(formattedFollowers || formattedFollowing) ? `
@@ -420,7 +449,7 @@
                             <button class="btn-refresh" onclick="refreshSingleAccount('${platform}')" title="Refresh stats">
                                 <i class="fas fa-sync-alt"></i>
                             </button>
-                            <button id="${platform}-btn" class="btn-disconnect">
+                            <button class="btn-disconnect" onclick="disconnectAccount('${account.id}', '${platform}')" title="Disconnect ${safeDisplayName}">
                                 Disconnect
                             </button>
                         </div>
@@ -431,34 +460,59 @@
 
         function getDisconnectedHTML(platform) {
             const platformConfig = {
-                linkedin: { icon: 'fa-linkedin', name: 'LinkedIn', desc: 'Connect your LinkedIn account to share posts and videos' },
-                tiktok: { icon: 'fa-tiktok', name: 'TikTok', desc: 'Connect your TikTok to post videos directly' },
-                instagram: { icon: 'fa-instagram', name: 'Instagram', desc: 'Connect your Instagram Business or Creator account' },
-                threads: { icon: 'fa-threads', name: 'Threads', desc: 'Connect your Threads account' },
-                youtube: { icon: 'fa-youtube', name: 'YouTube', desc: 'Connect your YouTube channel to post Shorts' }
+                linkedin: { icon: 'fa-linkedin', name: 'LinkedIn', desc: 'No LinkedIn channel connected' },
+                tiktok: { icon: 'fa-tiktok', name: 'TikTok', desc: 'No TikTok channel connected' },
+                instagram: { icon: 'fa-instagram', name: 'Instagram', desc: 'No Instagram channel connected' },
+                threads: { icon: 'fa-threads', name: 'Threads', desc: 'No Threads channel connected' },
+                youtube: { icon: 'fa-youtube', name: 'YouTube', desc: 'No YouTube channel connected' }
             };
             const config = platformConfig[platform];
             return `
                 <div class="disconnected-state">
                     <p>${config.desc}</p>
-                    <button id="${platform}-btn" class="bg-primary text-white font-semibold py-3 px-6 rounded-lg hover:bg-primary-dim transition-all w-full flex items-center justify-center gap-2 text-sm border-none cursor-pointer">
-                        <i class="fa-brands ${config.icon}"></i> Connect ${config.name}
+                    <button id="${platform}-btn" class="btn-connect-another">
+                        <i class="fa-brands ${config.icon}"></i> Add ${config.name}
                     </button>
+                    <div class="multi-account-note">
+                        <strong>Multiple channels supported.</strong> Connect one now, then add more ${config.name} channels here.
+                    </div>
                 </div>
             `;
         }
 
         function updateUI() {
             const platforms = ['linkedin', 'tiktok', 'instagram', 'youtube'];
+            const totalAccounts = connectedAccounts.length;
+            const totalEl = document.getElementById('channels-total');
+            if (totalEl) totalEl.textContent = `${totalAccounts} channel${totalAccounts === 1 ? '' : 's'}`;
 
             platforms.forEach(platform => {
-                const account = connectedAccounts.find(a => a.platform === platform);
+                const accounts = connectedAccounts.filter(a => a.platform === platform);
                 const cardEl = document.getElementById(`${platform}-card`);
                 const bodyEl = document.getElementById(`${platform}-body`);
+                const headerEl = cardEl.querySelector('.card-header');
+                let countPill = headerEl.querySelector('.account-count-pill');
+                if (!countPill) {
+                    countPill = document.createElement('span');
+                    countPill.className = 'account-count-pill';
+                    headerEl.appendChild(countPill);
+                }
+                countPill.textContent = `${accounts.length} channel${accounts.length === 1 ? '' : 's'}`;
 
-                if (account) {
+                if (accounts.length > 0) {
                     cardEl.classList.add('connected');
-                    bodyEl.innerHTML = getConnectedHTML(platform, account);
+                    bodyEl.innerHTML = `
+                        <div class="channel-account-list">
+                            <div class="account-list-header">
+                                <span>Connected channels</span>
+                                <span>${accounts.length} total</span>
+                            </div>
+                            ${accounts.map(account => getConnectedHTML(platform, account)).join('')}
+                            <button id="${platform}-btn" class="btn-connect-another">
+                                <i class="fas fa-plus"></i> Add channel
+                            </button>
+                        </div>
+                    `;
                 } else {
                     cardEl.classList.remove('connected');
                     bodyEl.innerHTML = getDisconnectedHTML(platform);
@@ -470,21 +524,17 @@
         }
 
         function setupButtons() {
-            document.getElementById('linkedin-btn').addEventListener('click', () => {
-                const account = connectedAccounts.find(a => a.platform === 'linkedin');
-                if (account) { disconnectAccount('linkedin'); } else { connectLinkedIn(); }
-            });
-            document.getElementById('tiktok-btn').addEventListener('click', () => {
-                const account = connectedAccounts.find(a => a.platform === 'tiktok');
-                if (account) { disconnectAccount('tiktok'); } else { connectTikTok(); }
-            });
-            document.getElementById('instagram-btn').addEventListener('click', () => {
-                const account = connectedAccounts.find(a => a.platform === 'instagram');
-                if (account) { disconnectAccount('instagram'); } else { connectInstagram(); }
-            });
-            document.getElementById('youtube-btn').addEventListener('click', () => {
-                const account = connectedAccounts.find(a => a.platform === 'youtube');
-                if (account) { disconnectAccount('youtube'); } else { connectYouTube(); }
+            const actions = {
+                linkedin: connectLinkedIn,
+                tiktok: connectTikTok,
+                instagram: connectInstagram,
+                youtube: connectYouTube,
+            };
+
+            Object.entries(actions).forEach(([platform, action]) => {
+                document.querySelectorAll(`#${platform}-btn`).forEach(button => {
+                    button.onclick = action;
+                });
             });
         }
 
@@ -498,7 +548,9 @@
             return currentSession.access_token;
         }
         function getAuthApiBase() {
-            return '';
+            if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
+            const isLocalStaticPreview = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+            return isLocalStaticPreview || window.location.protocol === 'file:' ? 'https://lexaya.io' : '';
         }
         function getAuthUrl(platform, state) {
             return `${getAuthApiBase()}/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;
@@ -508,7 +560,7 @@
         async function connectInstagram() { const state = await getOAuthState(); if (state) window.location.href = getAuthUrl('instagram', state); }
         async function connectYouTube() { const state = await getOAuthState(); if (state) window.location.href = getAuthUrl('youtube', state); }
 
-        async function disconnectAccount(platform) {
+        async function disconnectAccount(accountId, platform) {
             if (!confirm(`Are you sure you want to disconnect ${platform}?`)) return;
             if (!currentUser) return;
 
@@ -516,7 +568,7 @@
                 .from('connected_accounts')
                 .delete()
                 .eq('user_id', currentUser.id)
-                .eq('platform', platform);
+                .eq('id', accountId);
 
             if (error) {
                 showToast('Error disconnecting account', 'error');

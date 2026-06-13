@@ -3,13 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard — Lexaya Studio</title>
+    <title>Dashboard - Lexaya Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -18,25 +17,17 @@
             theme: {
                 extend: {
                     colors: {
-                        "surface-bright": "#f9f9f7", "tertiary": "#695781", "on-primary-fixed-variant": "#001b42",
-                        "outline": "#777c79", "primary-dim": "#0050ab", "error-dim": "#67040d",
-                        "surface-container-highest": "#e0e3e0", "surface-tint": "#005bc2", "inverse-surface": "#0d0f0e",
-                        "tertiary-container": "#e4ceff", "secondary": "#575f72", "on-primary-container": "#000e29",
-                        "on-secondary-container": "#4a5264", "on-error": "#fff7f6", "inverse-primary": "#4c8efe",
-                        "tertiary-fixed-dim": "#d6c0f0", "tertiary-fixed": "#e4ceff", "on-tertiary-fixed": "#403057",
-                        "secondary-fixed": "#dbe2f9", "on-primary": "#f9f8ff", "surface-container-high": "#e6e9e6",
-                        "on-tertiary-fixed-variant": "#5d4d75", "on-secondary-fixed": "#373f51",
-                        "surface": "#f9f9f7", "outline-variant": "#afb3b0", "on-primary-fixed": "#000000",
-                        "primary-fixed-dim": "#3c81f0", "primary-fixed": "#4c8efe", "on-secondary": "#f9f8ff",
-                        "on-tertiary-container": "#54436b", "on-background": "#2f3332", "on-surface": "#2f3332",
-                        "surface-container": "#eceeec", "error": "#a83836", "surface-variant": "#e0e3e0",
-                        "tertiary-dim": "#5c4b74", "primary": "#005bc2", "on-error-container": "#6e0a12",
-                        "background": "#f9f9f7", "surface-container-low": "#f3f4f2",
-                        "on-secondary-fixed-variant": "#545b6e", "surface-container-lowest": "#ffffff",
-                        "surface-dim": "#d7dbd8", "primary-container": "#4c8efe", "error-container": "#fa746f",
-                        "secondary-fixed-dim": "#cdd4ea", "secondary-dim": "#4b5366",
-                        "on-surface-variant": "#5c605e", "secondary-container": "#dbe2f9",
-                        "on-tertiary": "#fef6ff", "inverse-on-surface": "#9c9d9b"
+                        "surface-bright": "#f9f9f7", "outline": "#777c79", "primary-dim": "#0050ab",
+                        "surface-container-highest": "#e0e3e0", "surface-tint": "#005bc2",
+                        "on-primary-container": "#000e29", "on-primary": "#f9f8ff",
+                        "surface-container-high": "#e6e9e6", "surface": "#f9f9f7",
+                        "outline-variant": "#afb3b0", "on-background": "#2f3332",
+                        "on-surface": "#2f3332", "surface-container": "#eceeec",
+                        "error": "#a83836", "surface-variant": "#e0e3e0",
+                        "primary": "#005bc2", "background": "#f9f9f7",
+                        "surface-container-low": "#f3f4f2", "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d7dbd8", "primary-container": "#4c8efe",
+                        "on-surface-variant": "#5c605e"
                     },
                     borderRadius: { DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem" },
                     fontFamily: { headline: ["Manrope"], display: ["Manrope"], body: ["Manrope"], label: ["Manrope"] }
@@ -47,140 +38,173 @@
     <style>
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
         .glass { background: rgba(249, 249, 247, 0.8); backdrop-filter: blur(24px); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .text-display-lg { font-size: 3.5rem; line-height: 1.1; letter-spacing: -0.02em; }
         .text-headline-lg { font-size: 2rem; line-height: 1.2; font-weight: 700; }
         .text-headline-sm { font-size: 1.25rem; line-height: 1.4; font-weight: 800; }
         .text-label-md { font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; }
-        .ambient-shadow { box-shadow: 0px 24px 48px rgba(47, 51, 50, 0.06); }
-        .dash-card { transition: all 0.3s ease; }
-        .dash-card:hover { transform: translateY(-2px); box-shadow: 0 24px 48px rgba(47, 51, 50, 0.1); }
-        .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; }
+        .text-label-sm { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+        .ambient-shadow { box-shadow: 0 18px 40px rgba(47, 51, 50, 0.06); }
+
+        .dashboard-grid { display: grid; grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.35fr); gap: 1rem; align-items: start; }
+        .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: visible; }
+        .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border-bottom: 1px solid #eef0ee; background: #fbfbfa; }
+        .panel-title { margin: 0; font-size: 0.98rem; font-weight: 800; color: #111827; }
+        .panel-meta { margin: 0.15rem 0 0; font-size: 0.75rem; color: #6b7280; }
+        .panel-body { padding: 1rem; }
+
+        .add-menu-wrap { position: relative; flex-shrink: 0; }
+        .btn-primary { border: 0; border-radius: 9px; background: #005bc2; color: #fff; padding: 0.58rem 0.78rem; font-size: 0.78rem; font-weight: 900; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; text-decoration: none; white-space: nowrap; }
+        .btn-primary:hover { background: #004a9f; }
+        .btn-secondary { border: 1px solid #d1d5db; border-radius: 9px; background: #fff; color: #374151; padding: 0.58rem 0.78rem; font-size: 0.78rem; font-weight: 900; display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; text-decoration: none; white-space: nowrap; }
+        .btn-secondary:hover { border-color: #9fc6f5; color: #005bc2; background: #f7fbff; }
+        .add-menu { position: absolute; right: 0; top: calc(100% + 0.5rem); width: 220px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 20px 45px rgba(17, 24, 39, 0.12); padding: 0.35rem; z-index: 20; display: none; }
+        .add-menu.open { display: grid; gap: 0.2rem; }
+        .add-option { width: 100%; border: 0; background: transparent; border-radius: 8px; padding: 0.72rem; cursor: pointer; display: flex; align-items: center; gap: 0.65rem; color: #1f2937; font: inherit; text-align: left; }
+        .add-option:hover { background: #f3f7fb; }
+        .platform-mark { width: 30px; height: 30px; border-radius: 8px; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+        .platform-mark.youtube { background: #ff0000; }
+        .platform-mark.linkedin { background: #0a66c2; }
+        .platform-mark.tiktok { background: #000; }
+        .platform-mark.instagram { background: #cc2366; }
+
+        .account-list { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: flex-start; }
+        .account-row { position: relative; border: 0; padding: 0; background: transparent; }
+        .account-portrait { position: relative; width: 54px; height: 54px; flex-shrink: 0; }
+        .account-avatar { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; background: #eef0ee; border: 2px solid #fff; box-shadow: 0 0 0 1px #e5e7eb; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 0.95rem; font-weight: 900; }
+        .account-platform-badge { position: absolute; right: -3px; bottom: -3px; width: 21px; height: 21px; border-radius: 50%; color: #fff; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; box-shadow: 0 4px 10px rgba(17, 24, 39, 0.16); }
+        .account-platform-badge.youtube { background: #ff0000; }
+        .account-platform-badge.linkedin { background: #0a66c2; }
+        .account-platform-badge.tiktok { background: #000; }
+        .account-platform-badge.instagram { background: #cc2366; }
+        .icon-button { position: absolute; right: -8px; top: -8px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid #e5e7eb; background: #fff; color: #9ca3af; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
+        .account-row:hover .icon-button, .account-row:focus-within .icon-button { opacity: 1; }
+        .icon-button:hover { color: #a83836; border-color: #fecaca; background: #fef2f2; }
+        .empty-state { text-align: center; padding: 2rem 1rem; color: #6b7280; }
+        .empty-state .material-symbols-outlined { display: block; font-size: 2.5rem; margin-bottom: 0.7rem; color: #9ca3af; }
+
+        .calendar-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+        .calendar-shell { display: grid; gap: 1rem; }
+        .calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.35rem; }
+        .calendar-weekdays span { color: #6b7280; font-size: 0.68rem; font-weight: 900; text-transform: uppercase; text-align: center; }
+        .calendar-day { min-height: 86px; border: 1px solid #eef0ee; border-radius: 10px; background: #fff; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.3rem; }
+        .calendar-day.muted { background: #fbfbfa; color: #a0a7a3; }
+        .calendar-day.today { border-color: #005bc2; box-shadow: inset 0 0 0 1px rgba(0, 91, 194, 0.16); }
+        .day-number { font-size: 0.74rem; font-weight: 900; }
+        .calendar-event { display: block; border-radius: 6px; background: #eef5ff; color: #005bc2; padding: 0.22rem 0.35rem; font-size: 0.64rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .schedule-list { display: grid; gap: 0.55rem; margin-top: 1rem; }
+        .schedule-row { border: 1px solid #eef0ee; border-radius: 10px; padding: 0.75rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.75rem; align-items: center; }
+        .schedule-title { font-size: 0.84rem; font-weight: 900; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .schedule-date { font-size: 0.72rem; color: #6b7280; margin-top: 0.15rem; }
+        .platform-dots { display: flex; gap: 0.25rem; }
+        .platform-dot { width: 24px; height: 24px; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.68rem; }
+        .platform-dot.youtube { background: #ff0000; }
+        .platform-dot.linkedin { background: #0a66c2; }
+        .platform-dot.tiktok { background: #000; }
+        .platform-dot.instagram { background: #cc2366; }
+        .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); color: white; padding: 0.9rem 1.2rem; border-radius: 10px; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000; transition: opacity 0.3s ease; }
+        @media (max-width: 980px) { .dashboard-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 640px) {
+            .panel-header { align-items: flex-start; flex-direction: column; }
+            .add-menu-wrap, .add-menu-wrap .btn-primary { width: 100%; }
+            .add-menu { left: 0; right: auto; width: min(100%, 240px); }
+            .calendar-actions { width: 100%; justify-content: stretch; }
+            .calendar-actions a, .calendar-actions button { flex: 1; justify-content: center; }
+            .calendar-day { min-height: 64px; padding: 0.38rem; }
+            .calendar-event { display: none; }
+        }
     </style>
 </head>
-<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container antialiased" data-page="dashboard" data-title="Broadcast Dashboard" data-subtitle="Overview">
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container antialiased" data-page="dashboard" data-title="Dashboard" data-subtitle="Studio">
     <div id="app-shell"></div>
 
     <div data-content style="display: none;">
-        <!-- Success Banner -->
-        <div id="success-banner" style="display: none;" class="mb-8 p-4 rounded-xl bg-gradient-to-r from-green-500 to-emerald-500 text-white flex items-center gap-3 animate-fadeIn"></div>
+        <div id="success-banner" style="display: none;" class="mb-4 p-4 rounded-xl bg-green-600 text-white"></div>
 
-        <!-- Stats Overview -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow dash-card">
-                <span class="material-symbols-outlined text-primary mb-4 text-3xl">hub</span>
-                <div class="stat-value text-primary" id="stat-accounts">0</div>
-                <p class="text-label-sm text-on-surface-variant uppercase mt-2">Connected</p>
-            </div>
-            <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow dash-card">
-                <span class="material-symbols-outlined text-primary mb-4 text-3xl">article</span>
-                <div class="stat-value text-primary" id="stat-posts">0</div>
-                <p class="text-label-sm text-on-surface-variant uppercase mt-2">Total Posts</p>
-            </div>
-            <div class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow dash-card">
-                <span class="material-symbols-outlined text-primary mb-4 text-3xl">schedule</span>
-                <div class="stat-value text-primary" id="stat-scheduled">0</div>
-                <p class="text-label-sm text-on-surface-variant uppercase mt-2">Scheduled</p>
-            </div>
-            </div>
-
-        <!-- Connected Accounts -->
-        <section class="mb-16">
-            <div class="flex items-center justify-between mb-8">
-                <h2 class="text-headline-sm">Connected Accounts</h2>
-                <a href="/broadcast/connect.html" class="text-label-md text-primary hover:underline">Manage</a>
-            </div>
-            <div id="accounts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="text-on-surface-variant">Loading accounts...</div>
-            </div>
-        </section>
-
-        <!-- Quick Actions -->
-        <section class="mb-16">
-            <h2 class="text-headline-sm mb-8">Quick Actions</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <a href="/broadcast/upload.html" class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow dash-card flex flex-col items-center text-center group">
-                    <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                        <span class="material-symbols-outlined text-primary text-3xl">add</span>
+        <div class="dashboard-grid">
+            <section class="panel ambient-shadow">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="panel-title">Connected accounts</h2>
+                        <p class="panel-meta" id="accounts-summary">Loading accounts...</p>
                     </div>
-                    <h3 class="font-bold text-on-surface mb-2">New Post</h3>
-                    <p class="text-sm text-on-surface-variant">Upload and publish to multiple platforms</p>
-                </a>
-                <a href="/broadcast/scheduled.html" class="bg-surface-container-lowest rounded-xl p-8 ambient-shadow dash-card flex flex-col items-center text-center group">
-                    <div class="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                        <span class="material-symbols-outlined text-primary text-3xl">schedule</span>
+                    <div class="add-menu-wrap">
+                        <button type="button" class="btn-primary" id="add-account-btn">
+                            <span class="material-symbols-outlined text-base">add</span>
+                            Add account
+                        </button>
+                        <div class="add-menu" id="add-account-menu">
+                            <button type="button" class="add-option" data-platform="youtube">
+                                <span class="platform-mark youtube"><i class="fa-brands fa-youtube"></i></span>
+                                <span class="font-extrabold">YouTube</span>
+                            </button>
+                            <button type="button" class="add-option" data-platform="linkedin">
+                                <span class="platform-mark linkedin"><i class="fa-brands fa-linkedin-in"></i></span>
+                                <span class="font-extrabold">LinkedIn</span>
+                            </button>
+                            <button type="button" class="add-option" data-platform="instagram">
+                                <span class="platform-mark instagram"><i class="fa-brands fa-instagram"></i></span>
+                                <span class="font-extrabold">Instagram</span>
+                            </button>
+                            <button type="button" class="add-option" data-platform="tiktok">
+                                <span class="platform-mark tiktok"><i class="fa-brands fa-tiktok"></i></span>
+                                <span class="font-extrabold">TikTok</span>
+                            </button>
+                        </div>
                     </div>
-                    <h3 class="font-bold text-on-surface mb-2">Scheduled</h3>
-                    <p class="text-sm text-on-surface-variant">View and manage scheduled posts</p>
-                </a>
-                
-            </div>
-        </section>
+                </div>
+                <div class="panel-body">
+                    <div id="accounts-list" class="account-list">
+                        <div class="text-on-surface-variant">Loading accounts...</div>
+                    </div>
+                </div>
+            </section>
 
-        <!-- Recent Posts -->
-        <section class="mb-8">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-on-surface-variant mb-4">Recent Posts</h2>
-            <div id="recent-posts" class="space-y-3">
-                <div class="text-on-surface-variant">Loading recent posts...</div>
-            </div>
-        </section>
+            <section class="panel ambient-shadow">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="panel-title" id="calendar-title">Calendar</h2>
+                        <p class="panel-meta" id="calendar-summary">Loading scheduled posts...</p>
+                    </div>
+                    <div class="calendar-actions">
+                        <a class="btn-secondary" href="/broadcast/upload.html?scheduled=true">
+                            <span class="material-symbols-outlined text-base">event</span>
+                            Schedule post
+                        </a>
+                        <a class="btn-primary" href="/broadcast/upload.html">
+                            <span class="material-symbols-outlined text-base">edit_square</span>
+                            New post
+                        </a>
+                    </div>
+                </div>
+                <div class="panel-body calendar-shell">
+                    <div class="calendar-weekdays">
+                        <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                    </div>
+                    <div id="calendar-grid" class="calendar-grid"></div>
+                    <div id="schedule-list" class="schedule-list"></div>
+                </div>
+            </section>
+        </div>
     </div>
 
     <script>
-        // Config
         const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        const supabaseClient = window.LEXAYA_SUPABASE_CLIENT || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
 
+        const PLATFORM_NAMES = { youtube: 'YouTube', linkedin: 'LinkedIn', tiktok: 'TikTok', instagram: 'Instagram' };
         const PLATFORM_ICONS = {
+            youtube: '<i class="fa-brands fa-youtube"></i>',
+            linkedin: '<i class="fa-brands fa-linkedin-in"></i>',
             tiktok: '<i class="fa-brands fa-tiktok"></i>',
-            instagram: '<i class="fa-brands fa-instagram"></i>',
-            linkedin: '<i class="fa-brands fa-linkedin"></i>',
-            // threads: '<i class="fa-brands fa-threads"></i>',
-            youtube: '<i class="fa-brands fa-youtube"></i>'
+            instagram: '<i class="fa-brands fa-instagram"></i>'
         };
-        const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn', /* threads: 'Threads', */ youtube: 'YouTube' };
-        const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
         let currentUser = null;
         let currentSession = null;
-        let connectedAccounts = [];
-
-        // localStorage cache keys
-        const POSTS_CACHE_KEY = 'lexaya_recent_posts';
-        const ACCOUNTS_CACHE_KEY = 'lexaya_accounts';
-        const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-        function getCachedData(key) {
-            try {
-                const cached = localStorage.getItem(key);
-                if (!cached) return null;
-                const data = JSON.parse(cached);
-                if (Date.now() - data.timestamp > CACHE_DURATION) return null;
-                return data.value;
-            } catch (e) {
-                return null;
-            }
-        }
-
-        function setCachedData(key, value) {
-            localStorage.setItem(key, JSON.stringify({ value, timestamp: Date.now() }));
-        }
-
-        function isUsableProfileImage(url) {
-            if (!url) return false;
-            try {
-                const host = new URL(url).hostname;
-                return !host.includes('scontent-');
-            } catch (_) {
-                return false;
-            }
-        }
+        let scheduledPosts = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // Check for OAuth callback first
             const oauthResult = checkOAuthCallback();
-
             const { data: { user } } = await supabaseClient.auth.getUser();
             const { data: { session } } = await supabaseClient.auth.getSession();
             currentUser = user;
@@ -191,104 +215,53 @@
                 return;
             }
 
-            console.log('[Auth] User email:', currentUser.email);
-            localStorage.removeItem(ACCOUNTS_CACHE_KEY);
-            localStorage.removeItem(POSTS_CACHE_KEY);
+            setupAddAccountMenu();
+            await Promise.all([loadConnectedAccounts(), loadScheduledPosts()]);
 
-            // Show member badge
-            showMemberBadge();
-
-            // Load from cache first, then refresh in background
-            await loadConnectedAccounts(oauthResult.success);
-            await loadRecentPosts(oauthResult.success);
-
-            // Show success banner after accounts load
-            if (oauthResult.success) {
-                showSuccessBanner(oauthResult.platform);
-            } else if (oauthResult.error) {
-                showToast(oauthResult.error, 'error');
-            }
+            if (oauthResult.success) showSuccessBanner(oauthResult.platform);
+            if (oauthResult.error) showToast(oauthResult.error, 'error');
         });
+
+        function setupAddAccountMenu() {
+            const button = document.getElementById('add-account-btn');
+            const menu = document.getElementById('add-account-menu');
+            if (!button || !menu) return;
+
+            button.addEventListener('click', event => {
+                event.stopPropagation();
+                menu.classList.toggle('open');
+            });
+            menu.querySelectorAll('[data-platform]').forEach(option => {
+                option.addEventListener('click', () => connectPlatform(option.dataset.platform));
+            });
+            document.addEventListener('click', () => menu.classList.remove('open'));
+        }
 
         function checkOAuthCallback() {
             const params = new URLSearchParams(window.location.search);
             const success = params.get('success');
             const platform = params.get('platform');
             const error = params.get('error');
-
             const result = { success: false, platform: null, error: null };
 
             if (success === 'true' && platform) {
                 result.success = true;
                 result.platform = platform;
-                // Clear cache so we get fresh data
-                localStorage.removeItem(ACCOUNTS_CACHE_KEY);
                 window.history.replaceState({}, '', window.location.pathname);
             } else if (error) {
-                result.error = error;
+                result.error = `Connection failed: ${error}`;
                 window.history.replaceState({}, '', window.location.pathname);
             }
-
             return result;
         }
 
-        function showMemberBadge() {
-            const badge = document.getElementById('member-badge');
-            if (badge) {
-                badge.style.display = 'block';
-            }
-        }
-
-        function showSuccessBanner(platform) {
-            const banner = document.getElementById('success-banner');
-            if (!banner) return;
-
-            banner.innerHTML = `
-                <div class="success-banner-content">
-                    <i class="fas fa-check-circle"></i>
-                    <span><strong>${PLATFORM_NAMES[platform] || platform}</strong> connected successfully!</span>
-                    <button class="banner-close" onclick="document.getElementById('success-banner').style.display='none'">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-            banner.style.display = 'block';
-
-            // Auto-dismiss after 5 seconds
-            setTimeout(() => {
-                banner.style.opacity = '0';
-                setTimeout(() => {
-                    banner.style.display = 'none';
-                    banner.style.opacity = '1';
-                }, 300);
-            }, 5000);
-        }
-
-        function showToast(message, type = 'success') {
-            const existing = document.querySelector('.toast');
-            if (existing) existing.remove();
-
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.style.background = type === 'success' ? '#10b981' : '#dc2626';
-            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i> ${message}`;
-            document.body.appendChild(toast);
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
         function getAuthApiBase() {
-            return '';
+            if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
+            const isLocalStaticPreview = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+            return isLocalStaticPreview || window.location.protocol === 'file:' ? 'https://lexaya.io' : '';
         }
 
         async function connectPlatform(platform) {
-            if (!currentUser) {
-                showToast('Please sign in first.', 'error');
-                return;
-            }
             const { data: { session } } = await supabaseClient.auth.getSession();
             currentSession = session;
             const state = currentSession?.access_token;
@@ -299,554 +272,204 @@
             window.location.href = `${getAuthApiBase()}/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;
         }
 
-        async function disconnectPlatform(platform, event) {
-            event.stopPropagation();
-            if (!confirm(`Disconnect ${PLATFORM_NAMES[platform]}?`)) return;
-
-            const { error } = await supabaseClient
-                .from('connected_accounts')
-                .delete()
-                .eq('user_id', currentUser.id)
-                .eq('platform', platform);
-
-            if (error) {
-                showToast('Failed to disconnect', 'error');
-            } else {
-                // Clear cache and reload
-                localStorage.removeItem(ACCOUNTS_CACHE_KEY);
-                showToast(`${PLATFORM_NAMES[platform]} disconnected`, 'success');
-                await loadConnectedAccounts(true);
-            }
-        }
-
-        function formatFollowers(count) {
-            if (!count) return null;
-            if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
-            if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
-            return count.toString();
-        }
-
-        async function loadConnectedAccounts(forceRefresh = false) {
-            const grid = document.getElementById('accounts-grid');
-            if (!grid || !currentUser) return;
-
+        async function loadConnectedAccounts() {
             const { data: accounts, error } = await supabaseClient
                 .from('connected_accounts')
                 .select('*')
-                .eq('user_id', currentUser.id);
-
-            if (error) {
-                console.warn('Could not load accounts (no session?):', error.message);
-                renderAccounts(grid, []);
-                return;
-            }
-
-            // Cache the results
-            setCachedData(ACCOUNTS_CACHE_KEY, accounts);
-            renderAccounts(grid, accounts);
-        }
-
-        function renderAccounts(grid, accounts) {
-            const platforms = ['linkedin', 'instagram', 'tiktok', /* 'threads', */ 'youtube'];
-            const platformColors = {
-                linkedin: '#0A66C2',
-                instagram: 'linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)',
-                tiktok: '#000000',
-                // threads: '#000000',
-                youtube: '#FF0000'
-            };
-
-            const html = platforms.map(platform => {
-                const account = accounts?.find(a => a.platform === platform);
-                const isConnected = !!account;
-
-                if (isConnected) {
-                    const metadata = account.metadata || {};
-                    const profilePic = metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url;
-                    const showProfilePic = isUsableProfileImage(profilePic);
-                    const followers = metadata.followers_count || metadata.follower_count || metadata.subscribers_count;
-                    const following = metadata.following_count || metadata.friends_count;
-                    const username = account.account_name || metadata.username || metadata.display_name;
-                    const displayName = metadata.display_name || metadata.name || username;
-                    const accountType = metadata.account_type || '';
-                    const formattedFollowers = formatFollowers(followers);
-                    const formattedFollowing = formatFollowers(following);
-
-                    return `
-                        <div class="account-card-v2 connected" data-platform="${platform}">
-                            <div class="account-card-header">
-                                <div class="platform-badge-icon" style="background: ${platformColors[platform]}">
-                                    ${PLATFORM_ICONS[platform]}
-                                </div>
-                                <button class="disconnect-btn" onclick="disconnectPlatform('${platform}', event)" title="Disconnect">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
-                            <div class="account-card-body">
-                                <div class="profile-section">
-                                    ${showProfilePic
-                                        ? `<img src="${profilePic}" alt="${username}" class="profile-avatar" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                           <div class="profile-avatar-fallback" style="display:none;"><i class="fas fa-user"></i></div>`
-                                        : `<div class="profile-avatar-fallback"><i class="fas fa-user"></i></div>`
-                                    }
-                                    <div class="profile-info">
-                                        <div class="profile-name">${displayName}</div>
-                                        <div class="profile-handle">@${username}</div>
-                                        ${accountType ? `<span class="account-type-badge">${accountType}</span>` : ''}
-                                    </div>
-                                </div>
-                                ${(formattedFollowers || formattedFollowing) ? `
-                                    <div class="stats-row">
-                                        ${formattedFollowers ? `
-                                            <div class="stat-item">
-                                                <span class="stat-number">${formattedFollowers}</span>
-                                                <span class="stat-text">${platform === 'youtube' ? 'subscribers' : 'followers'}</span>
-                                            </div>
-                                        ` : ''}
-                                        ${formattedFollowing ? `
-                                            <div class="stat-item">
-                                                <span class="stat-number">${formattedFollowing}</span>
-                                                <span class="stat-text">following</span>
-                                            </div>
-                                        ` : ''}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    return `
-                        <div class="account-card-v2 disconnected" data-platform="${platform}" onclick="connectPlatform('${platform}')">
-                            <div class="account-card-header">
-                                <div class="platform-badge-icon" style="background: ${platformColors[platform]}">
-                                    ${PLATFORM_ICONS[platform]}
-                                </div>
-                            </div>
-                            <div class="account-card-body">
-                                <div class="disconnected-content">
-                                    <h4>${PLATFORM_NAMES[platform]}</h4>
-                                    <p>Not connected</p>
-                                    <span class="connect-link">+ Connect</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-            }).join('');
-
-            grid.innerHTML = html;
-        }
-
-        async function loadRecentPosts(forceRefresh = false) {
-            const container = document.getElementById('recent-posts');
-            if (!container || !currentUser) return;
-
-            const { data: posts, error } = await supabaseClient
-                .from('posts')
-                .select('*')
                 .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false })
-                .limit(3);
+                .order('created_at', { ascending: false });
 
             if (error) {
-                console.warn('Could not load posts (no session?):', error.message);
-                renderPosts(container, []);
+                renderAccounts([]);
+                showToast('Could not load connected accounts', 'error');
                 return;
             }
-
-            // Cache the results
-            setCachedData(POSTS_CACHE_KEY, posts || []);
-            renderPosts(container, posts || []);
+            renderAccounts(accounts || []);
         }
 
-        function renderPosts(container, posts) {
-            if (!posts || posts.length === 0) {
-                container.innerHTML = `
+        function renderAccounts(accounts) {
+            const list = document.getElementById('accounts-list');
+            const summary = document.getElementById('accounts-summary');
+            if (!list || !summary) return;
+
+            summary.textContent = `${accounts.length} connected`;
+            if (!accounts.length) {
+                list.innerHTML = `
                     <div class="empty-state">
-                        <h3>No posts yet</h3>
-                        <p>Create your first post to get started!</p>
-                        <a href="/broadcast/upload.html" class="btn btn-primary" style="margin-top: 1rem;">Create Post</a>
+                        <span class="material-symbols-outlined">add_link</span>
+                        <p class="font-extrabold text-on-surface mb-1">No accounts connected</p>
+                        <p class="text-sm">Add YouTube, LinkedIn, Instagram, or TikTok from the button above.</p>
                     </div>
                 `;
                 return;
             }
 
-            const html = posts.map(post => `
-                <div class="post-item">
-                    <div class="post-thumbnail">
-                        ${post.thumbnail_url
-                            ? `<img src="${post.thumbnail_url}" alt="thumbnail" loading="lazy">`
-                            : post.video_url
-                                ? `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #d4838f; color: white; font-size: 1.5rem;">🎬</div>`
-                                : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #f3f4f6; color: #6b7280; font-size: 1.5rem;">📝</div>`
-                        }
-                    </div>
-                    <div class="post-info">
-                        <h3>${post.caption || 'No caption'}</h3>
-                        <div class="post-meta">
-                            <span>${formatDate(post.created_at)}</span>
-                            <div class="post-platforms">
-                                ${(post.platforms || []).map(p => `<span class="platform-badge">${PLATFORM_ICONS[p]}</span>`).join('')}
-                            </div>
+            list.innerHTML = accounts.map(account => {
+                const metadata = account.metadata || {};
+                const platform = account.platform;
+                const username = account.account_name || metadata.username || metadata.display_name || metadata.name || PLATFORM_NAMES[platform] || 'Account';
+                const displayName = metadata.display_name || metadata.name || username;
+                const avatar = getSafeAvatarUrl(metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url);
+                const initial = getAccountInitial(displayName);
+
+                return `
+                    <div class="account-row" title="${escapeHtml(displayName)} - ${escapeHtml(PLATFORM_NAMES[platform] || platform)}">
+                        <div class="account-portrait">
+                            ${avatar
+                                ? `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(displayName)}" class="account-avatar" onerror="this.outerHTML='<div class=&quot;account-avatar&quot;>${escapeHtml(initial)}</div>';">`
+                                : `<div class="account-avatar">${escapeHtml(initial)}</div>`
+                            }
+                            <span class="account-platform-badge ${escapeHtml(platform)}">${PLATFORM_ICONS[platform] || '<i class="fas fa-link"></i>'}</span>
                         </div>
+                        <button class="icon-button" onclick="disconnectAccount('${account.id}', '${escapeHtml(platform)}')" title="Disconnect">
+                            <span class="material-symbols-outlined text-base">close</span>
+                        </button>
                     </div>
-                    <span class="post-status ${post.status}">${capitalizeFirst(post.status)}</span>
+                `;
+            }).join('');
+        }
+
+        async function disconnectAccount(accountId, platform) {
+            if (!confirm(`Disconnect ${PLATFORM_NAMES[platform] || platform}?`)) return;
+            const { error } = await supabaseClient
+                .from('connected_accounts')
+                .delete()
+                .eq('user_id', currentUser.id)
+                .eq('id', accountId);
+
+            if (error) {
+                showToast('Failed to disconnect account', 'error');
+                return;
+            }
+            showToast(`${PLATFORM_NAMES[platform] || platform} disconnected`);
+            await loadConnectedAccounts();
+        }
+
+        async function loadScheduledPosts() {
+            const { data: posts, error } = await supabaseClient
+                .from('posts')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('status', 'scheduled')
+                .order('scheduled_at', { ascending: true });
+
+            scheduledPosts = error ? [] : (posts || []);
+            renderCalendar(new Date(), scheduledPosts);
+            renderScheduleList(scheduledPosts);
+        }
+
+        function renderCalendar(date, posts) {
+            const grid = document.getElementById('calendar-grid');
+            const title = document.getElementById('calendar-title');
+            const summary = document.getElementById('calendar-summary');
+            if (!grid || !title || !summary) return;
+
+            const year = date.getFullYear();
+            const month = date.getMonth();
+            title.textContent = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            summary.textContent = `${posts.length} scheduled post${posts.length === 1 ? '' : 's'}`;
+
+            const firstDay = new Date(year, month, 1);
+            const start = new Date(firstDay);
+            start.setDate(1 - firstDay.getDay());
+            const todayKey = dateKey(new Date());
+
+            const cells = [];
+            for (let i = 0; i < 42; i += 1) {
+                const cellDate = new Date(start);
+                cellDate.setDate(start.getDate() + i);
+                const key = dateKey(cellDate);
+                const dayPosts = posts.filter(post => dateKey(new Date(post.scheduled_at)) === key);
+                cells.push(`
+                    <div class="calendar-day ${cellDate.getMonth() === month ? '' : 'muted'} ${key === todayKey ? 'today' : ''}">
+                        <span class="day-number">${cellDate.getDate()}</span>
+                        ${dayPosts.slice(0, 2).map(post => `<span class="calendar-event">${escapeHtml(post.caption || 'Scheduled post')}</span>`).join('')}
+                    </div>
+                `);
+            }
+            grid.innerHTML = cells.join('');
+        }
+
+        function renderScheduleList(posts) {
+            const list = document.getElementById('schedule-list');
+            if (!list) return;
+            if (!posts.length) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-symbols-outlined">event_available</span>
+                        <p class="font-extrabold text-on-surface mb-1">Nothing scheduled</p>
+                        <p class="text-sm">Use Schedule post to pick a channel, caption, and publish time.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = posts.slice(0, 5).map(post => `
+                <div class="schedule-row">
+                    <div class="min-w-0">
+                        <div class="schedule-title">${escapeHtml(post.caption || 'Scheduled post')}</div>
+                        <div class="schedule-date">${formatScheduledDate(post.scheduled_at)}</div>
+                    </div>
+                    <div class="platform-dots">
+                        ${(post.platforms || []).map(platform => `
+                            <span class="platform-dot ${escapeHtml(platform)}" title="${escapeHtml(PLATFORM_NAMES[platform] || platform)}">${PLATFORM_ICONS[platform] || '<i class="fas fa-link"></i>'}</span>
+                        `).join('')}
+                    </div>
                 </div>
             `).join('');
-
-            container.innerHTML = html;
         }
 
-        // Clear cache when new post is created (called from upload page)
-        window.clearPostsCache = function() {
-            localStorage.removeItem(POSTS_CACHE_KEY);
-        };
+        function getSafeAvatarUrl(url) {
+            if (!url) return '';
+            try {
+                return new URL(url).href;
+            } catch (_) {
+                return '';
+            }
+        }
 
-        function formatDate(dateStr) {
+        function getAccountInitial(name) {
+            return String(name || 'A').trim().charAt(0).toUpperCase() || 'A';
+        }
+
+        function dateKey(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        }
+
+        function formatScheduledDate(dateStr) {
             const date = new Date(dateStr);
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) +
+                ' at ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
         }
 
-        function capitalizeFirst(str) {
-            return str.charAt(0).toUpperCase() + str.slice(1);
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[char]));
         }
 
+        function showSuccessBanner(platform) {
+            const banner = document.getElementById('success-banner');
+            if (!banner) return;
+            banner.innerHTML = `<i class="fas fa-check-circle"></i> <strong>${PLATFORM_NAMES[platform] || platform}</strong> connected successfully.`;
+            banner.style.display = 'block';
+            setTimeout(() => { banner.style.display = 'none'; }, 5000);
+        }
+
+        function showToast(message, type = 'success') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.background = type === 'success' ? '#10b981' : '#dc2626';
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i><span>${escapeHtml(message)}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
     </script>
-
-    <style>
-        /* Account Cards V2 - Dashboard Style */
-        .accounts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1rem;
-        }
-
-        .account-card-v2 {
-            background: white;
-            border: 2px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: inherit;
-        }
-
-        .account-card-v2.connected {
-            border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .account-card-v2.disconnected:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-
-        .account-card-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem 1.25rem;
-            background: #f9fafb;
-            border-bottom: 1px solid #f3f4f6;
-        }
-
-        .platform-badge-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.25rem;
-        }
-
-        .connected-indicator {
-            color: #10b981;
-            font-size: 1.25rem;
-        }
-
-        .account-card-body {
-            padding: 1.25rem;
-        }
-
-        .profile-section {
-            display: flex;
-            align-items: center;
-            gap: 0.875rem;
-        }
-
-        .profile-avatar {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #e5e7eb;
-            flex-shrink: 0;
-        }
-
-        .profile-avatar-fallback {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #9ca3af;
-            font-size: 1.1rem;
-            flex-shrink: 0;
-        }
-
-        .profile-info {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .profile-name {
-            font-weight: 600;
-            font-size: 0.95rem;
-            color: var(--text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .profile-handle {
-            font-size: 0.8rem;
-            color: var(--text-light);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .account-type-badge {
-            display: inline-block;
-            margin-top: 0.25rem;
-            padding: 0.125rem 0.5rem;
-            background: #fef0f0;
-            color: #d4838f;
-            font-size: 0.65rem;
-            font-weight: 500;
-            border-radius: 20px;
-            text-transform: uppercase;
-            letter-spacing: 0.025em;
-        }
-
-        .stats-row {
-            display: flex;
-            gap: 1.5rem;
-            margin-top: 1rem;
-            padding-top: 0.875rem;
-            border-top: 1px solid #f3f4f6;
-        }
-
-        .stat-item {
-            display: flex;
-            align-items: baseline;
-            gap: 0.25rem;
-        }
-
-        .stat-number {
-            font-weight: 700;
-            font-size: 1rem;
-            color: var(--text);
-        }
-
-        .stat-text {
-            font-size: 0.75rem;
-            color: var(--text-light);
-        }
-
-        /* Disconnected card styles */
-        .disconnected-content {
-            text-align: center;
-            padding: 0.5rem 0;
-        }
-
-        .disconnected-content h4 {
-            margin: 0 0 0.25rem 0;
-            font-size: 1rem;
-            color: var(--text);
-        }
-
-        .disconnected-content p {
-            margin: 0 0 0.75rem 0;
-            font-size: 0.85rem;
-            color: var(--text-light);
-        }
-
-        .connect-link {
-            display: inline-block;
-            color: var(--primary);
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-
-        .account-card-v2.disconnected:hover .connect-link {
-            text-decoration: underline;
-        }
-
-        .account-card-v2.disconnected {
-            cursor: pointer;
-        }
-
-        /* Disconnect button */
-        .disconnect-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: none;
-            background: #fee2e2;
-            color: #dc2626;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            opacity: 0.7;
-        }
-
-        .disconnect-btn:hover {
-            background: #dc2626;
-            color: white;
-            opacity: 1;
-        }
-
-        /* Loading state */
-        .accounts-grid .loading {
-            grid-column: 1 / -1;
-            text-align: center;
-            padding: 2rem;
-            color: var(--text-light);
-        }
-
-        /* Success Banner */
-        .success-banner {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 1rem 1.25rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            animation: slideDown 0.3s ease;
-            transition: opacity 0.3s ease;
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .success-banner-content {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-
-        .success-banner-content i.fa-check-circle {
-            font-size: 1.25rem;
-        }
-
-        .success-banner-content span {
-            flex: 1;
-        }
-
-        .banner-close {
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .banner-close:hover {
-            background: rgba(255,255,255,0.3);
-        }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            z-index: 1000;
-            animation: slideUp 0.3s ease;
-            transition: opacity 0.3s ease;
-        }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-
-        /* Member Badge */
-        .member-badge {
-            background: linear-gradient(135deg, #d4838f, #c77080);
-            border-radius: 16px;
-            padding: 1rem 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 15px rgba(212, 131, 143, 0.3);
-        }
-
-        .member-badge-content {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .member-info {
-            flex: 1;
-        }
-
-        .member-label {
-            color: white;
-            font-weight: 700;
-            font-size: 0.85rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-        }
-
-        .member-status {
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 0.375rem 0.875rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.375rem;
-        }
-
-        .member-status::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            background: #4ade80;
-            border-radius: 50%;
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/js/config.js"></script>
     <script src="/js/layout.js"></script>
 </body>

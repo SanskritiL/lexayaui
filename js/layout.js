@@ -9,15 +9,10 @@
         mode: 'Editorial Mode',
         navItems: [
             { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/broadcast/' },
-            { id: 'accounts', label: 'Accounts', icon: 'hub', href: '/broadcast/connect.html' },
-            { id: 'scheduler', label: 'Scheduler', icon: 'calendar_today', href: '/broadcast/scheduled.html' },
-            { id: 'library', label: 'Library', icon: 'video_library', href: '/broadcast/upload.html' },
         ],
         bottomNavItems: [
             { id: 'dashboard', icon: 'dashboard', label: 'Studio', href: '/broadcast/' },
-            { id: 'scheduler', icon: 'calendar_today', label: 'Plan', href: '/broadcast/scheduled.html' },
             { id: 'create', icon: 'add', label: '', href: '/broadcast/upload.html', isFab: true },
-            { id: 'library', icon: 'video_library', label: 'Assets', href: '/broadcast/upload.html' },
             { id: 'account', icon: 'person', label: 'Account', href: '/members.html' },
         ]
     };
@@ -36,11 +31,12 @@
         }
 
         activePage = document.body.dataset.page || 'dashboard';
-        supabaseClient = window.supabase?.createClient
+        supabaseClient = window.LEXAYA_SUPABASE_CLIENT || (window.supabase?.createClient
             ? window.supabase.createClient(LAYOUT_CONFIG.supabaseUrl, LAYOUT_CONFIG.supabaseKey, {
                 realtime: { transport: window.WebSocket }
             })
-            : null;
+            : null);
+        if (supabaseClient) window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
 
         if (!supabaseClient) {
             renderLayout(null);

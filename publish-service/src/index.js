@@ -82,10 +82,10 @@ app.post('/instagram-complete', async (req, res) => {
     const user = await verifyPublishAuth(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { postId } = req.body || {};
+    const { postId, resultKey } = req.body || {};
     if (!postId) return res.status(400).json({ error: 'postId required' });
 
-    const result = await completeInstagram(postId, user.id);
+    const result = await completeInstagram(postId, user.id, resultKey);
     res.json(result);
   } catch (err) {
     console.error('[INSTAGRAM-COMPLETE] Error:', err.message);
@@ -119,9 +119,9 @@ app.all('/broadcast/publish', async (req, res) => {
 
     // POST /broadcast/publish?action=instagram-complete
     if (method === 'POST' && action === 'instagram-complete') {
-      const { postId } = req.body || {};
+      const { postId, resultKey } = req.body || {};
       if (!postId) return res.status(400).json({ error: 'postId required' });
-      const result = await completeInstagram(postId, user.id);
+      const result = await completeInstagram(postId, user.id, resultKey);
       return res.json(result);
     }
 

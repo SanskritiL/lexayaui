@@ -73,7 +73,7 @@ async function publishToInstagram(post, account, onProgress, fileBuffer) {
   };
 }
 
-async function completeInstagram(postId, userId) {
+async function completeInstagram(postId, userId, resultKey) {
   const { getClient } = require('../supabase');
   const supabase = getClient();
 
@@ -82,14 +82,29 @@ async function completeInstagram(postId, userId) {
 
   if (!post) return { status: 'error', error: 'Post not found' };
 
-  const igResult = post.platform_results?.instagram;
+  const instagramEntries = Object.entries(post.platform_results || {})
+    .filter(([key, result]) => {
+      const isInstagramKey = key === 'instagram' || key.startsWith('instagram:') || result?.platform === 'instagram';
+      return isInstagramKey && result?.status === 'pending' && result?.container_id;
+    });
+  const selectedEntry = resultKey
+    ? instagramEntries.find(([key]) => key === resultKey)
+    : instagramEntries[0];
+  const selectedKey = selectedEntry?.[0] || resultKey || 'instagram';
+  const igResult = selectedEntry?.[1] || post.platform_results?.[selectedKey];
   if (!igResult || igResult.status !== 'pending' || !igResult.container_id) {
     return igResult || { status: 'error', error: 'No pending Instagram container' };
   }
 
-  const { data: account } = await supabase
+  let accountQuery = supabase
     .from('connected_accounts').select('*')
-    .eq('user_id', userId).eq('platform', 'instagram').single();
+    .eq('user_id', userId).eq('platform', 'instagram');
+
+  if (igResult.account_id) {
+    accountQuery = accountQuery.eq('id', igResult.account_id);
+  }
+
+  const { data: account } = await accountQuery.limit(1).single();
 
   if (!account) return { status: 'error', error: 'Instagram account not connected' };
 
@@ -107,7 +122,7 @@ async function completeInstagram(postId, userId) {
 
     if (statusData.status_code === 'FINISHED') { isReady = true; break; }
     if (statusData.status_code === 'ERROR') {
-      await saveInstagramResult(supabase, post, postId, { status: 'error', error: statusData.status || 'Processing failed' });
+      await saveInstagramResult(supabase, post, postId, selectedKey, { ...igResult, status: 'error', error: statusData.status || 'Processing failed' });
       return { status: 'error', error: statusData.status || 'Processing failed' };
     }
   }
@@ -122,18 +137,18 @@ async function completeInstagram(postId, userId) {
 
   if (!publishRes.ok) {
     const err = (await publishRes.json()).error?.message || 'Failed to publish';
-    await saveInstagramResult(supabase, post, postId, { status: 'error', error: err });
+    await saveInstagramResult(supabase, post, postId, selectedKey, { ...igResult, status: 'error', error: err });
     return { status: 'error', error: err };
   }
 
   const publishData = await publishRes.json();
-  const result = { status: 'success', post_id: publishData.id, url: `https://www.instagram.com/reel/${publishData.id}/` };
-  await saveInstagramResult(supabase, post, postId, result);
+  const result = { ...igResult, status: 'success', post_id: publishData.id, url: `https://www.instagram.com/reel/${publishData.id}/` };
+  await saveInstagramResult(supabase, post, postId, selectedKey, result);
   return result;
 }
 
-async function saveInstagramResult(supabase, post, postId, result) {
-  const merged = { ...post.platform_results, instagram: result };
+async function saveInstagramResult(supabase, post, postId, resultKey, result) {
+  const merged = { ...post.platform_results, [resultKey]: result };
   const allResults = Object.values(merged);
   const hasError = allResults.some(r => r.status === 'error');
   const overallStatus = hasError ? 'partial' : 'published';

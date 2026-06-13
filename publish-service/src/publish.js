@@ -18,28 +18,36 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
   if (postError || !post) throw new Error('Post not found');
 
   const existingResults = post.platform_results || {};
+  const targets = normalizeTargets(platforms, post.metadata?.account_selections || {});
 
-  const platformsToPublish = platforms.filter(p => {
-    const existing = existingResults[p];
+  const targetsToPublish = targets.filter(target => {
+    const existing = existingResults[target.key];
     return !(existing && (existing.status === 'success' || existing.status === 'pending'));
   });
 
-  if (platformsToPublish.length === 0) {
+  if (targetsToPublish.length === 0) {
     return { success: true, status: 'published', results: existingResults };
   }
 
-  const { data: accounts, error: accountsError } = await supabase
+  const accountIds = targetsToPublish.map(t => t.accountId).filter(Boolean);
+  let accountQuery = supabase
     .from('connected_accounts')
     .select('*')
-    .eq('user_id', userId)
-    .in('platform', platformsToPublish);
+    .eq('user_id', userId);
+
+  if (accountIds.length > 0) {
+    accountQuery = accountQuery.in('id', accountIds);
+  } else {
+    accountQuery = accountQuery.in('platform', [...new Set(targetsToPublish.map(t => t.platform))]);
+  }
+
+  const { data: accounts, error: accountsError } = await accountQuery;
 
   if (accountsError) throw new Error('Failed to get connected accounts');
 
-  const connectedPlatforms = accounts.map(a => a.platform);
-  const missingPlatforms = platformsToPublish.filter(p => !connectedPlatforms.includes(p));
-  if (missingPlatforms.length > 0) {
-    throw new Error(`Not connected to: ${missingPlatforms.join(', ')}`);
+  const missingTargets = targetsToPublish.filter(target => !findAccountForTarget(accounts, target));
+  if (missingTargets.length > 0) {
+    throw new Error(`Not connected to: ${missingTargets.map(t => t.label).join(', ')}`);
   }
 
   const results = {};
@@ -53,7 +61,7 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
     const vals = Object.values(merged);
     const successCount = vals.filter(r => r.status === 'success' || r.status === 'pending').length;
     const errorCount = vals.filter(r => r.status === 'error').length;
-    const pendingCount = platforms.length - Object.keys(merged).length;
+    const pendingCount = targets.length - Object.keys(merged).length;
 
     let status = 'publishing';
     if (pendingCount <= 0) {
@@ -66,24 +74,25 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
       .eq('id', post.id);
   }
 
-  const makePlatformProgress = (platform) => {
+  const makePlatformProgress = (resultKey) => {
     return async (stage, message, pct) => {
       const progressResult = { status: 'processing', stage, message, pct: pct || 0 };
-      await updateProgress({ [platform]: progressResult });
-      await progressFn(platform, stage, message, pct);
+      await updateProgress({ [resultKey]: progressResult });
+      await progressFn(resultKey, stage, message, pct);
     };
   };
 
-  const publishPromises = platformsToPublish.map(async (platform) => {
-    const account = accounts.find(a => a.platform === platform);
+  const publishPromises = targetsToPublish.map(async (target) => {
+    const { platform, key } = target;
+    const account = findAccountForTarget(accounts, target);
     if (!account) {
       const r = { status: 'error', error: 'Account not connected' };
-      results[platform] = r;
+      results[key] = r;
       await updateProgress(results);
-      return { platform, result: r };
+      return { platform: key, result: r };
     }
 
-    const p = makePlatformProgress(platform);
+    const p = makePlatformProgress(key);
 
     try {
       let result;
@@ -95,14 +104,14 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
         case 'youtube':    result = await publishToYouTube(post, account, supabase, p, fileBuffer); break;
         default:           result = { status: 'error', error: 'Unknown platform' };
       }
-      results[platform] = result;
+      results[key] = { ...result, platform, account_id: account.id, account_name: account.account_name };
       await updateProgress(results);
-      return { platform, result };
+      return { platform: key, result };
     } catch (error) {
       const r = { status: 'error', error: error.message };
-      results[platform] = r;
+      results[key] = { ...r, platform, account_id: account.id, account_name: account.account_name };
       await updateProgress(results);
-      return { platform, result: r };
+      return { platform: key, result: r };
     }
   });
 
@@ -129,6 +138,42 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
     .eq('id', postId);
 
   return { success: hasSuccess, status: overallStatus, results: finalResults };
+}
+
+function normalizeTargets(platforms, accountSelections) {
+  const rawTargets = [];
+
+  for (const item of platforms || []) {
+    if (typeof item !== 'string') continue;
+    if (item.includes(':')) {
+      const [platform, accountId] = item.split(':');
+      rawTargets.push({ platform, accountId, key: item });
+    } else {
+      const selectedIds = accountSelections?.[item];
+      if (Array.isArray(selectedIds) && selectedIds.length > 0) {
+        selectedIds.forEach(accountId => rawTargets.push({ platform: item, accountId }));
+      } else {
+        rawTargets.push({ platform: item, accountId: null });
+      }
+    }
+  }
+
+  const counts = rawTargets.reduce((acc, target) => {
+    acc[target.platform] = (acc[target.platform] || 0) + 1;
+    return acc;
+  }, {});
+
+  return rawTargets.map(target => ({
+    ...target,
+    key: target.key || (counts[target.platform] > 1 && target.accountId ? `${target.platform}:${target.accountId}` : target.platform),
+    label: target.accountId ? `${target.platform} account ${target.accountId}` : target.platform,
+  }));
+}
+
+function findAccountForTarget(accounts, target) {
+  if (!accounts) return null;
+  if (target.accountId) return accounts.find(a => a.id === target.accountId && a.platform === target.platform);
+  return accounts.find(a => a.platform === target.platform);
 }
 
 module.exports = { publishPost };
