@@ -373,17 +373,17 @@ async function handleTikTok(req, res) {
     const isLocalhost = req.headers.host?.includes('localhost');
     const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/api/broadcast/auth/tiktok`;
+    const requestedScopes = buildTikTokScopes();
 
     if (!code) {
         if (!TIKTOK_CLIENT_KEY || !TIKTOK_CLIENT_SECRET) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent('TikTok not configured'));
         }
 
-        const scopes = 'user.info.basic,user.info.stats,video.upload';
         const authUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
         authUrl.searchParams.set('client_key', TIKTOK_CLIENT_KEY);
         authUrl.searchParams.set('response_type', 'code');
-        authUrl.searchParams.set('scope', scopes);
+        authUrl.searchParams.set('scope', requestedScopes.join(','));
         authUrl.searchParams.set('redirect_uri', redirectUri);
         authUrl.searchParams.set('state', state || '');
 
@@ -419,8 +419,10 @@ async function handleTikTok(req, res) {
         }
 
         const { access_token, expires_in, refresh_token, refresh_expires_in, open_id, scope } = tokenData;
+        const grantedScopes = parseTikTokScopes(scope || req.query.scopes || requestedScopes.join(','));
+        const userInfoFields = getTikTokUserInfoFields(grantedScopes);
 
-        const userInfoResponse = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username,follower_count,following_count,likes_count,video_count,bio_description', {
+        const userInfoResponse = await fetch(`https://open.tiktokapis.com/v2/user/info/?fields=${userInfoFields.join(',')}`, {
             headers: { 'Authorization': `Bearer ${access_token}` },
         });
 
@@ -449,7 +451,7 @@ async function handleTikTok(req, res) {
             access_token: access_token,
             refresh_token: refresh_token,
             token_expires_at: tokenExpiresAt,
-            scopes: scope ? scope.split(',') : ['user.info.basic', 'user.info.stats', 'video.upload'],
+            scopes: grantedScopes,
             metadata: {
                 profile_picture: userInfo.avatar_url,
                 display_name: userInfo.display_name,
@@ -475,6 +477,35 @@ async function handleTikTok(req, res) {
         console.error('TikTok OAuth Error:', error);
         return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
+}
+
+function buildTikTokScopes() {
+    const scopes = new Set(['user.info.basic', 'video.upload']);
+    const extraScopes = parseTikTokScopes(process.env.TIKTOK_EXTRA_SCOPES || '');
+    extraScopes.forEach(scope => scopes.add(scope));
+    return [...scopes];
+}
+
+function parseTikTokScopes(value) {
+    return String(value || '')
+        .split(/[,\s]+/)
+        .map(scope => scope.trim())
+        .filter(Boolean);
+}
+
+function getTikTokUserInfoFields(scopes) {
+    const scopeSet = new Set(scopes);
+    const fields = ['open_id', 'union_id', 'avatar_url', 'display_name'];
+
+    if (scopeSet.has('user.info.profile')) {
+        fields.push('username', 'bio_description');
+    }
+
+    if (scopeSet.has('user.info.stats')) {
+        fields.push('follower_count', 'following_count', 'likes_count', 'video_count');
+    }
+
+    return fields;
 }
 
 // ============== TWITTER ==============

@@ -73,6 +73,13 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
     console.log('[TIKTOK] Initializing video upload...');
     console.log('[TIKTOK] File size:', fileSizeBytes, 'bytes =', (fileSizeBytes / 1024 / 1024).toFixed(2), 'MB');
 
+    if (!hasTikTokScope(account, 'video.upload')) {
+        return res.status(401).json({
+            error: 'TikTok needs the video upload permission. Please reconnect your TikTok account.',
+            reconnect: true
+        });
+    }
+
     let accessToken = account.access_token;
 
     // Check if token is expired and refresh if needed
@@ -197,6 +204,14 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
         chunkSize: calculatedChunkSize,
         totalChunks: calculatedChunkCount
     });
+}
+
+function hasTikTokScope(account, requiredScope) {
+    const scopes = Array.isArray(account.scopes)
+        ? account.scopes
+        : String(account.scopes || '').split(/[,\s]+/);
+
+    return scopes.includes(requiredScope);
 }
 
 // LinkedIn Video Init

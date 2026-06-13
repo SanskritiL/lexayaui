@@ -238,6 +238,10 @@ async function publishToTikTok(post, account) {
         throw new Error('Video is required for TikTok');
     }
 
+    if (!hasTikTokScope(account, 'video.upload')) {
+        throw new Error('TikTok needs the video upload permission. Please reconnect your TikTok account.');
+    }
+
     const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
         method: 'POST',
         headers: {
@@ -263,6 +267,14 @@ async function publishToTikTok(post, account) {
         publish_id: initData.data?.publish_id,
         note: 'Video sent to TikTok drafts',
     };
+}
+
+function hasTikTokScope(account, requiredScope) {
+    const scopes = Array.isArray(account.scopes)
+        ? account.scopes
+        : String(account.scopes || '').split(/[,\s]+/);
+
+    return scopes.includes(requiredScope);
 }
 
 async function publishToInstagram(post, account) {

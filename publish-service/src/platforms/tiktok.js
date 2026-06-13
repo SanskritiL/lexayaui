@@ -8,6 +8,10 @@ async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) 
   const videoSize = videoBuffer.length;
   console.log('[TIKTOK] Video size:', (videoSize / 1024 / 1024).toFixed(2), 'MB');
 
+  if (!hasTikTokScope(account, 'video.upload')) {
+    throw new Error('TikTok needs the video upload permission. Please reconnect your TikTok account.');
+  }
+
   let accessToken = account.access_token;
 
   const tokenExpiresAt = new Date(account.token_expires_at);
@@ -98,6 +102,14 @@ async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) 
     publish_id: publishId,
     note: 'Video sent to TikTok inbox. Open TikTok app to post.',
   };
+}
+
+function hasTikTokScope(account, requiredScope) {
+  const scopes = Array.isArray(account.scopes)
+    ? account.scopes
+    : String(account.scopes || '').split(/[,\s]+/);
+
+  return scopes.includes(requiredScope);
 }
 
 module.exports = { publishToTikTok };

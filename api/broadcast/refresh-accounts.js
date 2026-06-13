@@ -149,8 +149,19 @@ async function refreshTikTok(account, metadata) {
     if (!accessToken) return metadata;
 
     try {
+        const scopes = new Set(account.scopes || []);
+        const fields = ['open_id', 'union_id', 'avatar_url', 'display_name'];
+
+        if (scopes.has('user.info.profile')) {
+            fields.push('username', 'bio_description');
+        }
+
+        if (scopes.has('user.info.stats')) {
+            fields.push('follower_count', 'following_count', 'likes_count', 'video_count');
+        }
+
         // Fetch TikTok user info
-        const userRes = await fetch('https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,follower_count,following_count,likes_count,video_count', {
+        const userRes = await fetch(`https://open.tiktokapis.com/v2/user/info/?fields=${fields.join(',')}`, {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
 
@@ -160,12 +171,16 @@ async function refreshTikTok(account, metadata) {
             if (user) {
                 metadata.display_name = user.display_name || metadata.display_name;
                 metadata.profile_picture = user.avatar_url || metadata.profile_picture;
-                metadata.followers_count = user.follower_count;
-                metadata.following_count = user.following_count;
-                metadata.likes_count = user.likes_count;
-                metadata.video_count = user.video_count;
+                metadata.username = user.username || metadata.username;
+                metadata.bio = user.bio_description || metadata.bio;
+                if (scopes.has('user.info.stats')) {
+                    metadata.followers_count = user.follower_count;
+                    metadata.following_count = user.following_count;
+                    metadata.likes_count = user.likes_count;
+                    metadata.video_count = user.video_count;
+                }
 
-                console.log('[RefreshAccounts] TikTok refreshed:', user.follower_count, 'followers');
+                console.log('[RefreshAccounts] TikTok refreshed:', scopes.has('user.info.stats') ? `${user.follower_count} followers` : 'basic profile');
             }
         }
     } catch (err) {
