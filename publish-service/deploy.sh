@@ -6,6 +6,7 @@ REGION="${REGION:-us-central1}"
 SERVICE_NAME="publish-service"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
+CURRENT_SERVICE_JSON=""
 
 echo -e "${YELLOW}═══ Lexaya Publish Service — Cloud Run Deploy ═══${NC}"
 
@@ -16,14 +17,49 @@ fi
 
 get_env_var() {
   local name="$1"
-  local value
-  value="$(grep -E "^(export[[:space:]]+)?${name}=" ../.env.local | tail -n1 | cut -d'=' -f2-)"
+  local value=""
+  local file
+
+  for file in ../.env.local ../.env; do
+    if [ -f "$file" ]; then
+      value="$(grep -E "^(export[[:space:]]+)?${name}=" "$file" 2>/dev/null | tail -n1 | cut -d'=' -f2- || true)"
+      if [ -n "$value" ]; then
+        break
+      fi
+    fi
+  done
+
+  if [ -z "$value" ]; then
+    value="$(get_deployed_env_var "$name")"
+  fi
+
   value="${value%$'\r'}"
   value="${value#\"}"
   value="${value%\"}"
   value="${value#\'}"
   value="${value%\'}"
+
+  if [ -z "$value" ]; then
+    echo -e "${YELLOW}[!] ${name} is empty in local env and current Cloud Run env${NC}" >&2
+  fi
+
   printf '%s' "$value"
+}
+
+get_deployed_env_var() {
+  local name="$1"
+
+  if [ -z "$CURRENT_SERVICE_JSON" ]; then
+    CURRENT_SERVICE_JSON="$(gcloud run services describe "$SERVICE_NAME" --region="$REGION" --format=json 2>/dev/null || true)"
+  fi
+
+  SERVICE_JSON="$CURRENT_SERVICE_JSON" node -e '
+    const name = process.argv[1];
+    const service = JSON.parse(process.env.SERVICE_JSON || "{}");
+    const env = service?.spec?.template?.spec?.containers?.[0]?.env || [];
+    const value = (env.find((entry) => entry.name === name) || {}).value || "";
+    process.stdout.write(value);
+  ' "$name"
 }
 
 gcloud config set project "$PROJECT_ID" >/dev/null 2>&1
