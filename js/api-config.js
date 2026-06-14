@@ -8,7 +8,6 @@ const BASE_URL = (() => {
 })();
 
 const API = {
-  publishWithFile:    () => `${BASE_URL}/api/publish/publish/with-file`,
   r2Upload:           () => `${BASE_URL}/api/broadcast/publish?action=upload`,
   publish:            () => `${BASE_URL}/api/broadcast/publish`,
   instagramComplete:  () => `${BASE_URL}/api/broadcast/publish?action=instagram-complete`,

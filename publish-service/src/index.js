@@ -51,7 +51,7 @@ app.post('/publish', async (req, res) => {
 });
 
 // ── Publish with file (multipart upload) ──
-app.post('/publish/with-file', upload.single('file'), async (req, res) => {
+async function handlePublishWithFile(req, res) {
   try {
     const user = await verifyPublishAuth(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
@@ -74,9 +74,12 @@ app.post('/publish/with-file', upload.single('file'), async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[PUBLISH-WITH-FILE] Error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
-});
+}
+
+app.post('/publish/with-file', upload.single('file'), handlePublishWithFile);
+app.post('/with-file', upload.single('file'), handlePublishWithFile);
 
 // ── Direct media upload: return a presigned R2 PUT URL ──
 app.post('/uploads/r2-url', async (req, res) => {
@@ -190,6 +193,17 @@ app.post('/broadcast/scheduler/process', async (req, res) => {
     console.error('[BROADCAST-SCHEDULER] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+app.use((err, req, res, next) => {
+  if (!err) return next();
+
+  if (err.code === 'LIMIT_FILE_SIZE' || err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'File is too large. Max upload size is 500 MB.' });
+  }
+
+  console.error('[SERVER] Unhandled request error:', err.message);
+  return res.status(err.statusCode || err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
 // ── Auth helper ──

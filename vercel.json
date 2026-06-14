@@ -6,6 +6,8 @@
     { "source": "/kit/:token", "destination": "/kit/index.html" },
 
     { "source": "/api/broadcast/publish", "destination": "https://publish-service-266355090145.us-central1.run.app/broadcast/publish" },
+    { "source": "/api/broadcast/upload", "destination": "https://publish-service-266355090145.us-central1.run.app/uploads/r2-url" },
+    { "source": "/api/publish/with-file", "destination": "https://publish-service-266355090145.us-central1.run.app/publish/with-file" },
     { "source": "/api/publish/:path*", "destination": "https://publish-service-266355090145.us-central1.run.app/:path*" }
   ],
   "functions": {

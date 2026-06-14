@@ -82,7 +82,7 @@ Single file, multiple responsibilities:
 
 ## Other clients
 
-- **`mobile/src/screens/UploadScreen.js`** posts `FormData` to `https://lexaya.io/api/broadcast/upload`. That handler is **not** present under `api/broadcast/` in this repository; treat it as a separate deployment artifact or backlog unless you align it with `publish?action=upload` + `POST /api/broadcast/publish`.
+- **Legacy/mobile upload clients** should use the same R2 flow as the browser: request a signed URL via `/api/broadcast/publish?action=upload` (or the compatibility `/api/broadcast/upload` rewrite), upload the media directly to R2, then call `POST /api/broadcast/publish` with `{ postId, platforms }`. Avoid `publish/with-file` for normal uploads because it sends large media through the API service.
 
 ## Operational checklist (non‑auth)
 
