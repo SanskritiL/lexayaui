@@ -1,3 +1,5 @@
+const { fetchMediaStream } = require('../media');
+
 async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with TikTok...');
@@ -50,7 +52,14 @@ async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) 
       }),
     });
     const initData = await initRes.json();
-    if (initData.error?.code !== 'ok') throw new Error(initData.error?.message || 'Failed to init TikTok URL publish');
+    if (initData.error?.code !== 'ok') {
+      if (isUrlOwnershipError(initData)) {
+        await p('uploading', 'TikTok needs verified media URLs. Uploading video directly...');
+        const media = await fetchMediaStream(post);
+        return await uploadFileToTikTok(accessToken, media, p);
+      }
+      throw new Error(initData.error?.message || 'Failed to init TikTok URL publish');
+    }
 
     return {
       status: 'success',
@@ -61,7 +70,12 @@ async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) 
 
   const videoBuffer = fileBuffer;
   if (!videoBuffer) throw new Error('No video data available for TikTok');
-  const videoSize = videoBuffer.length;
+  return await uploadFileToTikTok(accessToken, { size: videoBuffer.length, body: videoBuffer }, p);
+}
+
+async function uploadFileToTikTok(accessToken, media, onProgress) {
+  const p = onProgress || (async () => {});
+  const videoSize = media.size;
   console.log('[TIKTOK] Video size:', (videoSize / 1024 / 1024).toFixed(2), 'MB');
 
   const TARGET_CHUNK = 10 * 1024 * 1024;
@@ -93,10 +107,11 @@ async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) 
   const uploadUrl = initData.data?.upload_url;
   if (!uploadUrl) throw new Error('No upload URL from TikTok');
 
+  const source = createChunkSource(media.body);
   for (let i = 0; i < totalChunks; i++) {
     const start = i * chunkSize;
     const end = i === totalChunks - 1 ? videoSize : start + chunkSize;
-    const chunk = videoBuffer.slice(start, end);
+    const chunk = await source.read(end - start);
     const lastByte = end - 1;
     const pct = Math.round(((i + 1) / totalChunks) * 100);
 
@@ -124,6 +139,47 @@ async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) 
     publish_id: publishId,
     note: 'Video sent to TikTok inbox. Open TikTok app to post.',
   };
+}
+
+function createChunkSource(body) {
+  if (Buffer.isBuffer(body)) {
+    let offset = 0;
+    return {
+      async read(length) {
+        const chunk = body.slice(offset, offset + length);
+        offset += chunk.length;
+        if (chunk.length !== length) throw new Error('Media ended before TikTok upload finished');
+        return chunk;
+      },
+    };
+  }
+
+  if (!body?.getReader) throw new Error('Unsupported media body for TikTok upload');
+
+  const reader = body.getReader();
+  let buffered = Buffer.alloc(0);
+  let done = false;
+
+  return {
+    async read(length) {
+      while (buffered.length < length && !done) {
+        const next = await reader.read();
+        done = next.done;
+        if (next.value) buffered = Buffer.concat([buffered, Buffer.from(next.value)]);
+      }
+
+      const chunk = buffered.slice(0, length);
+      buffered = buffered.slice(length);
+      if (chunk.length !== length) throw new Error('Media ended before TikTok upload finished');
+      return chunk;
+    },
+  };
+}
+
+function isUrlOwnershipError(data) {
+  const code = data?.error?.code || '';
+  const message = data?.error?.message || '';
+  return code === 'url_ownership_unverified' || /url ownership|ownership verification|PULL_FROM_URL/i.test(message);
 }
 
 function hasTikTokScope(account, requiredScope) {
