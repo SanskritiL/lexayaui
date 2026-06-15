@@ -50,6 +50,18 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
     throw new Error(`Not connected to: ${missingTargets.map(t => t.label).join(', ')}`);
   }
 
+  const blockedTargets = targetsToPublish
+    .map(target => {
+      const account = findAccountForTarget(accounts, target);
+      return isAccountAuthBlocked(account) ? (account.account_name || target.label) : null;
+    })
+    .filter(Boolean);
+  if (blockedTargets.length > 0) {
+    const err = new Error(`Reconnect before publishing: ${blockedTargets.join(', ')}. The saved authorization has expired.`);
+    err.statusCode = 409;
+    throw err;
+  }
+
   const results = {};
   let hasSuccess = false;
   let hasFailure = false;
@@ -174,6 +186,18 @@ function findAccountForTarget(accounts, target) {
   if (!accounts) return null;
   if (target.accountId) return accounts.find(a => a.id === target.accountId && a.platform === target.platform);
   return accounts.find(a => a.platform === target.platform);
+}
+
+function isAccountAuthBlocked(account) {
+  if (!account?.token_expires_at) return false;
+  const expiresAt = new Date(account.token_expires_at).getTime();
+  if (!Number.isFinite(expiresAt)) return false;
+  if (expiresAt > Date.now() + 2 * 60 * 1000) return false;
+  return !canRefreshAccountForPublish(account);
+}
+
+function canRefreshAccountForPublish(account) {
+  return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
 }
 
 module.exports = { publishPost };

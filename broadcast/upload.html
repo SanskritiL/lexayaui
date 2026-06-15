@@ -292,6 +292,14 @@
         .upload-plus { width: 46px; height: 46px; border-radius: 12px; background: #eef5ff; color: #005bc2; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .upload-plus .material-symbols-outlined { font-size: 1.55rem; }
         #upload-zone:hover .upload-plus, #upload-zone.dragover .upload-plus { background: #005bc2; color: #fff; }
+        .media-library { margin-top: 0.85rem; display: grid; gap: 0.45rem; }
+        .media-library-label { display: flex; align-items: center; gap: 0.35rem; color: #4b5563; font-size: 0.78rem; font-weight: 900; }
+        .media-library-label .material-symbols-outlined { font-size: 1rem; color: #005bc2; }
+        .media-library-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; }
+        .media-library-status { min-height: 1rem; color: #6b7280; font-size: 0.72rem; }
+        .media-library-clear { border: 1px solid #d1d5db; border-radius: 9px; background: #fff; color: #374151; padding: 0.68rem 0.78rem; font-size: 0.76rem; font-weight: 900; cursor: pointer; white-space: nowrap; }
+        .media-library-clear:hover { border-color: #9fc6f5; color: #005bc2; background: #f7fbff; }
+        .media-library-clear:disabled { opacity: 0.45; cursor: not-allowed; }
         #video-preview-container video, #image-preview-container img { max-height: 260px; }
         .youtube-fields { display: none; }
         .youtube-fields.visible { display: block; }
@@ -325,6 +333,20 @@
                     <p class="text-xs text-on-surface-variant" id="upload-subtitle">Click or drop a photo/video</p>
                 </div>
                 <input type="file" id="media-input" accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/mov" hidden>
+            </div>
+
+            <div class="media-library">
+                <label class="media-library-label" for="existing-media-select">
+                    <span class="material-symbols-outlined">cloud_done</span>
+                    Reuse uploaded media
+                </label>
+                <div class="media-library-row">
+                    <select id="existing-media-select" class="form-input" disabled>
+                        <option value="">Loading recent uploads...</option>
+                    </select>
+                    <button type="button" id="clear-existing-media" class="media-library-clear" disabled>Clear</button>
+                </div>
+                <div id="existing-media-status" class="media-library-status"></div>
             </div>
 
             <div id="video-preview-container" style="display: none;" class="mt-6">
@@ -537,8 +559,10 @@
         window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
 
         let selectedFile = null;
+        let selectedReusableMedia = null;
         let selectedMediaType = null;
         let connectedAccounts = [];
+        let reusableMedia = [];
         let currentUser = null;
         let videoThumbnailBlob = null;
         const SCHEDULING_ENABLED = false;
@@ -565,6 +589,7 @@
             await waitForContent();
 
             await loadConnectedAccounts();
+            await loadReusableMedia();
             setupEventListeners();
             applySchedulingAvailability();
             applyInitialScheduleState();
@@ -589,6 +614,82 @@
             if (error) console.warn('Could not load accounts:', error.message);
             connectedAccounts = accounts || [];
             updatePlatformCheckboxes();
+        }
+
+        async function loadReusableMedia() {
+            const select = document.getElementById('existing-media-select');
+            const status = document.getElementById('existing-media-status');
+            const clearButton = document.getElementById('clear-existing-media');
+            if (!select) return;
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const authToken = session?.access_token;
+            if (!authToken) {
+                select.innerHTML = '<option value="">Sign in to load uploads</option>';
+                select.disabled = true;
+                return;
+            }
+
+            try {
+                const res = await fetch(API.reusableMedia(), {
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                });
+                if (!res.ok) throw new Error(await readPublishError(res));
+                const data = await res.json();
+                reusableMedia = data.media || [];
+            } catch (err) {
+                console.warn('Could not load reusable media:', err.message);
+                reusableMedia = [];
+                if (status) status.textContent = 'Could not load recent uploads.';
+            }
+
+            renderReusableMediaOptions();
+            if (clearButton) clearButton.disabled = !selectedReusableMedia;
+        }
+
+        function renderReusableMediaOptions() {
+            const select = document.getElementById('existing-media-select');
+            const status = document.getElementById('existing-media-status');
+            if (!select) return;
+
+            if (reusableMedia.length === 0) {
+                select.innerHTML = '<option value="">No reusable uploads yet</option>';
+                select.disabled = true;
+                if (status && !status.textContent) status.textContent = 'Failed and draft uploads will appear here for reuse.';
+                return;
+            }
+
+            select.disabled = false;
+            select.innerHTML = [
+                '<option value="">Choose a recent upload...</option>',
+                ...reusableMedia.map(item => `<option value="${escapeHtml(item.postId)}">${escapeHtml(getReusableMediaLabel(item))}</option>`)
+            ].join('');
+            select.value = selectedReusableMedia?.postId || '';
+            if (status) status.textContent = 'Select an existing R2 upload to publish without uploading again.';
+        }
+
+        function getReusableMediaLabel(item) {
+            const metadata = item.metadata || {};
+            const type = metadata.media_type || inferMediaTypeFromContentType(metadata.content_type);
+            const size = formatBytes(Number(metadata.file_size_bytes || 0));
+            const date = item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'recent';
+            const caption = String(item.caption || '').replace(/\s+/g, ' ').trim();
+            const prefix = `${type || 'media'} · ${item.status || 'saved'} · ${date}${size ? ` · ${size}` : ''}`;
+            return caption ? `${prefix} · ${caption.slice(0, 60)}` : prefix;
+        }
+
+        function formatBytes(bytes) {
+            if (!Number.isFinite(bytes) || bytes <= 0) return '';
+            const mb = bytes / (1024 * 1024);
+            if (mb >= 1) return `${mb.toFixed(mb >= 10 ? 0 : 1)} MB`;
+            return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+        }
+
+        function inferMediaTypeFromContentType(contentType) {
+            if (String(contentType || '').startsWith('image/')) return 'image';
+            if (String(contentType || '').startsWith('video/')) return 'video';
+            return '';
         }
 
         function accountsForPlatform(platform) {
@@ -643,6 +744,25 @@
             });
         }
 
+        function getPublishAuthBlocks(targets) {
+            const now = Date.now();
+            const graceMs = 2 * 60 * 1000;
+            return targets
+                .map(target => {
+                    const account = connectedAccounts.find(item => String(item.id) === String(target.accountId));
+                    if (!account?.token_expires_at) return null;
+                    const expiresAt = new Date(account.token_expires_at).getTime();
+                    if (!Number.isFinite(expiresAt) || expiresAt > now + graceMs) return null;
+                    if (canRefreshAccountForPublish(account)) return null;
+                    return target.label || getAccountDisplay(account);
+                })
+                .filter(Boolean);
+        }
+
+        function canRefreshAccountForPublish(account) {
+            return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
+        }
+
         function getTargetPlatform(key) {
             return String(key || '').split(':')[0];
         }
@@ -663,7 +783,7 @@
             const warning = document.getElementById('no-accounts-warning');
             const list = document.getElementById('channels-list');
             const selectedCountEl = document.getElementById('selected-channel-count');
-            const hasMedia = !!selectedFile;
+            const hasMedia = !!selectedFile || !!selectedReusableMedia;
             const hasVideo = hasMedia && selectedMediaType === 'video';
             const hasImage = hasMedia && selectedMediaType === 'image';
             const previousSelections = new Set(
@@ -804,6 +924,8 @@
 
             document.getElementById('remove-media').addEventListener('click', clearMedia);
             document.getElementById('remove-image').addEventListener('click', clearMedia);
+            document.getElementById('existing-media-select')?.addEventListener('change', handleReusableMediaSelect);
+            document.getElementById('clear-existing-media')?.addEventListener('click', clearMedia);
 
             const caption = document.getElementById('caption');
             const charCount = document.getElementById('char-count');
@@ -861,6 +983,17 @@
             document.getElementById('analyze-hook-btn')?.addEventListener('click', analyzeHook);
         }
 
+        function handleReusableMediaSelect(e) {
+            const postId = e.target.value;
+            const item = reusableMedia.find(media => media.postId === postId);
+            if (!item) {
+                selectedReusableMedia = null;
+                clearMedia();
+                return;
+            }
+            applyReusableMedia(item);
+        }
+
         function applySchedulingAvailability() {
             const panel = document.getElementById('schedule-panel');
             const toggle = document.getElementById('schedule-toggle');
@@ -903,9 +1036,14 @@
             }
 
             selectedFile = file;
+            selectedReusableMedia = null;
             const isImage = file.type.startsWith('image/');
             const isVideo = file.type.startsWith('video/');
             selectedMediaType = isImage ? 'image' : 'video';
+            const mediaSelect = document.getElementById('existing-media-select');
+            const clearExisting = document.getElementById('clear-existing-media');
+            if (mediaSelect) mediaSelect.value = '';
+            if (clearExisting) clearExisting.disabled = true;
 
             const uc = document.getElementById('upload-zone');
             const vpc = document.getElementById('video-preview-container');
@@ -934,10 +1072,58 @@
             updatePlatformCheckboxes();
         }
 
+        function applyReusableMedia(item) {
+            selectedFile = null;
+            selectedReusableMedia = item;
+            selectedMediaType = item.metadata?.media_type || inferMediaTypeFromContentType(item.metadata?.content_type) || 'video';
+            videoThumbnailBlob = null;
+
+            const isImage = selectedMediaType === 'image';
+            const isVideo = selectedMediaType === 'video';
+            const size = formatBytes(Number(item.metadata?.file_size_bytes || 0));
+            const title = getReusableMediaLabel(item);
+
+            document.getElementById('media-input').value = '';
+            document.getElementById('upload-icon').textContent = isImage ? 'photo_library' : 'videocam';
+            document.getElementById('upload-title').textContent = 'Using uploaded media';
+            document.getElementById('upload-subtitle').textContent = title;
+
+            const videoContainer = document.getElementById('video-preview-container');
+            const imageContainer = document.getElementById('image-preview-container');
+            const videoPreview = document.getElementById('video-preview');
+            const imagePreview = document.getElementById('image-preview');
+            videoContainer.style.display = 'none';
+            imageContainer.style.display = 'none';
+            videoPreview.src = '';
+            imagePreview.src = '';
+
+            if (isImage) {
+                imagePreview.src = item.url;
+                imageContainer.style.display = 'block';
+                document.getElementById('image-info').textContent = `Reused upload${size ? ` · ${size}` : ''}`;
+            } else if (isVideo) {
+                videoPreview.src = item.url;
+                videoContainer.style.display = 'block';
+                document.getElementById('video-info').textContent = `Reused upload${size ? ` · ${size}` : ''}`;
+            }
+
+            const clearExisting = document.getElementById('clear-existing-media');
+            if (clearExisting) clearExisting.disabled = false;
+            updatePlatformCheckboxes();
+        }
+
         function clearMedia() {
             selectedFile = null;
+            selectedReusableMedia = null;
             selectedMediaType = null;
             videoThumbnailBlob = null;
+
+            const mediaInput = document.getElementById('media-input');
+            if (mediaInput) mediaInput.value = '';
+            const mediaSelect = document.getElementById('existing-media-select');
+            if (mediaSelect) mediaSelect.value = '';
+            const clearExisting = document.getElementById('clear-existing-media');
+            if (clearExisting) clearExisting.disabled = true;
 
             document.getElementById('upload-icon').textContent = 'add';
             document.getElementById('upload-title').textContent = 'Add media';
@@ -971,9 +1157,10 @@
             const onlyTextFriendly = selectedTargets.every(target => textFriendlyPlatforms.includes(target.platform));
             const needsYouTube = selectedTargets.some(target => target.platform === 'youtube');
             const youtubeTitle = document.getElementById('youtube-title')?.value.trim() || '';
+            const hasMedia = !!selectedFile || !!selectedReusableMedia;
 
             const isValid = selectedTargets.length > 0 &&
-                (selectedFile || (onlyTextFriendly && caption.length > 0)) &&
+                (hasMedia || (onlyTextFriendly && caption.length > 0)) &&
                 (!needsYouTube || youtubeTitle.length > 0);
 
             btn.disabled = !isValid;
@@ -981,7 +1168,7 @@
             if (SCHEDULING_ENABLED && scheduleToggle.checked) {
                 btn.textContent = 'Schedule Post';
             } else {
-                btn.textContent = selectedFile ? 'Publish Now' : 'Post Text';
+                btn.textContent = hasMedia ? 'Publish Now' : 'Post Text';
             }
         }
 
@@ -992,12 +1179,17 @@
             if (isSubmitting) return;
             isSubmitting = true;
 
-            if (!currentUser) { alert('Please login first'); return; }
+            if (!currentUser) {
+                alert('Please login first');
+                isSubmitting = false;
+                return;
+            }
 
             const caption = document.getElementById('caption').value;
             const selectedTargets = getSelectedPublishTargets();
             const selectedPlatforms = selectedTargets.map(target => target.key);
             const selectedProviderNames = [...new Set(selectedTargets.map(target => target.platform))];
+            const hasMedia = !!selectedFile || !!selectedReusableMedia;
             const accountSelections = selectedTargets.reduce((acc, target) => {
                 acc[target.platform] = acc[target.platform] || [];
                 acc[target.platform].push(target.accountId);
@@ -1011,36 +1203,52 @@
 
             if (!isDraft && selectedTargets.length === 0) {
                 alert('Please select at least one account');
+                isSubmitting = false;
+                return;
+            }
+
+            const authBlocks = getPublishAuthBlocks(selectedTargets);
+            if (!isDraft && authBlocks.length > 0) {
+                alert(`Reconnect before publishing: ${authBlocks.join(', ')}. The saved authorization has expired.`);
+                isSubmitting = false;
                 return;
             }
 
             if (!isDraft) {
                 const accountNames = selectedTargets.map(target => target.label).join(', ');
-                if (!confirm(`Post to: ${accountNames}\n\nAre you sure?`)) return;
+                if (!confirm(`Post to: ${accountNames}\n\nAre you sure?`)) {
+                    isSubmitting = false;
+                    return;
+                }
             }
 
             const needsTikTok = selectedProviderNames.includes('tiktok');
             const needsInstagram = selectedProviderNames.includes('instagram');
             const needsYouTube = selectedProviderNames.includes('youtube');
 
-            if (needsTikTok && (!selectedFile || selectedMediaType !== 'video') && !isDraft) {
+            if (needsTikTok && (!hasMedia || selectedMediaType !== 'video') && !isDraft) {
                 alert('TikTok requires a video. Please upload a video or deselect TikTok.');
+                isSubmitting = false;
                 return;
             }
-            if (needsYouTube && (!selectedFile || selectedMediaType !== 'video') && !isDraft) {
+            if (needsYouTube && (!hasMedia || selectedMediaType !== 'video') && !isDraft) {
                 alert('YouTube Shorts requires a video. Please upload a video or deselect YouTube.');
+                isSubmitting = false;
                 return;
             }
             if (needsYouTube && !youtubeTitle && !isDraft) {
                 alert('YouTube requires a title.');
+                isSubmitting = false;
                 return;
             }
-            if (needsInstagram && !selectedFile && !isDraft) {
+            if (needsInstagram && !hasMedia && !isDraft) {
                 alert('Instagram requires an image or video.');
+                isSubmitting = false;
                 return;
             }
-            if (!selectedFile && !caption && !isDraft) {
+            if (!hasMedia && !caption && !isDraft) {
                 alert('Please add a caption or upload media');
+                isSubmitting = false;
                 return;
             }
 
@@ -1074,6 +1282,14 @@
                     metadata.r2_key = upload.key;
                     metadata.file_size_bytes = selectedFile.size;
                     metadata.content_type = selectedFile.type;
+                } else if (selectedReusableMedia) {
+                    publishBtn.textContent = 'Using uploaded media...';
+                    mediaUrl = selectedReusableMedia.url;
+                    metadata.reused_from_post_id = selectedReusableMedia.postId;
+                    metadata.r2_key = selectedReusableMedia.metadata?.r2_key || null;
+                    metadata.file_size_bytes = selectedReusableMedia.metadata?.file_size_bytes || null;
+                    metadata.content_type = selectedReusableMedia.metadata?.content_type || null;
+                    metadata.media_type = selectedReusableMedia.metadata?.media_type || selectedMediaType;
                 }
 
                 publishBtn.textContent = 'Creating post...';

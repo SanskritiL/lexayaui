@@ -46,7 +46,7 @@ app.post('/publish', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('[PUBLISH] Error:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(err.statusCode || 500).json({ error: err.message });
   }
 });
 
@@ -138,6 +138,39 @@ app.all('/broadcast/publish', async (req, res) => {
         fileSizeBytes: req.body?.fileSizeBytes,
       });
       return res.json(upload);
+    }
+
+    // GET /broadcast/publish?action=media
+    if (method === 'GET' && action === 'media') {
+      const supabase = getClient();
+      const limit = Math.min(Math.max(Number(req.query.limit || 20), 1), 50);
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, video_url, caption, status, created_at, metadata')
+        .eq('user_id', user.id)
+        .not('video_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw new Error(`Failed to load uploaded media: ${error.message}`);
+
+      const media = (data || [])
+        .filter(post => post.video_url && post.metadata?.r2_key)
+        .map(post => ({
+          postId: post.id,
+          url: post.video_url,
+          status: post.status,
+          caption: post.caption || '',
+          createdAt: post.created_at,
+          metadata: {
+            r2_key: post.metadata.r2_key,
+            file_size_bytes: post.metadata.file_size_bytes || null,
+            content_type: post.metadata.content_type || null,
+            media_type: post.metadata.media_type || null,
+          },
+        }));
+
+      return res.json({ media });
     }
 
     // POST /broadcast/publish (no action) → main publish

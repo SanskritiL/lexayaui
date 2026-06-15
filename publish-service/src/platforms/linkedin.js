@@ -92,20 +92,110 @@ async function uploadAndCreateLinkedInVideoPost(headers, authorUrn, post, access
   const uploadMedia = fileBuffer
     ? media
     : await fetchMediaStream(post);
-  const uploadRes = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/octet-stream',
-      'Content-Length': media.size.toString(),
-    },
-    body: uploadMedia.body,
-    duplex: 'half',
+  const uploadedPartIds = await uploadLinkedInVideoParts({
+    uploadInstructions: initData.value.uploadInstructions,
+    uploadToken: initData.value.uploadToken || '',
+    videoUrn,
+    uploadMedia,
+    headers,
+    accessToken,
+    onProgress: p,
   });
-  if (!uploadRes.ok) throw new Error('LinkedIn video upload failed: ' + (await readLinkedInError(uploadRes)));
+
+  await p('finalizing', 'Finalizing LinkedIn video upload...', 100);
+  const finalizeRes = await fetch('https://api.linkedin.com/rest/videos?action=finalizeUpload', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      finalizeUploadRequest: {
+        video: videoUrn,
+        uploadToken: initData.value.uploadToken || '',
+        uploadedPartIds,
+      },
+    }),
+  });
+  if (!finalizeRes.ok) throw new Error('LinkedIn video upload finalize failed: ' + (await readLinkedInError(finalizeRes)));
 
   await p('publishing', 'Creating LinkedIn post...');
   return createLinkedInVideoPost(headers, authorUrn, post, videoUrn);
+}
+
+async function uploadLinkedInVideoParts({ uploadInstructions, uploadMedia, accessToken, onProgress }) {
+  const instructions = Array.isArray(uploadInstructions) ? [...uploadInstructions] : [];
+  if (instructions.length === 0) throw new Error('LinkedIn did not return video upload instructions');
+
+  instructions.sort((a, b) => Number(a.firstByte || 0) - Number(b.firstByte || 0));
+  const source = createChunkSource(uploadMedia.body);
+  const uploadedPartIds = [];
+
+  for (let i = 0; i < instructions.length; i++) {
+    const instruction = instructions[i];
+    const firstByte = Number(instruction.firstByte);
+    const lastByte = Number(instruction.lastByte);
+    const uploadUrl = instruction.uploadUrl;
+    if (!uploadUrl || !Number.isFinite(firstByte) || !Number.isFinite(lastByte) || lastByte < firstByte) {
+      throw new Error('LinkedIn returned invalid video upload instructions');
+    }
+
+    const length = lastByte - firstByte + 1;
+    const chunk = await source.read(length);
+    const pct = Math.round(((i + 1) / instructions.length) * 100);
+    await onProgress('uploading', `Uploading LinkedIn video part ${i + 1} of ${instructions.length} (${pct}%)...`, pct);
+
+    const uploadRes = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/octet-stream',
+        'Content-Length': chunk.length.toString(),
+      },
+      body: chunk,
+    });
+    if (!uploadRes.ok) {
+      throw new Error('LinkedIn video upload failed: ' + (await readLinkedInError(uploadRes)));
+    }
+
+    const partId = uploadRes.headers.get('etag') || uploadRes.headers.get('ETag');
+    if (!partId) throw new Error('LinkedIn video upload failed: missing uploaded part id');
+    uploadedPartIds.push(partId.replace(/^"|"$/g, ''));
+  }
+
+  return uploadedPartIds;
+}
+
+function createChunkSource(body) {
+  if (Buffer.isBuffer(body)) {
+    let offset = 0;
+    return {
+      async read(length) {
+        const chunk = body.slice(offset, offset + length);
+        offset += chunk.length;
+        if (chunk.length !== length) throw new Error('Media ended before LinkedIn upload finished');
+        return chunk;
+      },
+    };
+  }
+
+  if (!body?.getReader) throw new Error('Unsupported media body for LinkedIn upload');
+
+  const reader = body.getReader();
+  let buffered = Buffer.alloc(0);
+  let done = false;
+
+  return {
+    async read(length) {
+      while (buffered.length < length && !done) {
+        const next = await reader.read();
+        done = next.done;
+        if (next.value) buffered = Buffer.concat([buffered, Buffer.from(next.value)]);
+      }
+
+      const chunk = buffered.slice(0, length);
+      buffered = buffered.slice(length);
+      if (chunk.length !== length) throw new Error('Media ended before LinkedIn upload finished');
+      return chunk;
+    },
+  };
 }
 
 async function createLinkedInImagePost(headers, authorUrn, post, accessToken, onProgress, fileBuffer) {
@@ -166,6 +256,9 @@ async function createLinkedInImagePost(headers, authorUrn, post, accessToken, on
 
 async function readLinkedInError(res) {
   const text = await res.text();
+  if (res.status === 413) {
+    return text || 'HTTP 413. LinkedIn rejected the video upload as too large for this request. Re-encode the video smaller or try again after the multipart upload fix is deployed.';
+  }
   if (!text) return `HTTP ${res.status}`;
   try {
     const parsed = JSON.parse(text);
