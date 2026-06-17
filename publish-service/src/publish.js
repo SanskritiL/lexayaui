@@ -45,23 +45,6 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
 
   if (accountsError) throw new Error('Failed to get connected accounts');
 
-  const missingTargets = targetsToPublish.filter(target => !findAccountForTarget(accounts, target));
-  if (missingTargets.length > 0) {
-    throw new Error(`Not connected to: ${missingTargets.map(t => t.label).join(', ')}`);
-  }
-
-  const blockedTargets = targetsToPublish
-    .map(target => {
-      const account = findAccountForTarget(accounts, target);
-      return isAccountAuthBlocked(account) ? (account.account_name || target.label) : null;
-    })
-    .filter(Boolean);
-  if (blockedTargets.length > 0) {
-    const err = new Error(`Reconnect before publishing: ${blockedTargets.join(', ')}. The saved authorization has expired.`);
-    err.statusCode = 409;
-    throw err;
-  }
-
   const results = {};
   let hasSuccess = false;
   let hasFailure = false;
@@ -94,7 +77,43 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
     };
   };
 
-  const publishPromises = targetsToPublish.map(async (target) => {
+  const publishableTargets = [];
+
+  for (const target of targetsToPublish) {
+    const account = findAccountForTarget(accounts, target);
+    if (!account) {
+      results[target.key] = {
+        status: 'error',
+        error: `${formatTargetLabel(target)} is not connected. Reconnect the account, then retry this platform.`,
+        platform: target.platform,
+        account_id: target.accountId || null,
+        account_name: target.label,
+        recoverable: true,
+      };
+      continue;
+    }
+
+    if (isAccountAuthBlocked(account)) {
+      results[target.key] = {
+        status: 'error',
+        error: `${formatAccountLabel(account, target)} needs to be reconnected. The saved authorization has expired.`,
+        platform: target.platform,
+        account_id: account.id,
+        account_name: account.account_name,
+        recoverable: true,
+        error_code: 'AUTH_EXPIRED',
+      };
+      continue;
+    }
+
+    publishableTargets.push(target);
+  }
+
+  if (Object.keys(results).length > 0) {
+    await updateProgress(results);
+  }
+
+  const publishPromises = publishableTargets.map(async (target) => {
     const { platform, key } = target;
     const account = findAccountForTarget(accounts, target);
     if (!account) {
@@ -150,6 +169,27 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
     .eq('id', postId);
 
   return { success: hasSuccess, status: overallStatus, results: finalResults };
+}
+
+function formatTargetLabel(target) {
+  return `${formatPlatformName(target.platform)}${target.accountId ? ` account ${target.accountId}` : ''}`;
+}
+
+function formatAccountLabel(account, target) {
+  const platform = formatPlatformName(account?.platform || target.platform);
+  const name = account?.account_name || target.label || account?.platform_user_id || account?.id || 'account';
+  return `${platform} ${name}`;
+}
+
+function formatPlatformName(platform) {
+  const names = {
+    instagram: 'Instagram',
+    linkedin: 'LinkedIn',
+    tiktok: 'TikTok',
+    youtube: 'YouTube',
+    twitter: 'X',
+  };
+  return names[platform] || platform || 'Platform';
 }
 
 function normalizeTargets(platforms, accountSelections) {

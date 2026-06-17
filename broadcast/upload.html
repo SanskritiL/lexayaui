@@ -744,25 +744,6 @@
             });
         }
 
-        function getPublishAuthBlocks(targets) {
-            const now = Date.now();
-            const graceMs = 2 * 60 * 1000;
-            return targets
-                .map(target => {
-                    const account = connectedAccounts.find(item => String(item.id) === String(target.accountId));
-                    if (!account?.token_expires_at) return null;
-                    const expiresAt = new Date(account.token_expires_at).getTime();
-                    if (!Number.isFinite(expiresAt) || expiresAt > now + graceMs) return null;
-                    if (canRefreshAccountForPublish(account)) return null;
-                    return target.label || getAccountDisplay(account);
-                })
-                .filter(Boolean);
-        }
-
-        function canRefreshAccountForPublish(account) {
-            return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
-        }
-
         function getTargetPlatform(key) {
             return String(key || '').split(':')[0];
         }
@@ -1203,13 +1184,6 @@
 
             if (!isDraft && selectedTargets.length === 0) {
                 alert('Please select at least one account');
-                isSubmitting = false;
-                return;
-            }
-
-            const authBlocks = getPublishAuthBlocks(selectedTargets);
-            if (!isDraft && authBlocks.length > 0) {
-                alert(`Reconnect before publishing: ${authBlocks.join(', ')}. The saved authorization has expired.`);
                 isSubmitting = false;
                 return;
             }
@@ -1790,24 +1764,21 @@
             modalActions.style.display = 'none';
             retryBtn.disabled = true;
 
-            failedPlatforms.forEach(platform => updatePlatformProgress(platform, 'publishing', 'Retrying...'));
+            failedPlatforms.forEach(platform => updatePlatformProgress(platform, 'processing', 'Retrying...'));
 
             try {
                 const result = await publishToAllPlatforms(postId, failedPlatforms);
-                let successCount = 0;
                 const results = result.results || {};
                 for (const [platform, platformResult] of Object.entries(results)) {
                     if (platformResult.status === 'success' || platformResult.status === 'pending') {
-                        successCount++;
                         updatePlatformProgress(platform, 'success', platformResult.url ? 'Posted!' : (platformResult.note || 'Success!'));
                     } else {
                         updatePlatformProgress(platform, 'failed', platformResult.error || 'Failed');
                     }
                 }
-                const totalPlatforms = Object.keys(lastPublishState.platformResults).length;
-                const previousSuccess = Object.values(lastPublishState.platformResults).filter(r => r.status === 'success' || r.status === 'pending').length;
-                const newTotalSuccess = previousSuccess + successCount;
                 const mergedResults = { ...lastPublishState.platformResults, ...results };
+                const totalPlatforms = Object.keys(mergedResults).length;
+                const newTotalSuccess = Object.values(mergedResults).filter(r => r.status === 'success' || r.status === 'pending').length;
                 const newStatus = newTotalSuccess === totalPlatforms ? 'published' : newTotalSuccess > 0 ? 'partial' : 'failed';
                 completePublishingModal(newStatus, newTotalSuccess, totalPlatforms, postId, mergedResults);
                 if (newStatus === 'published') launchConfetti();
