@@ -85,7 +85,7 @@ async function uploadFileToTikTok(accessToken, media, onProgress) {
     totalChunks = 1;
   } else {
     chunkSize = TARGET_CHUNK;
-    totalChunks = Math.floor(videoSize / chunkSize);
+    totalChunks = Math.ceil(videoSize / chunkSize);
     if (totalChunks < 2) {
       chunkSize = videoSize;
       totalChunks = 1;
