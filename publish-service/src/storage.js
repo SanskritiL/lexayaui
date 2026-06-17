@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, HeadObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
@@ -35,7 +35,7 @@ function getR2Client() {
   return r2Client;
 }
 
-async function createR2Upload({ userId, fileName, contentType, fileSizeBytes }) {
+async function createR2Upload({ userId, fileName, contentType, fileSizeBytes, fileSha256 }) {
   const bucket = process.env.R2_BUCKET_NAME;
   const publicBaseUrl = process.env.R2_PUBLIC_URL;
 
@@ -61,7 +61,26 @@ async function createR2Upload({ userId, fileName, contentType, fileSizeBytes }) 
   }
 
   const extension = getSafeExtension(fileName, contentType);
-  const key = `${userId}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}${extension}`;
+  const fingerprint = getSafeSha256(fileSha256);
+  const key = fingerprint
+    ? `${userId}/media/${fingerprint}${extension}`
+    : `${userId}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}${extension}`;
+  const publicUrl = `${publicBaseUrl.replace(/\/$/, '')}/${key}`;
+
+  if (fingerprint) {
+    const existing = await getExistingObject({ bucket, key, size, contentType });
+    if (existing) {
+      return {
+        uploadUrl: null,
+        key,
+        publicUrl,
+        maxBytes: MAX_UPLOAD_BYTES,
+        expiresInSeconds: 0,
+        existing: true,
+      };
+    }
+  }
+
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
@@ -70,7 +89,6 @@ async function createR2Upload({ userId, fileName, contentType, fileSizeBytes }) 
   });
 
   const uploadUrl = await getSignedUrl(getR2Client(), command, { expiresIn: 15 * 60 });
-  const publicUrl = `${publicBaseUrl.replace(/\/$/, '')}/${key}`;
 
   return {
     uploadUrl,
@@ -78,7 +96,26 @@ async function createR2Upload({ userId, fileName, contentType, fileSizeBytes }) 
     publicUrl,
     maxBytes: MAX_UPLOAD_BYTES,
     expiresInSeconds: 15 * 60,
+    existing: false,
   };
+}
+
+async function getExistingObject({ bucket, key, size, contentType }) {
+  try {
+    const result = await getR2Client().send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    if (Number(result.ContentLength) !== size) return false;
+    if (result.ContentType && result.ContentType !== contentType) return false;
+    return true;
+  } catch (err) {
+    const statusCode = err?.$metadata?.httpStatusCode;
+    if (statusCode === 404 || err?.name === 'NotFound') return false;
+    throw err;
+  }
+}
+
+function getSafeSha256(value) {
+  const hash = String(value || '').toLowerCase();
+  return /^[a-f0-9]{64}$/.test(hash) ? hash : '';
 }
 
 function getSafeExtension(fileName, contentType) {

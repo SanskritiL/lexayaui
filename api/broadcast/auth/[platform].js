@@ -271,10 +271,6 @@ async function handleInstagram(req, res) {
 
         const shortLivedToken = tokenData.access_token;
 
-        // Get pages
-        let pagesResponse = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${shortLivedToken}`);
-        let pagesData = await pagesResponse.json();
-
         // Exchange for long-lived token
         const longTokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
         longTokenUrl.searchParams.set('grant_type', 'fb_exchange_token');
@@ -284,13 +280,16 @@ async function handleInstagram(req, res) {
 
         const longTokenResponse = await fetch(longTokenUrl.toString());
         const longTokenData = await longTokenResponse.json();
-        const accessToken = longTokenData.access_token || shortLivedToken;
-        const expiresIn = longTokenData.expires_in || 3600;
-
-        if (!pagesData.data || pagesData.data.length === 0) {
-            pagesResponse = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`);
-            pagesData = await pagesResponse.json();
+        if (!longTokenResponse.ok || longTokenData.error || !longTokenData.access_token) {
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Could not create a long-lived Instagram authorization. Please try connecting Instagram again.'));
         }
+
+        const accessToken = longTokenData.access_token;
+        const expiresIn = longTokenData.expires_in || (60 * 24 * 60 * 60);
+
+        // Fetch pages only after the long-lived exchange so saved page tokens are not short-lived.
+        let pagesResponse = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`);
+        let pagesData = await pagesResponse.json();
 
         if (!pagesData.data || pagesData.data.length === 0) {
             const meResponse = await fetch(`https://graph.facebook.com/v18.0/me?fields=id,name,accounts{id,name,access_token,instagram_business_account}&access_token=${accessToken}`);

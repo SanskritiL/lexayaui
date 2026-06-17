@@ -29,8 +29,7 @@ async function publishToInstagram(post, account, onProgress, fileBuffer) {
 
     const containerRes = await fetch(containerUrl.toString(), { method: 'POST' });
     if (!containerRes.ok) {
-      const err = await containerRes.json();
-      throw new Error(err.error?.message || 'Failed to create Instagram container');
+      throw new Error(await readInstagramError(containerRes, 'Failed to create Instagram container'));
     }
 
     const containerData = await containerRes.json();
@@ -52,8 +51,7 @@ async function publishToInstagram(post, account, onProgress, fileBuffer) {
 
   const containerRes = await fetch(containerUrl.toString(), { method: 'POST' });
   if (!containerRes.ok) {
-    const err = await containerRes.json();
-    throw new Error(err.error?.message || 'Failed to create Instagram container');
+    throw new Error(await readInstagramError(containerRes, 'Failed to create Instagram container'));
   }
 
   const containerData = await containerRes.json();
@@ -74,15 +72,14 @@ async function publishToInstagram(post, account, onProgress, fileBuffer) {
   });
 
   if (!uploadRes.ok) {
-    const errText = await uploadRes.text();
-    throw new Error('Instagram upload failed: ' + errText);
+    throw new Error(await readInstagramError(uploadRes, 'Instagram upload failed'));
   }
 
   const uploadResult = await uploadRes.json();
   console.log('[INSTAGRAM] Upload result:', uploadResult);
 
   if (!uploadResult.success) {
-    throw new Error('Instagram upload failed: ' + JSON.stringify(uploadResult));
+    throw new Error('Instagram upload failed: ' + formatInstagramPayload(uploadResult));
   }
 
   await p('processing', 'Instagram is processing your media...');
@@ -156,7 +153,7 @@ async function completeInstagram(postId, userId, resultKey) {
   const publishRes = await fetch(publishUrl.toString(), { method: 'POST' });
 
   if (!publishRes.ok) {
-    const err = (await publishRes.json()).error?.message || 'Failed to publish';
+    const err = await readInstagramError(publishRes, 'Failed to publish to Instagram');
     await saveInstagramResult(supabase, post, postId, selectedKey, { ...igResult, status: 'error', error: err });
     return { status: 'error', error: err };
   }
@@ -165,6 +162,36 @@ async function completeInstagram(postId, userId, resultKey) {
   const result = { ...igResult, status: 'success', post_id: publishData.id, url: `https://www.instagram.com/reel/${publishData.id}/` };
   await saveInstagramResult(supabase, post, postId, selectedKey, result);
   return result;
+}
+
+async function readInstagramError(response, fallback) {
+  const text = await response.text();
+  let payload = null;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch (_) {}
+
+  const graphError = payload?.error;
+  const message = graphError?.error_user_msg || graphError?.message || payload?.message || text || fallback;
+  const code = graphError?.code ? ` code ${graphError.code}` : '';
+  const subcode = graphError?.error_subcode ? `/${graphError.error_subcode}` : '';
+  const authHint = isInstagramAuthError(graphError, response.status)
+    ? ' Reconnect this Instagram channel, then retry.'
+    : '';
+
+  return `Instagram: ${message}${code}${subcode}.${authHint}`.trim();
+}
+
+function isInstagramAuthError(error, status) {
+  const code = Number(error?.code);
+  return status === 401 || code === 190 || code === 102 || code === 10 || code === 200;
+}
+
+function formatInstagramPayload(payload) {
+  if (!payload) return 'Unknown response';
+  if (typeof payload === 'string') return payload;
+  if (payload.error) return payload.error.message || JSON.stringify(payload.error);
+  return JSON.stringify(payload);
 }
 
 async function saveInstagramResult(supabase, post, postId, resultKey, result) {

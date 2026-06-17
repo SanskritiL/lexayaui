@@ -172,6 +172,8 @@
         .channel-meta { font-size: 0.72rem; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .channel-state { width: fit-content; margin-top: 0.2rem; padding: 0.18rem 0.45rem; border-radius: 999px; background: #eaf8f1; color: #047857; font-size: 0.66rem; font-weight: 900; white-space: nowrap; }
         .channel-option.disabled .channel-state { background: #fff7ed; color: #b45309; }
+        .channel-option.auth-expired { border-color: #fecaca; background: #fff7f7; opacity: 1; }
+        .channel-option.auth-expired .channel-state { background: #fee2e2; color: #b91c1c; }
         @media (max-width: 640px) {
             .channels-select-header, .channel-group-title { align-items: flex-start; flex-direction: column; }
             .channel-group-actions { width: 100%; justify-content: space-between; }
@@ -721,6 +723,18 @@
             return String(label || 'A').trim().charAt(0).toUpperCase() || 'A';
         }
 
+        function canRefreshAccountForPublish(account) {
+            return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
+        }
+
+        function isAccountAuthBlocked(account) {
+            if (!account?.token_expires_at) return false;
+            const expiresAt = new Date(account.token_expires_at).getTime();
+            if (!Number.isFinite(expiresAt)) return false;
+            if (expiresAt > Date.now() + 2 * 60 * 1000) return false;
+            return !canRefreshAccountForPublish(account);
+        }
+
         function escapeHtml(value) {
             return String(value ?? '').replace(/[&<>"']/g, char => ({
                 '&': '&amp;',
@@ -796,15 +810,16 @@
                     const initial = escapeHtml(getAccountInitial(label));
                     const isVideoOnlyBlocked = (platform === 'tiktok' || platform === 'youtube') && !hasVideo;
                     const isInstagramBlocked = platform === 'instagram' && !hasMedia;
-                    const isDisabled = isVideoOnlyBlocked || isInstagramBlocked;
-                    const reason = isVideoOnlyBlocked ? 'Needs video' : isInstagramBlocked ? 'Needs media' : 'Ready';
+                    const isAuthBlocked = isAccountAuthBlocked(account);
+                    const isDisabled = isVideoOnlyBlocked || isInstagramBlocked || isAuthBlocked;
+                    const reason = isAuthBlocked ? 'Reconnect required' : isVideoOnlyBlocked ? 'Needs video' : isInstagramBlocked ? 'Needs media' : 'Ready';
                     const checked = !isDisabled && (previousSelections.has(accountId) || (!previousPlatforms.has(platform) && !hasCheckedInGroup));
                     if (checked) hasCheckedInGroup = true;
                     if (!isDisabled) enabledCount++;
                     if (checked) selectedCount++;
 
                     return `
-                        <label class="channel-option ${isDisabled ? 'disabled' : ''}" title="${safeLabel}">
+                        <label class="channel-option ${isDisabled ? 'disabled' : ''} ${isAuthBlocked ? 'auth-expired' : ''}" title="${isAuthBlocked ? `${safeLabel} needs to be reconnected before publishing` : safeLabel}">
                             <input type="checkbox" name="platformAccounts" data-platform="${platform}" data-label="${safeLabel}" value="${accountId}" ${checked ? 'checked' : ''} ${isDisabled ? 'disabled' : ''}>
                             <div class="channel-avatar-wrap">
                                 ${avatar
@@ -1692,6 +1707,7 @@
         }
 
         async function uploadMediaToR2(file, authToken) {
+            const fileSha256 = await getFileSha256(file);
             const presignRes = await fetch(API.r2Upload(), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
@@ -1699,6 +1715,7 @@
                     fileName: file.name,
                     contentType: file.type,
                     fileSizeBytes: file.size,
+                    fileSha256,
                 }),
             });
 
@@ -1707,6 +1724,9 @@
             }
 
             const upload = await presignRes.json();
+            if (upload.existing) return upload;
+            if (!upload.uploadUrl) throw new Error('R2 upload URL was not returned.');
+
             const putRes = await fetch(upload.uploadUrl, {
                 method: 'PUT',
                 headers: {
@@ -1720,6 +1740,15 @@
             }
 
             return upload;
+        }
+
+        async function getFileSha256(file) {
+            if (!window.crypto?.subtle) return null;
+            const buffer = await file.arrayBuffer();
+            const hash = await window.crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(hash))
+                .map(byte => byte.toString(16).padStart(2, '0'))
+                .join('');
         }
 
         async function readPublishError(response) {

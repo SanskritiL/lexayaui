@@ -66,8 +66,10 @@
         .platform-mark.tiktok { background: #000; }
         .platform-mark.instagram { background: #cc2366; }
 
-        .account-list { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: flex-start; }
-        .account-row { position: relative; border: 0; padding: 0; background: transparent; }
+        .account-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 0.75rem; align-items: stretch; }
+        .account-row { position: relative; border: 1px solid #eef0ee; border-radius: 12px; padding: 0.7rem; background: #fff; display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 0.65rem; align-items: center; min-height: 78px; }
+        .account-row.expired { border-color: #fecaca; background: #fff7f7; }
+        .account-row.expiring { border-color: #fde68a; background: #fffbeb; }
         .account-portrait { position: relative; width: 54px; height: 54px; flex-shrink: 0; }
         .account-avatar { width: 54px; height: 54px; border-radius: 50%; object-fit: cover; background: #eef0ee; border: 2px solid #fff; box-shadow: 0 0 0 1px #e5e7eb; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 0.95rem; font-weight: 900; }
         .account-platform-badge { position: absolute; right: -3px; bottom: -3px; width: 21px; height: 21px; border-radius: 50%; color: #fff; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; box-shadow: 0 4px 10px rgba(17, 24, 39, 0.16); }
@@ -75,6 +77,14 @@
         .account-platform-badge.linkedin { background: #0a66c2; }
         .account-platform-badge.tiktok { background: #000; }
         .account-platform-badge.instagram { background: #cc2366; }
+        .account-info { min-width: 0; display: grid; gap: 0.25rem; }
+        .account-name { font-size: 0.82rem; font-weight: 900; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .account-meta { font-size: 0.7rem; font-weight: 700; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .account-status { width: fit-content; max-width: 100%; border-radius: 999px; padding: 0.18rem 0.48rem; font-size: 0.66rem; font-weight: 900; color: #047857; background: #ecfdf5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .account-status.expired { color: #b91c1c; background: #fee2e2; }
+        .account-status.expiring { color: #92400e; background: #fef3c7; }
+        .reconnect-button { width: fit-content; border: 1px solid #fecaca; border-radius: 8px; background: #fff; color: #b91c1c; padding: 0.28rem 0.5rem; font-size: 0.68rem; font-weight: 900; display: inline-flex; align-items: center; gap: 0.25rem; cursor: pointer; }
+        .reconnect-button:hover { background: #fee2e2; }
         .icon-button { position: absolute; right: -8px; top: -8px; width: 22px; height: 22px; border-radius: 50%; border: 1px solid #e5e7eb; background: #fff; color: #9ca3af; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.18s ease, color 0.18s ease, border-color 0.18s ease; }
         .account-row:hover .icon-button, .account-row:focus-within .icon-button { opacity: 1; }
         .icon-button:hover { color: #a83836; border-color: #fecaca; background: #fef2f2; }
@@ -311,7 +321,13 @@
             const summary = document.getElementById('accounts-summary');
             if (!list || !summary) return;
 
-            summary.textContent = `${accounts.length} connected`;
+            const expiredCount = accounts.filter(account => getAccountAuthStatus(account).needsReconnect && isAccountExpired(account)).length;
+            const expiringCount = accounts.filter(account => getAccountAuthStatus(account).needsReconnect && !isAccountExpired(account) && isAccountExpiringSoon(account)).length;
+            summary.textContent = expiredCount
+                ? `${accounts.length} connected · ${expiredCount} expired`
+                : expiringCount
+                    ? `${accounts.length} connected · ${expiringCount} expiring soon`
+                    : `${accounts.length} connected`;
             if (!accounts.length) {
                 list.innerHTML = `
                     <div class="empty-state">
@@ -330,15 +346,29 @@
                 const displayName = metadata.display_name || metadata.name || username;
                 const avatar = getSafeAvatarUrl(metadata.profile_picture || metadata.avatar_url || metadata.profile_image_url);
                 const initial = getAccountInitial(displayName);
+                const status = getAccountAuthStatus(account);
+                const handle = metadata.username || metadata.channel_title || metadata.display_name || account.account_name || '';
+                const platformName = PLATFORM_NAMES[platform] || platform;
 
                 return `
-                    <div class="account-row" title="${escapeHtml(displayName)} - ${escapeHtml(PLATFORM_NAMES[platform] || platform)}">
+                    <div class="account-row ${status.className}" title="${escapeHtml(displayName)} - ${escapeHtml(platformName)} - ${escapeHtml(status.title)}">
                         <div class="account-portrait">
                             ${avatar
                                 ? `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(displayName)}" class="account-avatar" onerror="this.outerHTML='<div class=&quot;account-avatar&quot;>${escapeHtml(initial)}</div>';">`
                                 : `<div class="account-avatar">${escapeHtml(initial)}</div>`
                             }
                             <span class="account-platform-badge ${escapeHtml(platform)}">${PLATFORM_ICONS[platform] || '<i class="fas fa-link"></i>'}</span>
+                        </div>
+                        <div class="account-info">
+                            <div class="account-name">${escapeHtml(displayName)}</div>
+                            <div class="account-meta">${escapeHtml(platformName)}${handle ? ` · @${escapeHtml(handle)}` : ''}</div>
+                            <span class="account-status ${status.className}">${escapeHtml(status.label)}</span>
+                            ${status.needsReconnect ? `
+                                <button type="button" class="reconnect-button" onclick="connectPlatform('${escapeHtml(platform)}')" title="Reconnect ${escapeHtml(displayName)}">
+                                    <span class="material-symbols-outlined text-sm">sync</span>
+                                    Reconnect
+                                </button>
+                            ` : ''}
                         </div>
                         <button class="icon-button" onclick="disconnectAccount('${account.id}', '${escapeHtml(platform)}')" title="Disconnect">
                             <span class="material-symbols-outlined text-base">close</span>
@@ -469,6 +499,48 @@
 
         function getAccountInitial(name) {
             return String(name || 'A').trim().charAt(0).toUpperCase() || 'A';
+        }
+
+        function isAccountExpired(account) {
+            const expiresAt = new Date(account?.token_expires_at || '').getTime();
+            return Number.isFinite(expiresAt) && expiresAt <= Date.now();
+        }
+
+        function isAccountExpiringSoon(account) {
+            const expiresAt = new Date(account?.token_expires_at || '').getTime();
+            return Number.isFinite(expiresAt) && expiresAt <= Date.now() + (24 * 60 * 60 * 1000);
+        }
+
+        function getAccountAuthStatus(account) {
+            const expiresAt = new Date(account?.token_expires_at || '').getTime();
+            if (!Number.isFinite(expiresAt)) {
+                return { className: '', label: 'Connected', title: 'No expiration date reported', needsReconnect: false };
+            }
+
+            const dateLabel = new Date(expiresAt).toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+            });
+
+            if (canRefreshAccountForPublish(account)) {
+                return { className: '', label: 'Auto-refresh', title: `Authorization refreshes automatically. Current access token expires ${dateLabel}`, needsReconnect: false };
+            }
+
+            if (expiresAt <= Date.now()) {
+                return { className: 'expired', label: `Expired ${dateLabel}`, title: `Authorization expired ${dateLabel}`, needsReconnect: true };
+            }
+
+            if (expiresAt <= Date.now() + (24 * 60 * 60 * 1000)) {
+                return { className: 'expiring', label: `Expires ${dateLabel}`, title: `Authorization expires ${dateLabel}`, needsReconnect: true };
+            }
+
+            return { className: '', label: `Connected`, title: `Authorization expires ${dateLabel}`, needsReconnect: false };
+        }
+
+        function canRefreshAccountForPublish(account) {
+            return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
         }
 
         function dateKey(date) {

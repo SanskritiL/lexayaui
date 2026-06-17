@@ -92,6 +92,7 @@ app.post('/uploads/r2-url', async (req, res) => {
       fileName: req.body?.fileName,
       contentType: req.body?.contentType,
       fileSizeBytes: req.body?.fileSizeBytes,
+      fileSha256: req.body?.fileSha256,
     });
 
     res.json(upload);
@@ -136,6 +137,7 @@ app.all('/broadcast/publish', async (req, res) => {
         fileName: req.body?.fileName,
         contentType: req.body?.contentType,
         fileSizeBytes: req.body?.fileSizeBytes,
+        fileSha256: req.body?.fileSha256,
       });
       return res.json(upload);
     }
