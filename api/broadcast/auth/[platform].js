@@ -16,7 +16,7 @@ async function getUserState(supabase, state) {
   return null;
 }
 
-async function upsertAccount(supabase, data, userId, platform) {
+async function upsertAccount(supabase, data, userId, platform, options = {}) {
   let query = supabase
     .from('connected_accounts')
     .select('id, refresh_token')
@@ -30,11 +30,25 @@ async function upsertAccount(supabase, data, userId, platform) {
   }
 
   const { data: existing } = await query.maybeSingle();
-  if (existing) {
-    if (!data.refresh_token && existing.refresh_token) {
-      data.refresh_token = existing.refresh_token;
+  let accountToUpdate = existing;
+
+  if (!accountToUpdate && data.platform_user_id && options.replaceLegacyWithoutProviderId) {
+    const { data: legacyRows } = await supabase
+      .from('connected_accounts')
+      .select('id, refresh_token')
+      .eq('user_id', userId)
+      .eq('platform', platform)
+      .is('platform_user_id', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    accountToUpdate = legacyRows?.[0] || null;
+  }
+
+  if (accountToUpdate) {
+    if (!data.refresh_token && accountToUpdate.refresh_token) {
+      data.refresh_token = accountToUpdate.refresh_token;
     }
-    return supabase.from('connected_accounts').update(data).eq('id', existing.id);
+    return supabase.from('connected_accounts').update(data).eq('id', accountToUpdate.id);
   }
   return supabase.from('connected_accounts').insert(data);
 }
@@ -373,11 +387,12 @@ async function handleTikTok(req, res) {
     const isLocalhost = req.headers.host?.includes('localhost');
     const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
     const redirectUri = `${baseUrl}/api/broadcast/auth/tiktok`;
+    const callbackPath = '/broadcast/connect.html';
     const requestedScopes = buildTikTokScopes();
 
     if (!code) {
         if (!TIKTOK_CLIENT_KEY || !TIKTOK_CLIENT_SECRET) {
-            return res.redirect('/broadcast/?error=' + encodeURIComponent('TikTok not configured'));
+            return res.redirect(`${callbackPath}?error=` + encodeURIComponent('TikTok not configured'));
         }
 
         const authUrl = new URL('https://www.tiktok.com/v2/auth/authorize/');
@@ -391,7 +406,7 @@ async function handleTikTok(req, res) {
     }
 
     if (oauthError) {
-        return res.redirect(`/broadcast/?error=${encodeURIComponent(error_description || oauthError)}`);
+        return res.redirect(`${callbackPath}?error=${encodeURIComponent(error_description || oauthError)}`);
     }
 
     try {
@@ -409,13 +424,13 @@ async function handleTikTok(req, res) {
 
         if (!tokenResponse.ok) {
             const errorText = await tokenResponse.text();
-            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + errorText));
+            return res.redirect(`${callbackPath}?error=` + encodeURIComponent('Token exchange failed: ' + errorText));
         }
 
         const tokenData = await tokenResponse.json();
 
         if (tokenData.error) {
-            return res.redirect(`/broadcast/?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
+            return res.redirect(`${callbackPath}?error=${encodeURIComponent(tokenData.error_description || tokenData.error)}`);
         }
 
         const { access_token, expires_in, refresh_token, refresh_expires_in, open_id, scope } = tokenData;
@@ -437,7 +452,7 @@ async function handleTikTok(req, res) {
         const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
         const userState = await getUserState(supabase, state);
         if (!userState || !userState.email) {
-            return res.redirect('/broadcast/?error=Invalid session, please login again');
+            return res.redirect(`${callbackPath}?error=Invalid session, please login again`);
         }
 
         const userId = await resolveDbUserId(supabase, userState);
@@ -464,18 +479,18 @@ async function handleTikTok(req, res) {
                 account_type: 'Creator',
                 refresh_expires_in: refresh_expires_in,
             },
-        }, userId, 'tiktok');
+        }, userId, 'tiktok', { replaceLegacyWithoutProviderId: true });
 
         if (saveError) {
             console.error('[TikTok] Save error:', saveError);
-            return res.redirect('/broadcast/?error=Failed to save account');
+            return res.redirect(`${callbackPath}?error=Failed to save account`);
         }
 
-        return res.redirect('/broadcast/?success=true&platform=tiktok');
+        return res.redirect(`${callbackPath}?success=true&platform=tiktok`);
 
     } catch (error) {
         console.error('TikTok OAuth Error:', error);
-        return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
+        return res.redirect(`${callbackPath}?error=${encodeURIComponent(error.message)}`);
     }
 }
 
