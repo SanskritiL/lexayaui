@@ -200,6 +200,10 @@
             border-color: #dc2626;
             background: #fef2f2;
         }
+        .progress-item.unknown {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
         .progress-item.idle {
             opacity: 0.6;
         }
@@ -1247,7 +1251,8 @@
 
             if (!isDraft && !shouldSchedule) {
                 showPublishingModal(selectedPlatforms);
-                selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Preparing...', 'preparing'));
+                setPublishingStage('Preparing media and post details...');
+                selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Waiting for media upload...', 'preparing'));
             }
 
             try {
@@ -1266,6 +1271,10 @@
 
                 if (selectedFile) {
                     publishBtn.textContent = 'Uploading media...';
+                    if (!isDraft && !shouldSchedule) {
+                        setPublishingStage(`Uploading ${selectedMediaType || 'media'} to storage...`);
+                        selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Media upload in progress...', 'uploading'));
+                    }
                     const upload = await uploadMediaToR2(selectedFile, authToken);
                     mediaUrl = upload.publicUrl;
                     metadata.r2_key = upload.key;
@@ -1273,6 +1282,10 @@
                     metadata.content_type = selectedFile.type;
                 } else if (selectedReusableMedia) {
                     publishBtn.textContent = 'Using uploaded media...';
+                    if (!isDraft && !shouldSchedule) {
+                        setPublishingStage('Reusing already uploaded media...');
+                        selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Using saved media...', 'preparing'));
+                    }
                     mediaUrl = selectedReusableMedia.url;
                     metadata.reused_from_post_id = selectedReusableMedia.postId;
                     metadata.r2_key = selectedReusableMedia.metadata?.r2_key || null;
@@ -1282,6 +1295,10 @@
                 }
 
                 publishBtn.textContent = 'Creating post...';
+                if (!isDraft && !shouldSchedule) {
+                    setPublishingStage('Creating the post record...');
+                    selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Post is being prepared...', 'preparing'));
+                }
 
                 const postData = {
                     user_id: currentUser.id,
@@ -1300,7 +1317,8 @@
 
                 if (!isDraft && !shouldSchedule) {
                     showPublishingModal(selectedPlatforms);
-                    selectedPlatforms.forEach(p => updatePlatformProgress(p, 'publishing', 'Publishing...'));
+                    setPublishingStage('Sending to selected platforms...');
+                    selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Publishing...'));
 
                     const postId = post.id;
                     let realtimeChannel = null;
@@ -1346,13 +1364,20 @@
                             if (!isCompleted) {
                                 isCompleted = true;
                                 let successCount = 0;
-                                const results = publishResult.results || {};
-                                for (const [platform, result] of Object.entries(results)) {
+                                const results = buildInterruptedPublishResults(
+                                    selectedPlatforms,
+                                    publishResult.results || {},
+                                    'No final status was returned for this platform.'
+                                );
+                                for (const platform of selectedPlatforms) {
+                                    const result = results[platform];
                                     if (result.status === 'success' || result.status === 'pending') {
                                         successCount++;
                                         updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : (result.note || 'Success!'));
-                                    } else {
+                                    } else if (result.status === 'error') {
                                         updatePlatformProgress(platform, 'failed', result.error || 'Failed');
+                                    } else {
+                                        updatePlatformProgress(platform, 'unknown', result.note || 'Status unknown');
                                     }
                                 }
                                 completePublishingModal(publishResult.status, successCount, selectedPlatforms.length, post.id, results);
@@ -1364,22 +1389,22 @@
                             if (!isCompleted) {
                                 isCompleted = true;
                                 if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
-                                let actualResults = {};
-                                try {
-                                    const { data } = await supabaseClient.from('posts').select('platform_results, status').eq('id', post.id).single();
-                                    actualResults = data?.platform_results || {};
-                                } catch (dbErr) {}
-                                let successCount = 0;
+                                const latestPost = await fetchLatestPostState(post.id);
+                                const actualResults = latestPost.platform_results || {};
                                 const errorMessage = err.message || 'Unknown error';
+                                const displayResults = buildInterruptedPublishResults(selectedPlatforms, actualResults, errorMessage);
+                                let successCount = 0;
                                 selectedPlatforms.forEach(p => {
-                                    const r = actualResults[p];
+                                    const r = displayResults[p];
                                     if (r?.status === 'success' || r?.status === 'pending') {
                                         successCount++;
                                         updatePlatformProgress(p, 'success', r.url ? 'Posted!' : (r.note || 'Success!'));
                                     } else if (r?.status === 'error') {
                                         updatePlatformProgress(p, 'failed', r.error || 'Failed');
+                                    } else if (r?.status === 'unknown') {
+                                        updatePlatformProgress(p, 'unknown', r.note || 'Status unknown. Check dashboard before retrying.');
                                     } else {
-                                        updatePlatformProgress(p, 'failed', errorMessage);
+                                        updatePlatformProgress(p, 'unknown', 'Not confirmed. The publish request stopped before this platform reported back.');
                                     }
                                 });
 
@@ -1388,14 +1413,16 @@
                                 const modalSubtitle = document.getElementById('modal-subtitle');
                                 modalIcon.className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-full bg-red-50';
                                 modalIcon.innerHTML = '<span class="material-symbols-outlined text-red-600 text-3xl">error_outline</span>';
-                                modalTitle.textContent = 'Publish API error';
-                                modalSubtitle.textContent = errorMessage;
+                                modalTitle.textContent = successCount > 0 ? 'Publishing interrupted' : 'Could not confirm publishing';
+                                modalSubtitle.textContent = successCount > 0
+                                    ? `${successCount} of ${selectedPlatforms.length} confirmed. Unconfirmed platforms were not marked as platform failures.`
+                                    : errorMessage;
                                 modalSubtitle.style.fontSize = '0.75rem';
                                 modalSubtitle.style.wordBreak = 'break-word';
                                 modalSubtitle.style.maxHeight = '80px';
                                 modalSubtitle.style.overflowY = 'auto';
                                 document.getElementById('retry-failed-btn').style.display = 'block';
-                                completePublishingModal('partial', successCount, selectedPlatforms.length, post.id, actualResults);
+                                completePublishingModal(successCount > 0 ? 'partial' : 'failed', successCount, selectedPlatforms.length, post.id, displayResults);
                             }
                         });
 
@@ -1415,10 +1442,14 @@
                 }
                 const modal = document.getElementById('publishing-modal');
                 if (modal.style.display === 'flex') {
+                    setPublishingStage('Stopped before platform publishing.');
+                    if (typeof selectedPlatforms !== 'undefined') {
+                        selectedPlatforms.forEach(p => updatePlatformProgress(p, 'unknown', 'Not attempted because setup failed.'));
+                    }
                     document.getElementById('modal-icon').innerHTML = '';
                     document.getElementById('modal-icon').className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-full bg-red-50';
                     document.getElementById('modal-icon').innerHTML = '<span class="material-symbols-outlined text-red-600 text-3xl">error_outline</span>';
-                    document.getElementById('modal-title').textContent = 'Something went wrong';
+                    document.getElementById('modal-title').textContent = 'Stopped before publishing';
                     document.getElementById('modal-subtitle').textContent = errorMsg;
                     document.getElementById('modal-subtitle').style.wordBreak = 'break-word';
                     document.getElementById('modal-subtitle').style.fontSize = '0.8rem';
@@ -1514,6 +1545,47 @@
             startTimer(platforms);
         }
 
+        function setPublishingStage(message) {
+            const stage = document.getElementById('overall-stage');
+            const subtitle = document.getElementById('modal-subtitle');
+            if (stage) stage.textContent = message || '';
+            if (subtitle && message) subtitle.textContent = message;
+        }
+
+        async function fetchLatestPostState(postId) {
+            try {
+                const { data } = await supabaseClient
+                    .from('posts')
+                    .select('platform_results, status')
+                    .eq('id', postId)
+                    .single();
+                return data || {};
+            } catch (dbErr) {
+                console.warn('Could not fetch latest publish state:', dbErr.message);
+                return {};
+            }
+        }
+
+        function buildInterruptedPublishResults(platforms, actualResults, apiErrorMessage) {
+            return platforms.reduce((acc, platform) => {
+                const result = actualResults?.[platform];
+                if (result?.status === 'success' || result?.status === 'pending' || result?.status === 'error') {
+                    acc[platform] = result;
+                } else {
+                    acc[platform] = {
+                        ...(result || {}),
+                        status: 'unknown',
+                        platform: result?.platform || getTargetPlatform(platform),
+                        note: result?.status === 'processing'
+                            ? 'Still processing when the connection was interrupted. Check dashboard before retrying.'
+                            : `Not confirmed by the publish service. ${apiErrorMessage || 'Check dashboard before retrying.'}`,
+                        recoverable: true,
+                    };
+                }
+                return acc;
+            }, {});
+        }
+
         function updatePlatformProgress(platform, status, message, stage, pct) {
             const item = document.getElementById(`progress-${platform}`);
             const statusText = document.getElementById(`status-${platform}`);
@@ -1557,6 +1629,13 @@
                 if (bar) { bar.className = 'progress-bar-fill failed'; bar.style.width = '100%'; }
                 const track = document.getElementById(`track-${platform}`);
                 if (track) { track.style.display = 'block'; track.style.opacity = '0.5'; }
+            } else if (status === 'unknown') {
+                statusText.textContent = message || 'Status unknown';
+                statusIcon.innerHTML = '<span class="material-symbols-outlined text-amber-600 text-base">help</span>';
+                const bar = document.getElementById(`bar-${platform}`);
+                if (bar) { bar.className = 'progress-bar-fill'; bar.style.width = '100%'; bar.style.background = '#f59e0b'; }
+                const track = document.getElementById(`track-${platform}`);
+                if (track) { track.style.display = 'block'; track.style.opacity = '0.5'; }
             }
 
             updateOverallProgress();
@@ -1573,7 +1652,7 @@
             let total = items.length;
 
             items.forEach(item => {
-                if (item.classList.contains('success') || item.classList.contains('failed')) done++;
+                if (item.classList.contains('success') || item.classList.contains('failed') || item.classList.contains('unknown')) done++;
             });
 
             if (total === 0) return;
@@ -1587,7 +1666,7 @@
             if (count) count.textContent = `${done} / ${total}`;
 
             if (done === total) {
-                const hasFailures = Array.from(document.querySelectorAll('.progress-item.failed')).length > 0;
+                const hasFailures = Array.from(document.querySelectorAll('.progress-item.failed, .progress-item.unknown')).length > 0;
                 if (label) label.textContent = hasFailures ? 'Completed with errors' : 'All done!';
                 if (stage) stage.textContent = '';
                 if (bar) bar.style.background = hasFailures ? '#f59e0b' : '#22c55e';
@@ -1607,7 +1686,7 @@
             const retryBtn = document.getElementById('retry-failed-btn');
 
             const failedPlatforms = Object.entries(platformResults)
-                .filter(([_, result]) => result.status === 'error')
+                .filter(([_, result]) => result.status === 'error' || result.status === 'unknown')
                 .map(([platform, _]) => platform);
 
             if (postId) {
@@ -1627,7 +1706,7 @@
                 modalIcon.className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-full bg-amber-50';
                 modalIcon.innerHTML = '<span class="material-symbols-outlined text-amber-600 text-3xl">warning</span>';
                 modalTitle.textContent = 'Partially published';
-                modalSubtitle.textContent = `${successCount} of ${totalCount} succeeded · ${failedPlatforms.length} failed`;
+                modalSubtitle.textContent = `${successCount} of ${totalCount} succeeded · ${failedPlatforms.length} need attention`;
                 retryBtn.style.display = failedPlatforms.length > 0 ? 'block' : 'none';
             } else {
                 modalIcon.className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-full bg-red-50';
@@ -1797,12 +1876,19 @@
 
             try {
                 const result = await publishToAllPlatforms(postId, failedPlatforms);
-                const results = result.results || {};
-                for (const [platform, platformResult] of Object.entries(results)) {
+                const results = buildInterruptedPublishResults(
+                    failedPlatforms,
+                    result.results || {},
+                    'No final status was returned for this platform.'
+                );
+                for (const platform of failedPlatforms) {
+                    const platformResult = results[platform];
                     if (platformResult.status === 'success' || platformResult.status === 'pending') {
                         updatePlatformProgress(platform, 'success', platformResult.url ? 'Posted!' : (platformResult.note || 'Success!'));
-                    } else {
+                    } else if (platformResult.status === 'error') {
                         updatePlatformProgress(platform, 'failed', platformResult.error || 'Failed');
+                    } else {
+                        updatePlatformProgress(platform, 'unknown', platformResult.note || 'Status unknown');
                     }
                 }
                 const mergedResults = { ...lastPublishState.platformResults, ...results };
@@ -1812,10 +1898,27 @@
                 completePublishingModal(newStatus, newTotalSuccess, totalPlatforms, postId, mergedResults);
                 if (newStatus === 'published') launchConfetti();
             } catch (error) {
-                failedPlatforms.forEach(platform => updatePlatformProgress(platform, 'failed', error.message || 'Retry failed'));
-                const totalPlatforms = Object.keys(lastPublishState.platformResults).length;
-                const previousSuccess = Object.values(lastPublishState.platformResults).filter(r => r.status === 'success' || r.status === 'pending').length;
-                completePublishingModal('failed', previousSuccess, totalPlatforms, postId, lastPublishState.platformResults);
+                const latestPost = await fetchLatestPostState(postId);
+                const retryResults = buildInterruptedPublishResults(
+                    failedPlatforms,
+                    latestPost.platform_results || {},
+                    error.message || 'Retry failed'
+                );
+                failedPlatforms.forEach(platform => {
+                    const result = retryResults[platform];
+                    if (result.status === 'success' || result.status === 'pending') {
+                        updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : (result.note || 'Success!'));
+                    } else if (result.status === 'error') {
+                        updatePlatformProgress(platform, 'failed', result.error || 'Retry failed');
+                    } else {
+                        updatePlatformProgress(platform, 'unknown', result.note || 'Retry status unknown');
+                    }
+                });
+                const mergedResults = { ...lastPublishState.platformResults, ...retryResults };
+                const totalPlatforms = Object.keys(mergedResults).length;
+                const previousSuccess = Object.values(mergedResults).filter(r => r.status === 'success' || r.status === 'pending').length;
+                const retryStatus = previousSuccess === totalPlatforms ? 'published' : previousSuccess > 0 ? 'partial' : 'failed';
+                completePublishingModal(retryStatus, previousSuccess, totalPlatforms, postId, mergedResults);
             }
             retryBtn.disabled = false;
         }

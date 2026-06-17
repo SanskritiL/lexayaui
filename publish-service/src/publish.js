@@ -46,17 +46,18 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
   if (accountsError) throw new Error('Failed to get connected accounts');
 
   const results = {};
+  let liveResults = { ...existingResults };
   let hasSuccess = false;
   let hasFailure = false;
 
   const progressFn = onProgress || (async () => {});
 
   async function updateProgress(newResults) {
-    const merged = { ...existingResults, ...newResults };
-    const vals = Object.values(merged);
+    liveResults = { ...liveResults, ...newResults };
+    const vals = Object.values(liveResults);
     const successCount = vals.filter(r => r.status === 'success' || r.status === 'pending').length;
     const errorCount = vals.filter(r => r.status === 'error').length;
-    const pendingCount = targets.length - Object.keys(merged).length;
+    const pendingCount = targets.length - Object.keys(liveResults).length;
 
     let status = 'publishing';
     if (pendingCount <= 0) {
@@ -65,7 +66,7 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
 
     await supabase
       .from('posts')
-      .update({ status, platform_results: merged, updated_at: new Date().toISOString() })
+      .update({ status, platform_results: liveResults, updated_at: new Date().toISOString() })
       .eq('id', post.id);
   }
 
