@@ -78,26 +78,19 @@ async function uploadFileToTikTok(accessToken, media, onProgress) {
   const videoSize = media.size;
   console.log('[TIKTOK] Video size:', (videoSize / 1024 / 1024).toFixed(2), 'MB');
 
-  const TARGET_CHUNK = 10 * 1024 * 1024;
-  let chunkSize, totalChunks;
-  if (videoSize <= TARGET_CHUNK) {
-    chunkSize = videoSize;
-    totalChunks = 1;
-  } else {
-    chunkSize = TARGET_CHUNK;
-    totalChunks = Math.ceil(videoSize / chunkSize);
-    if (totalChunks < 2) {
-      chunkSize = videoSize;
-      totalChunks = 1;
-    }
-  }
+  const uploadPlan = buildTikTokUploadPlan(videoSize);
 
   await p('initializing', 'Initializing TikTok upload...');
   const initRes = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
     body: JSON.stringify({
-      source_info: { source: 'FILE_UPLOAD', video_size: videoSize, chunk_size: chunkSize, total_chunk_count: totalChunks },
+      source_info: {
+        source: 'FILE_UPLOAD',
+        video_size: videoSize,
+        chunk_size: uploadPlan.chunkSize,
+        total_chunk_count: uploadPlan.totalChunks,
+      },
     }),
   });
   const initData = await initRes.json();
@@ -108,25 +101,24 @@ async function uploadFileToTikTok(accessToken, media, onProgress) {
   if (!uploadUrl) throw new Error('No upload URL from TikTok');
 
   const source = createChunkSource(media.body);
-  for (let i = 0; i < totalChunks; i++) {
-    const start = i * chunkSize;
-    const end = i === totalChunks - 1 ? videoSize : start + chunkSize;
-    const chunk = await source.read(end - start);
-    const lastByte = end - 1;
-    const pct = Math.round(((i + 1) / totalChunks) * 100);
+  const contentType = getTikTokUploadContentType(media.contentType);
+  for (let i = 0; i < uploadPlan.chunks.length; i++) {
+    const part = uploadPlan.chunks[i];
+    const chunk = await source.read(part.length);
+    const pct = Math.round(((i + 1) / uploadPlan.totalChunks) * 100);
 
-    await p('uploading', `Uploading chunk ${i + 1} of ${totalChunks} (${pct}%)...`, pct);
+    await p('uploading', `Uploading chunk ${i + 1} of ${uploadPlan.totalChunks} (${pct}%)...`, pct);
 
     const uploadRes = await fetch(uploadUrl, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'video/mp4',
+        'Content-Type': contentType,
         'Content-Length': chunk.length.toString(),
-        'Content-Range': `bytes ${start}-${lastByte}/${videoSize}`,
+        'Content-Range': `bytes ${part.start}-${part.end}/${videoSize}`,
       },
       body: chunk,
     });
-    const isLastChunk = i === totalChunks - 1;
+    const isLastChunk = i === uploadPlan.totalChunks - 1;
     const expectedStatus = isLastChunk ? 201 : 206;
     if (uploadRes.status !== expectedStatus && uploadRes.status !== 201 && uploadRes.status !== 206) {
       throw new Error(`TikTok chunk ${i + 1} failed: ${await uploadRes.text()}`);
@@ -139,6 +131,51 @@ async function uploadFileToTikTok(accessToken, media, onProgress) {
     publish_id: publishId,
     note: 'Video sent to TikTok inbox. Open TikTok app to post.',
   };
+}
+
+function buildTikTokUploadPlan(videoSize) {
+  if (!Number.isSafeInteger(videoSize) || videoSize <= 0) {
+    throw new Error('Invalid TikTok video size');
+  }
+
+  const maxChunkSize = 64 * 1024 * 1024;
+  const maxFinalChunkSize = 128 * 1024 * 1024;
+
+  let chunkSize;
+  let totalChunks;
+
+  if (videoSize <= maxChunkSize) {
+    chunkSize = videoSize;
+    totalChunks = 1;
+  } else if (videoSize < maxFinalChunkSize) {
+    totalChunks = 2;
+    chunkSize = Math.floor(videoSize / totalChunks);
+  } else {
+    chunkSize = maxChunkSize;
+    totalChunks = Math.floor(videoSize / chunkSize);
+  }
+
+  const chunks = [];
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * chunkSize;
+    const end = i === totalChunks - 1 ? videoSize - 1 : start + chunkSize - 1;
+    chunks.push({ start, end, length: end - start + 1 });
+  }
+
+  const finalChunk = chunks[chunks.length - 1];
+  if (totalChunks > 1 && finalChunk.length > maxFinalChunkSize) {
+    throw new Error('TikTok final chunk is too large');
+  }
+
+  return { chunkSize, totalChunks, chunks };
+}
+
+function getTikTokUploadContentType(contentType) {
+  const normalized = String(contentType || '').split(';')[0].trim().toLowerCase();
+  if (['video/mp4', 'video/quicktime', 'video/webm'].includes(normalized)) {
+    return normalized;
+  }
+  return 'video/mp4';
 }
 
 function createChunkSource(body) {
@@ -190,4 +227,7 @@ function hasTikTokScope(account, requiredScope) {
   return scopes.includes(requiredScope);
 }
 
-module.exports = { publishToTikTok };
+module.exports = {
+  publishToTikTok,
+  _private: { buildTikTokUploadPlan, createChunkSource, getTikTokUploadContentType },
+};
