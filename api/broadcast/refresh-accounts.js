@@ -39,6 +39,7 @@ export default async function handler(req, res) {
     for (const account of accounts) {
         try {
             let updatedMetadata = { ...account.metadata };
+            let tokenPatch = {};
 
             switch (account.platform) {
                 case 'linkedin':
@@ -54,7 +55,7 @@ export default async function handler(req, res) {
                     updatedMetadata = await refreshTwitter(account, updatedMetadata);
                     break;
                 case 'youtube':
-                    updatedMetadata = await refreshYouTube(account, updatedMetadata);
+                    ({ metadata: updatedMetadata, tokenPatch } = await refreshYouTube(account, updatedMetadata));
                     break;
                 // case 'threads':
                 //     updatedMetadata = await refreshThreads(account, updatedMetadata);
@@ -65,6 +66,7 @@ export default async function handler(req, res) {
             const { data: updated, error: updateError } = await supabase
                 .from('connected_accounts')
                 .update({
+                    ...tokenPatch,
                     metadata: updatedMetadata,
                     updated_at: new Date().toISOString()
                 })
@@ -223,16 +225,38 @@ async function refreshTwitter(account, metadata) {
 }
 
 async function refreshYouTube(account, metadata) {
-    const accessToken = account.access_token;
+    let accessToken = account.access_token;
     const channelId = account.platform_user_id;
-    if (!accessToken || !channelId) return metadata;
+    const tokenPatch = {};
+    if (!accessToken || !channelId) return { metadata, tokenPatch };
 
     try {
+        const tokenExpiresAt = new Date(account.token_expires_at).getTime();
+        const shouldRefreshToken = !Number.isFinite(tokenExpiresAt) || tokenExpiresAt <= Date.now() + (5 * 60 * 1000);
+
+        if (shouldRefreshToken && account.refresh_token) {
+            const refreshed = await refreshYouTubeAccessToken(account.refresh_token);
+            accessToken = refreshed.access_token;
+            tokenPatch.access_token = refreshed.access_token;
+            tokenPatch.token_expires_at = new Date(Date.now() + (Number(refreshed.expires_in) * 1000)).toISOString();
+        }
+
         // Fetch YouTube channel info
-        const channelRes = await fetch(
+        let channelRes = await fetch(
             `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}`,
             { headers: { 'Authorization': `Bearer ${accessToken}` } }
         );
+
+        if (channelRes.status === 401 && account.refresh_token && !tokenPatch.access_token) {
+            const refreshed = await refreshYouTubeAccessToken(account.refresh_token);
+            accessToken = refreshed.access_token;
+            tokenPatch.access_token = refreshed.access_token;
+            tokenPatch.token_expires_at = new Date(Date.now() + (Number(refreshed.expires_in) * 1000)).toISOString();
+            channelRes = await fetch(
+                `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}`,
+                { headers: { 'Authorization': `Bearer ${accessToken}` } }
+            );
+        }
 
         if (channelRes.ok) {
             const channelData = await channelRes.json();
@@ -247,12 +271,53 @@ async function refreshYouTube(account, metadata) {
 
                 console.log('[RefreshAccounts] YouTube refreshed:', metadata.subscribers_count, 'subscribers');
             }
+        } else {
+            const errorText = await channelRes.text();
+            console.log('[RefreshAccounts] YouTube refresh failed:', channelRes.status, errorText.slice(0, 300));
         }
     } catch (err) {
         console.log('[RefreshAccounts] YouTube error:', err.message);
     }
 
-    return metadata;
+    return { metadata, tokenPatch };
+}
+
+async function refreshYouTubeAccessToken(refreshToken) {
+    const clientId = process.env.YOUTUBE_CLIENT_ID?.trim();
+    const clientSecret = process.env.YOUTUBE_CLIENT_SECRET?.trim();
+
+    if (!clientId || !clientSecret || !refreshToken) {
+        throw new Error('YouTube token refresh is not configured');
+    }
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            refresh_token: refreshToken,
+            grant_type: 'refresh_token',
+        }),
+    });
+
+    const responseText = await response.text();
+    let data;
+    try {
+        data = responseText ? JSON.parse(responseText) : {};
+    } catch (err) {
+        throw new Error('YouTube token refresh returned invalid JSON');
+    }
+
+    if (!response.ok || !data.access_token || !Number.isFinite(Number(data.expires_in))) {
+        const errorCode = data.error || `HTTP_${response.status}`;
+        if (['invalid_grant', 'invalid_request', 'unauthorized_client'].includes(errorCode)) {
+            throw new Error('YouTube token expired. Please reconnect your YouTube account.');
+        }
+        throw new Error(data.error_description || data.error || 'YouTube token refresh failed');
+    }
+
+    return data;
 }
 
 async function refreshThreads(account, metadata) {
