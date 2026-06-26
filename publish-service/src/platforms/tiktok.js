@@ -9,35 +9,7 @@ async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) 
     throw new Error('TikTok needs the video upload permission. Please reconnect your TikTok account.');
   }
 
-  let accessToken = account.access_token;
-
-  const tokenExpiresAt = new Date(account.token_expires_at);
-  const isExpired = tokenExpiresAt <= new Date();
-  const isExpiringSoon = tokenExpiresAt <= new Date(Date.now() + 5 * 60 * 1000);
-
-  if ((isExpired || isExpiringSoon) && account.refresh_token) {
-    const refreshRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_key: process.env.TIKTOK_CLIENT_KEY || '',
-        client_secret: process.env.TIKTOK_CLIENT_SECRET || '',
-        grant_type: 'refresh_token',
-        refresh_token: account.refresh_token,
-      }),
-    });
-    const refreshData = await refreshRes.json();
-    if (refreshData.access_token) {
-      accessToken = refreshData.access_token;
-      await supabase.from('connected_accounts').update({
-        access_token: refreshData.access_token,
-        refresh_token: refreshData.refresh_token || account.refresh_token,
-        token_expires_at: new Date(Date.now() + (refreshData.expires_in * 1000)).toISOString(),
-      }).eq('id', account.id);
-    } else {
-      throw new Error('TikTok token expired. Please reconnect your TikTok account.');
-    }
-  }
+  const accessToken = await getValidTikTokAccessToken(account, supabase);
 
   if (!fileBuffer && post.video_url) {
     await p('initializing', 'Sending video URL to TikTok...');
@@ -227,7 +199,69 @@ function hasTikTokScope(account, requiredScope) {
   return scopes.includes(requiredScope);
 }
 
+async function getValidTikTokAccessToken(account, supabase) {
+  const tokenExpiresAt = new Date(account.token_expires_at).getTime();
+  const shouldRefresh = !Number.isFinite(tokenExpiresAt) || tokenExpiresAt <= Date.now() + 5 * 60 * 1000;
+
+  if (!shouldRefresh) return account.access_token;
+  if (!account.refresh_token) throw new Error('TikTok token expired. Please reconnect your TikTok account.');
+
+  const refreshData = await refreshTikTokAccessToken(account.refresh_token);
+
+  await supabase.from('connected_accounts').update({
+    access_token: refreshData.access_token,
+    refresh_token: refreshData.refresh_token || account.refresh_token,
+    token_expires_at: new Date(Date.now() + (Number(refreshData.expires_in) * 1000)).toISOString(),
+  }).eq('id', account.id);
+
+  return refreshData.access_token;
+}
+
+async function refreshTikTokAccessToken(refreshToken) {
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+
+  if (!clientKey || !clientSecret) {
+    console.error('[TIKTOK] Cannot refresh token: missing TIKTOK_CLIENT_KEY or TIKTOK_CLIENT_SECRET');
+    throw new Error('TikTok token refresh is not configured. Please reconnect your TikTok account.');
+  }
+
+  const refreshRes = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_key: clientKey,
+      client_secret: clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
+  });
+
+  const responseText = await refreshRes.text();
+  let refreshData;
+  try {
+    refreshData = responseText ? JSON.parse(responseText) : {};
+  } catch (error) {
+    console.error('[TIKTOK] Token refresh returned invalid JSON:', responseText.slice(0, 300));
+    throw new Error('TikTok token refresh failed. Please reconnect your TikTok account.');
+  }
+
+  if (!refreshRes.ok || !refreshData.access_token) {
+    const errorCode = refreshData.error?.code || refreshData.error || refreshData.code || `HTTP_${refreshRes.status}`;
+    const errorMessage = refreshData.error?.message || refreshData.error_description || refreshData.message || 'Unknown TikTok refresh error';
+    console.error('[TIKTOK] Token refresh failed:', { status: refreshRes.status, errorCode, errorMessage });
+    throw new Error('TikTok token expired. Please reconnect your TikTok account.');
+  }
+
+  if (!Number.isFinite(Number(refreshData.expires_in))) {
+    console.error('[TIKTOK] Token refresh response missing expires_in');
+    throw new Error('TikTok token refresh failed. Please reconnect your TikTok account.');
+  }
+
+  return refreshData;
+}
+
 module.exports = {
   publishToTikTok,
-  _private: { buildTikTokUploadPlan, createChunkSource, getTikTokUploadContentType },
+  _private: { buildTikTokUploadPlan, createChunkSource, getTikTokUploadContentType, refreshTikTokAccessToken },
 };
