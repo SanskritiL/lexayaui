@@ -5,6 +5,9 @@ const { publishToInstagram } = require('./platforms/instagram');
 const { publishToYouTube } = require('./platforms/youtube');
 const { publishToTwitter } = require('./platforms/twitter');
 
+const PROGRESS_UPDATE_MIN_INTERVAL_MS = Number(process.env.PROGRESS_UPDATE_MIN_INTERVAL_MS || 1500);
+const PROGRESS_UPDATE_MIN_PCT_DELTA = Number(process.env.PROGRESS_UPDATE_MIN_PCT_DELTA || 10);
+
 async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
   const supabase = getClient();
 
@@ -70,8 +73,25 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
       .eq('id', post.id);
   }
 
+  const lastProgressByKey = new Map();
+
   const makePlatformProgress = (resultKey) => {
     return async (stage, message, pct) => {
+      const normalizedPct = Number(pct || 0);
+      const now = Date.now();
+      const last = lastProgressByKey.get(resultKey);
+      const stageChanged = last?.stage !== stage;
+      const pctDelta = Math.abs(normalizedPct - Number(last?.pct || 0));
+      const shouldPersist =
+        !last ||
+        stageChanged ||
+        normalizedPct >= 100 ||
+        pctDelta >= PROGRESS_UPDATE_MIN_PCT_DELTA ||
+        now - last.at >= PROGRESS_UPDATE_MIN_INTERVAL_MS;
+
+      if (!shouldPersist) return;
+
+      lastProgressByKey.set(resultKey, { stage, pct: normalizedPct, at: now });
       const progressResult = { status: 'processing', stage, message, pct: pct || 0 };
       await updateProgress({ [resultKey]: progressResult });
       await progressFn(resultKey, stage, message, pct);
@@ -140,7 +160,7 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
       await updateProgress(results);
       return { platform: key, result };
     } catch (error) {
-      const r = { status: 'error', error: error.message };
+      const r = normalizePublishError(error, platform);
       results[key] = { ...r, platform, account_id: account.id, account_name: account.account_name };
       await updateProgress(results);
       return { platform: key, result: r };
@@ -239,6 +259,54 @@ function isAccountAuthBlocked(account) {
 
 function canRefreshAccountForPublish(account) {
   return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
+}
+
+function normalizePublishError(error, platform) {
+  const rawMessage = String(error?.message || error || 'Publishing failed');
+  const message = rawMessage.length > 500 ? `${rawMessage.slice(0, 500)}...` : rawMessage;
+  const lower = message.toLowerCase();
+  const result = {
+    status: 'error',
+    error: message,
+    recoverable: true,
+  };
+
+  if (error?.code) result.error_code = error.code;
+
+  if (
+    lower.includes('expired') ||
+    lower.includes('reconnect') ||
+    lower.includes('unauthorized') ||
+    lower.includes('invalid token') ||
+    lower.includes('auth')
+  ) {
+    result.error_code = result.error_code || 'AUTH_REQUIRED';
+    result.recoverable = true;
+    result.error = ensureReconnectHint(message, platform);
+  } else if (
+    lower.includes('timed out') ||
+    lower.includes('timeout') ||
+    lower.includes('econnreset') ||
+    lower.includes('socket') ||
+    lower.includes('failed to fetch') ||
+    lower.includes('network')
+  ) {
+    result.error_code = result.error_code || 'NETWORK_TIMEOUT';
+    result.error = `${formatPlatformName(platform)} did not respond in time. Retry this platform; if it was already posted, check the platform before retrying.`;
+  } else if (lower.includes('too large') || lower.includes('413')) {
+    result.error_code = result.error_code || 'MEDIA_TOO_LARGE';
+    result.recoverable = false;
+  } else if (lower.includes('unsupported') || lower.includes('requires a video') || lower.includes('requires an image')) {
+    result.error_code = result.error_code || 'INVALID_MEDIA';
+    result.recoverable = false;
+  }
+
+  return result;
+}
+
+function ensureReconnectHint(message, platform) {
+  if (/reconnect/i.test(message)) return message;
+  return `${message}. Reconnect ${formatPlatformName(platform)}, then retry this platform.`;
 }
 
 module.exports = { publishPost };

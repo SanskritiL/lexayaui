@@ -1786,17 +1786,22 @@
         }
 
         async function uploadMediaToR2(file, authToken) {
-            const fileSha256 = await getFileSha256(file);
-            const presignRes = await fetch(API.r2Upload(), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                body: JSON.stringify({
-                    fileName: file.name,
-                    contentType: file.type,
-                    fileSizeBytes: file.size,
-                    fileSha256,
-                }),
-            });
+            const fileSha256 = await getFileSha256ForUpload(file);
+            let presignRes;
+            try {
+                presignRes = await fetch(API.r2Upload(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({
+                        fileName: file.name,
+                        contentType: file.type,
+                        fileSizeBytes: file.size,
+                        fileSha256,
+                    }),
+                });
+            } catch (err) {
+                throw new Error(`Could not prepare media upload: ${err.message || 'network error'}`);
+            }
 
             if (!presignRes.ok) {
                 throw new Error(await readPublishError(presignRes));
@@ -1806,22 +1811,29 @@
             if (upload.existing) return upload;
             if (!upload.uploadUrl) throw new Error('R2 upload URL was not returned.');
 
-            const putRes = await fetch(upload.uploadUrl, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': file.type,
-                },
-                body: file,
-            });
+            let putRes;
+            try {
+                putRes = await fetch(upload.uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': file.type,
+                    },
+                    body: file,
+                });
+            } catch (err) {
+                throw new Error(`Media upload failed before publishing started: ${err.message || 'network error'}`);
+            }
 
             if (!putRes.ok) {
-                throw new Error(`R2 upload failed: HTTP ${putRes.status}`);
+                throw new Error(`Media upload failed with HTTP ${putRes.status}. Check your connection and retry.`);
             }
 
             return upload;
         }
 
-        async function getFileSha256(file) {
+        async function getFileSha256ForUpload(file) {
+            const maxHashBytes = 50 * 1024 * 1024;
+            if (!file || file.size > maxHashBytes) return null;
             if (!window.crypto?.subtle) return null;
             const buffer = await file.arrayBuffer();
             const hash = await window.crypto.subtle.digest('SHA-256', buffer);
