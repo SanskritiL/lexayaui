@@ -3,16 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "start": "npx serve .",
-    "dev": "npx serve .",
+    "start": "python3 -m http.server 3000",
+    "dev": "python3 -m http.server 3000",
     "vercel:dev": "npx vercel dev --listen 3000",
-    "test": "jest"
+    "deploy:site": "npx vercel --prod",
+    "deploy:service": "cd publish-service && ./deploy.sh",
+    "deploy": "npm run deploy:site && npm run deploy:service"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "stripe": "^14.0.0"
-  },
-  "devDependencies": {
-    "jest": "^30.2.0"
   }
 }
