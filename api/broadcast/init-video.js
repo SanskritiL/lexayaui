@@ -91,28 +91,8 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
         });
     }
 
-    // TikTok chunk size requirements
-    // Min chunk size: 5MB, Max chunk size: 64MB
-    const MIN_CHUNK_SIZE = 5 * 1024 * 1024;
-    const MAX_CHUNK_SIZE = 64 * 1024 * 1024;
-    const DEFAULT_CHUNK_SIZE = 10 * 1024 * 1024;
-
-    let calculatedChunkSize;
-    let calculatedChunkCount;
-
-    if (fileSizeBytes <= MAX_CHUNK_SIZE) {
-        // Single chunk upload - chunk_size = file size (even if < 5MB, TikTok allows this for single chunks)
-        calculatedChunkSize = fileSizeBytes;
-        calculatedChunkCount = 1;
-        console.log('[TIKTOK] Small file, single chunk upload');
-    } else {
-        // Multi-chunk upload - use 10MB chunks
-        // TikTok requires total_chunk_count = floor(video_size / chunk_size)
-        // The final chunk absorbs trailing bytes and can exceed chunk_size (up to 128MB)
-        calculatedChunkSize = DEFAULT_CHUNK_SIZE;
-        calculatedChunkCount = Math.floor(fileSizeBytes / calculatedChunkSize);
-        console.log(`[TIKTOK] Large file, using ${calculatedChunkCount} chunks of ${calculatedChunkSize / 1024 / 1024}MB`);
-    }
+    const uploadPlan = buildTikTokUploadPlan(fileSizeBytes);
+    console.log(`[TIKTOK] Upload plan: ${uploadPlan.totalChunks} chunk(s), declared chunk size ${uploadPlan.chunkSize} bytes`);
 
     const initResponse = await fetch('https://open.tiktokapis.com/v2/post/publish/inbox/video/init/', {
         method: 'POST',
@@ -124,8 +104,8 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
             source_info: {
                 source: 'FILE_UPLOAD',
                 video_size: fileSizeBytes,
-                chunk_size: calculatedChunkSize,
-                total_chunk_count: calculatedChunkCount,
+                chunk_size: uploadPlan.chunkSize,
+                total_chunk_count: uploadPlan.totalChunks,
             },
         }),
     });
@@ -156,9 +136,45 @@ async function handleTikTokInit(req, res, supabase, user, account, fileSizeBytes
     return res.status(200).json({
         uploadUrl,
         publishId,
-        chunkSize: calculatedChunkSize,
-        totalChunks: calculatedChunkCount
+        chunkSize: uploadPlan.chunkSize,
+        totalChunks: uploadPlan.totalChunks
     });
+}
+
+function buildTikTokUploadPlan(videoSize) {
+    if (!Number.isSafeInteger(videoSize) || videoSize <= 0) {
+        throw new Error('Invalid TikTok video size');
+    }
+
+    const MIN_CHUNK_SIZE = 5_000_000;
+    const MAX_CHUNK_SIZE = 64_000_000;
+    const MAX_FINAL_CHUNK_SIZE = 128_000_000;
+    const MAX_CHUNKS = 1000;
+
+    let chunkSize;
+    let totalChunks;
+
+    if (videoSize <= MAX_CHUNK_SIZE) {
+        chunkSize = videoSize;
+        totalChunks = 1;
+    } else if (videoSize <= MAX_FINAL_CHUNK_SIZE) {
+        totalChunks = 2;
+        chunkSize = Math.floor(videoSize / totalChunks);
+    } else {
+        chunkSize = MAX_CHUNK_SIZE;
+        totalChunks = Math.floor(videoSize / chunkSize);
+    }
+
+    if (totalChunks > MAX_CHUNKS) {
+        throw new Error('TikTok video requires too many chunks');
+    }
+
+    const finalChunkSize = videoSize - (chunkSize * (totalChunks - 1));
+    if (totalChunks > 1 && (chunkSize < MIN_CHUNK_SIZE || chunkSize > MAX_CHUNK_SIZE || finalChunkSize > MAX_FINAL_CHUNK_SIZE)) {
+        throw new Error('TikTok chunk size is outside the allowed range');
+    }
+
+    return { chunkSize, totalChunks };
 }
 
 function hasTikTokScope(account, requiredScope) {

@@ -1,5 +1,10 @@
 const { fetchMediaStream } = require('../media');
 
+const TIKTOK_MIN_CHUNK_SIZE = 5_000_000;
+const TIKTOK_MAX_CHUNK_SIZE = 64_000_000;
+const TIKTOK_MAX_FINAL_CHUNK_SIZE = 128_000_000;
+const TIKTOK_MAX_CHUNKS = 1000;
+
 async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with TikTok...');
@@ -110,21 +115,22 @@ function buildTikTokUploadPlan(videoSize) {
     throw new Error('Invalid TikTok video size');
   }
 
-  const maxChunkSize = 64 * 1024 * 1024;
-  const maxFinalChunkSize = 128 * 1024 * 1024;
-
   let chunkSize;
   let totalChunks;
 
-  if (videoSize <= maxChunkSize) {
+  if (videoSize <= TIKTOK_MAX_CHUNK_SIZE) {
     chunkSize = videoSize;
     totalChunks = 1;
-  } else if (videoSize < maxFinalChunkSize) {
+  } else if (videoSize <= TIKTOK_MAX_FINAL_CHUNK_SIZE) {
     totalChunks = 2;
     chunkSize = Math.floor(videoSize / totalChunks);
   } else {
-    chunkSize = maxChunkSize;
+    chunkSize = TIKTOK_MAX_CHUNK_SIZE;
     totalChunks = Math.floor(videoSize / chunkSize);
+  }
+
+  if (totalChunks > TIKTOK_MAX_CHUNKS) {
+    throw new Error('TikTok video requires too many chunks');
   }
 
   const chunks = [];
@@ -135,7 +141,14 @@ function buildTikTokUploadPlan(videoSize) {
   }
 
   const finalChunk = chunks[chunks.length - 1];
-  if (totalChunks > 1 && finalChunk.length > maxFinalChunkSize) {
+  const nonFinalChunks = chunks.slice(0, -1);
+  const invalidNonFinalChunk = nonFinalChunks.find(chunk =>
+    chunk.length < TIKTOK_MIN_CHUNK_SIZE || chunk.length > TIKTOK_MAX_CHUNK_SIZE
+  );
+  if (invalidNonFinalChunk) {
+    throw new Error('TikTok chunk size is outside the allowed range');
+  }
+  if (totalChunks > 1 && finalChunk.length > TIKTOK_MAX_FINAL_CHUNK_SIZE) {
     throw new Error('TikTok final chunk is too large');
   }
 
@@ -166,21 +179,42 @@ function createChunkSource(body) {
   if (!body?.getReader) throw new Error('Unsupported media body for TikTok upload');
 
   const reader = body.getReader();
-  let buffered = Buffer.alloc(0);
+  const queue = [];
+  let bufferedLength = 0;
   let done = false;
 
   return {
     async read(length) {
-      while (buffered.length < length && !done) {
+      while (bufferedLength < length && !done) {
         const next = await reader.read();
         done = next.done;
-        if (next.value) buffered = Buffer.concat([buffered, Buffer.from(next.value)]);
+        if (next.value) {
+          const buffer = Buffer.from(next.value);
+          queue.push(buffer);
+          bufferedLength += buffer.length;
+        }
       }
 
-      const chunk = buffered.slice(0, length);
-      buffered = buffered.slice(length);
-      if (chunk.length !== length) throw new Error('Media ended before TikTok upload finished');
-      return chunk;
+      if (bufferedLength < length) throw new Error('Media ended before TikTok upload finished');
+
+      const chunks = [];
+      let remaining = length;
+      while (remaining > 0) {
+        const head = queue[0];
+        if (head.length <= remaining) {
+          chunks.push(head);
+          queue.shift();
+          bufferedLength -= head.length;
+          remaining -= head.length;
+        } else {
+          chunks.push(head.slice(0, remaining));
+          queue[0] = head.slice(remaining);
+          bufferedLength -= remaining;
+          remaining = 0;
+        }
+      }
+
+      return chunks.length === 1 ? chunks[0] : Buffer.concat(chunks, length);
     },
   };
 }
@@ -263,5 +297,14 @@ async function refreshTikTokAccessToken(refreshToken) {
 
 module.exports = {
   publishToTikTok,
-  _private: { buildTikTokUploadPlan, createChunkSource, getTikTokUploadContentType, refreshTikTokAccessToken },
+  _private: {
+    buildTikTokUploadPlan,
+    createChunkSource,
+    getTikTokUploadContentType,
+    refreshTikTokAccessToken,
+    TIKTOK_MIN_CHUNK_SIZE,
+    TIKTOK_MAX_CHUNK_SIZE,
+    TIKTOK_MAX_FINAL_CHUNK_SIZE,
+    TIKTOK_MAX_CHUNKS,
+  },
 };
