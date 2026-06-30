@@ -125,6 +125,36 @@
         .platform-dot.tiktok { background: #000; }
         .platform-dot.instagram { background: #cc2366; }
         .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); color: white; padding: 0.9rem 1.2rem; border-radius: 10px; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000; transition: opacity 0.3s ease; }
+        .history-panel { margin-top: 1rem; }
+        .history-list { display: grid; gap: 0.7rem; }
+        .history-row { border: 1px solid #e8ebe8; border-radius: 12px; background: #fff; overflow: hidden; }
+        .history-summary { list-style: none; display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 0.85rem; align-items: center; padding: 0.8rem; cursor: pointer; }
+        .history-summary::-webkit-details-marker { display: none; }
+        .history-summary:hover { background: #fbfdff; }
+        .history-thumb { width: 58px; height: 58px; border-radius: 10px; background: #eef0ee; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #7b837f; }
+        .history-thumb img, .history-thumb video { width: 100%; height: 100%; object-fit: cover; }
+        .history-copy { min-width: 0; }
+        .history-caption { color: #111827; font-size: 0.84rem; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .history-time { color: #7b837f; font-size: 0.7rem; margin-top: 0.2rem; }
+        .history-platforms { display: flex; flex-wrap: wrap; gap: 0.32rem; margin-top: 0.48rem; }
+        .history-platform { display: inline-flex; align-items: center; gap: 0.28rem; border-radius: 999px; padding: 0.22rem 0.48rem; font-size: 0.66rem; font-weight: 900; background: #f3f4f2; color: #5c605e; }
+        .history-platform.success { background: #ecfdf5; color: #047857; }
+        .history-platform.error, .history-platform.unknown { background: #fef2f2; color: #b91c1c; }
+        .history-platform.pending, .history-platform.processing { background: #eef5ff; color: #005bc2; }
+        .history-status { min-width: 104px; text-align: right; }
+        .history-status-pill { display: inline-flex; align-items: center; gap: 0.28rem; border-radius: 999px; padding: 0.34rem 0.58rem; font-size: 0.68rem; font-weight: 900; }
+        .history-status-pill.published { background: #ecfdf5; color: #047857; }
+        .history-status-pill.partial { background: #fffbeb; color: #b45309; }
+        .history-status-pill.failed { background: #fef2f2; color: #b91c1c; }
+        .history-status-pill.publishing { background: #eef5ff; color: #005bc2; }
+        .history-details { border-top: 1px solid #eef0ee; padding: 0.8rem; background: #fbfbfa; display: grid; gap: 0.55rem; }
+        .history-result { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 0.65rem; align-items: start; border: 1px solid #e8ebe8; border-radius: 10px; background: #fff; padding: 0.65rem; }
+        .history-result-icon { width: 30px; height: 30px; border-radius: 8px; color: #fff; display: flex; align-items: center; justify-content: center; }
+        .history-result-name { font-size: 0.76rem; font-weight: 900; color: #111827; }
+        .history-result-message { margin-top: 0.15rem; font-size: 0.69rem; color: #6b7280; word-break: break-word; }
+        .history-result-action { color: #005bc2; font-size: 0.69rem; font-weight: 900; text-decoration: none; white-space: nowrap; }
+        .history-retry { border: 1px solid #f3c7c7; border-radius: 8px; background: #fff; color: #b91c1c; padding: 0.45rem 0.65rem; font-size: 0.7rem; font-weight: 900; cursor: pointer; justify-self: end; }
+        .history-retry:disabled { opacity: 0.55; cursor: wait; }
         @media (max-width: 980px) { .dashboard-grid { grid-template-columns: 1fr; } }
         @media (max-width: 640px) {
             .panel-header { align-items: flex-start; flex-direction: column; }
@@ -138,6 +168,11 @@
             .schedule-row { grid-template-columns: 48px minmax(0, 1fr); }
             .schedule-row .platform-dots { grid-column: 2; }
             .schedule-thumb { width: 48px; height: 48px; }
+            .history-summary { grid-template-columns: 48px minmax(0, 1fr); }
+            .history-thumb { width: 48px; height: 48px; }
+            .history-status { grid-column: 2; text-align: left; }
+            .history-result { grid-template-columns: 30px minmax(0, 1fr); }
+            .history-result-action { grid-column: 2; }
         }
     </style>
 </head>
@@ -212,6 +247,24 @@
                 </div>
             </section>
         </div>
+
+        <section class="panel ambient-shadow history-panel" id="publishing-history">
+            <div class="panel-header">
+                <div>
+                    <h2 class="panel-title">Publishing history</h2>
+                    <p class="panel-meta" id="history-summary">Loading recent posts...</p>
+                </div>
+                <a class="btn-primary" href="/broadcast/upload.html">
+                    <span class="material-symbols-outlined text-base">add</span>
+                    Create post
+                </a>
+            </div>
+            <div class="panel-body">
+                <div id="history-list" class="history-list">
+                    <div class="text-on-surface-variant">Loading publishing history...</div>
+                </div>
+            </div>
+        </section>
     </div>
 
     <script>
@@ -245,7 +298,10 @@
             }
 
             setupAddAccountMenu();
-            await Promise.all([loadConnectedAccounts(), loadScheduledPosts()]);
+            await Promise.all([loadConnectedAccounts(), loadScheduledPosts(), loadPublishingHistory()]);
+            supabaseClient.channel(`history-${currentUser.id}`)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `user_id=eq.${currentUser.id}` }, loadPublishingHistory)
+                .subscribe();
 
             if (oauthResult.success) showSuccessBanner(oauthResult.platform);
             if (oauthResult.error) showToast(oauthResult.error, 'error');
@@ -405,6 +461,123 @@
             scheduledPosts = error ? [] : (posts || []);
             renderCalendar(new Date(), scheduledPosts);
             renderScheduleList(scheduledPosts);
+        }
+
+        async function loadPublishingHistory() {
+            if (!currentUser) return;
+            const { data: posts, error } = await supabaseClient
+                .from('posts')
+                .select('id, video_url, thumbnail_url, caption, platforms, status, platform_results, metadata, created_at, updated_at, published_at')
+                .eq('user_id', currentUser.id)
+                .neq('status', 'draft')
+                .order('created_at', { ascending: false })
+                .limit(30);
+            renderPublishingHistory(error ? [] : (posts || []), error);
+        }
+
+        function renderPublishingHistory(posts, error) {
+            const list = document.getElementById('history-list');
+            const summary = document.getElementById('history-summary');
+            if (!list || !summary) return;
+            if (error) {
+                summary.textContent = 'Could not load history';
+                list.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">error</span><p>Publishing history is unavailable.</p></div>';
+                return;
+            }
+            summary.textContent = `${posts.length} recent post${posts.length === 1 ? '' : 's'} · expand a post for platform details`;
+            if (!posts.length) {
+                list.innerHTML = '<div class="empty-state"><span class="material-symbols-outlined">history</span><p class="font-extrabold text-on-surface mb-1">No publishing history yet</p><p class="text-sm">Published and failed posts will appear here.</p></div>';
+                return;
+            }
+
+            list.innerHTML = posts.map(post => {
+                const results = post.platform_results || {};
+                const targetKeys = [...new Set([...(post.platforms || []), ...Object.keys(results)])];
+                const failedKeys = targetKeys.filter(key => ['error', 'unknown'].includes(results[key]?.status));
+                const succeeded = targetKeys.filter(key => results[key]?.status === 'success').length;
+                const pending = targetKeys.filter(key => ['pending', 'processing'].includes(results[key]?.status)).length;
+                const displayStatus = failedKeys.length && succeeded ? 'partial' : failedKeys.length ? 'failed' : pending ? 'publishing' : 'published';
+                const statusLabel = displayStatus === 'published' ? 'Posted' : displayStatus === 'partial' ? 'Partial' : displayStatus === 'failed' ? 'Failed' : 'Processing';
+                const statusIcon = displayStatus === 'published' ? 'check_circle' : displayStatus === 'partial' ? 'warning' : displayStatus === 'failed' ? 'error' : 'progress_activity';
+                return `
+                    <details class="history-row" id="post-${post.id}">
+                        <summary class="history-summary">
+                            <div class="history-thumb">${renderPostThumb(post)}</div>
+                            <div class="history-copy">
+                                <div class="history-caption">${escapeHtml(post.caption || 'Untitled post')}</div>
+                                <div class="history-time">${escapeHtml(formatHistoryDate(post.published_at || post.created_at))} · ${succeeded} of ${targetKeys.length} posted</div>
+                                <div class="history-platforms">
+                                    ${targetKeys.map(key => renderHistoryPlatformChip(key, results[key])).join('')}
+                                </div>
+                            </div>
+                            <div class="history-status">
+                                <span class="history-status-pill ${displayStatus}"><span class="material-symbols-outlined text-sm">${statusIcon}</span>${statusLabel}</span>
+                            </div>
+                        </summary>
+                        <div class="history-details">
+                            ${targetKeys.map(key => renderHistoryResult(key, results[key])).join('')}
+                            ${failedKeys.length ? `<button type="button" class="history-retry" data-retry-post="${post.id}" data-retry-platforms="${escapeHtml(JSON.stringify(failedKeys))}"><span class="material-symbols-outlined text-sm align-text-bottom">refresh</span> Retry ${failedKeys.length === 1 ? 'failed platform' : `${failedKeys.length} failed platforms`}</button>` : ''}
+                        </div>
+                    </details>`;
+            }).join('');
+
+            list.querySelectorAll('[data-retry-post]').forEach(button => {
+                button.addEventListener('click', () => retryHistoryPlatforms(button));
+            });
+        }
+
+        function renderHistoryPlatformChip(key, result = {}) {
+            const platform = result.platform || String(key).split(':')[0];
+            const status = result.status || 'processing';
+            const statusIcon = status === 'success' ? '✓' : status === 'error' || status === 'unknown' ? '!' : '•';
+            return `<span class="history-platform ${escapeHtml(status)}" title="${escapeHtml(result.error || result.note || result.message || status)}">${PLATFORM_ICONS[platform] || ''}${escapeHtml(PLATFORM_NAMES[platform] || platform)} ${statusIcon}</span>`;
+        }
+
+        function renderHistoryResult(key, result = {}) {
+            const platform = result.platform || String(key).split(':')[0];
+            const name = result.account_name ? `${PLATFORM_NAMES[platform] || platform} · ${result.account_name}` : (PLATFORM_NAMES[platform] || platform);
+            const status = result.status || 'processing';
+            const message = status === 'success' ? 'Published successfully' : status === 'pending' ? (result.note || 'Processing on platform') : status === 'processing' ? (result.message || 'Publishing in progress') : (result.error || result.note || 'No final status received');
+            return `
+                <div class="history-result">
+                    <span class="history-result-icon platform-mark ${escapeHtml(platform)}">${PLATFORM_ICONS[platform] || '<i class="fas fa-link"></i>'}</span>
+                    <div>
+                        <div class="history-result-name">${escapeHtml(name)}</div>
+                        <div class="history-result-message">${escapeHtml(message)}</div>
+                    </div>
+                    ${result.url ? `<a class="history-result-action" href="${escapeHtml(result.url)}" target="_blank" rel="noopener">View post ↗</a>` : ''}
+                </div>`;
+        }
+
+        async function retryHistoryPlatforms(button) {
+            const postId = button.dataset.retryPost;
+            let platforms = [];
+            try { platforms = JSON.parse(button.dataset.retryPlatforms || '[]'); } catch (_) {}
+            if (!postId || !platforms.length) return;
+            const original = button.innerHTML;
+            button.disabled = true;
+            button.textContent = 'Retrying...';
+            try {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session?.access_token) throw new Error('Sign in again to retry.');
+                const response = await fetch(API.publish(), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                    body: JSON.stringify({ postId, platforms }),
+                });
+                const body = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(body.error || 'Retry failed');
+                showToast('Retry finished. Platform statuses were refreshed.');
+                await loadPublishingHistory();
+            } catch (retryError) {
+                showToast(retryError.message || 'Retry failed', 'error');
+                button.disabled = false;
+                button.innerHTML = original;
+            }
+        }
+
+        function formatHistoryDate(value) {
+            return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
         }
 
         function renderCalendar(date, posts) {
@@ -585,6 +758,7 @@
             }, 3000);
         }
     </script>
+    <script src="/js/api-config.js"></script>
     <script src="/js/config.js"></script>
     <script src="/js/layout.js"></script>
 </body>

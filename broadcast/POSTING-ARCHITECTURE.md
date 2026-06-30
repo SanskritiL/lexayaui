@@ -68,8 +68,16 @@ Single file, multiple responsibilities:
 
 ## Scheduled posts (`api/broadcast/cron/process-scheduled.js`)
 
-- Scheduling is currently feature-flagged off in the browser (`SCHEDULING_ENABLED = false`) and no Google Cloud Scheduler job has been created.
-- Google Cloud Scheduler should call Cloud Run `POST /scheduler/process` every minute with `Authorization: Bearer ${CRON_SECRET}`.
+- Scheduling is enabled in the browser. A user chooses a date and either the AM
+  (9:00) or PM (17:00) Central Time window.
+- `post_schedule_targets` reserves each selected account/date/window. Its unique
+  constraint guarantees at most one AM and one PM post per account per day,
+  even when two schedule requests arrive together.
+- `reserve_post_schedule()` atomically reserves every target account and moves
+  the post from `draft` to `scheduled`. One conflict rolls back all targets.
+- `publish-service/setup-scheduler.sh` creates Google Cloud Scheduler jobs at
+  9:05 AM and 5:05 PM Central Time. They call Cloud Run `POST /scheduler/process`
+  with `Authorization: Bearer ${CRON_SECRET}`.
 - The scheduler queries `posts` where `status = 'scheduled'` and `scheduled_at <= now`, claims each row by updating `scheduled -> publishing`, then calls the shared `publishPost()` flow.
 - Scheduled Instagram publishing calls the same completion helper used by the UI so pending containers can be published without the browser staying open.
 

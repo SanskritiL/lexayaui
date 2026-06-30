@@ -196,6 +196,10 @@
             border-color: #22c55e;
             background: #f0fdf4;
         }
+        .progress-item.pending {
+            border-color: #8b5cf6;
+            background: #f5f3ff;
+        }
         .progress-item.failed {
             border-color: #dc2626;
             background: #fef2f2;
@@ -436,7 +440,14 @@
                 <span class="text-sm font-semibold text-on-surface">Schedule for later</span>
             </label>
             <div id="schedule-fields" style="display: none;" class="mt-4">
-                <input type="datetime-local" id="schedule-date" class="form-input max-w-sm">
+                <label class="block text-sm font-bold text-on-surface mb-2" for="schedule-date">Date</label>
+                <input type="date" id="schedule-date" class="form-input max-w-sm">
+                <label class="block text-sm font-bold text-on-surface mt-4 mb-2" for="schedule-period">Publishing window</label>
+                <select id="schedule-period" class="form-input max-w-sm">
+                    <option value="am">AM · around 9:00 AM</option>
+                    <option value="pm">PM · around 5:00 PM</option>
+                </select>
+                <p class="text-xs text-on-surface-variant mt-2" id="schedule-timezone"></p>
             </div>
         </section>
 
@@ -477,6 +488,29 @@
                 </div>
             </div>
 
+            <div id="media-progress" class="progress-item processing mb-4">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-lg bg-blue-50 text-primary flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg" id="media-progress-symbol">cloud_upload</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <h4 class="text-sm font-bold text-on-surface">Media upload</h4>
+                            <span class="text-[10px] font-mono text-on-surface-variant" id="media-progress-percent">0%</span>
+                        </div>
+                        <p class="text-xs text-on-surface-variant truncate" id="media-progress-message">Preparing media...</p>
+                    </div>
+                    <div id="media-progress-icon"><div class="mini-spinner"></div></div>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="media-progress-bar" style="width: 2%;"></div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 mb-2">
+                <span class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant">Platform publishing</span>
+                <span class="h-px bg-outline-variant/30 flex-1"></span>
+            </div>
             <div id="publish-progress" class="space-y-2"></div>
 
             <div id="modal-actions" class="mt-5 space-y-2.5 text-center" style="display: none;">
@@ -571,7 +605,8 @@
         let reusableMedia = [];
         let currentUser = null;
         let videoThumbnailBlob = null;
-        const SCHEDULING_ENABLED = false;
+        const SCHEDULING_ENABLED = true;
+        const SCHEDULE_TIMEZONE = 'America/Chicago';
         const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
 
         let lastPublishState = { postId: null, failedPlatforms: [], platformResults: {} };
@@ -964,6 +999,8 @@
                     document.getElementById('schedule-toggle').checked ? 'block' : 'none';
                 updatePublishButton();
             });
+            document.getElementById('schedule-date').addEventListener('change', updatePublishButton);
+            document.getElementById('schedule-period').addEventListener('change', updatePublishButton);
 
             document.getElementById('publish-btn').addEventListener('click', () => handleSubmit(null, false));
             document.getElementById('save-draft').addEventListener('click', () => handleSubmit(null, true));
@@ -1004,6 +1041,11 @@
                 toggle.disabled = !SCHEDULING_ENABLED;
             }
             if (fields) fields.style.display = 'none';
+            const dateInput = document.getElementById('schedule-date');
+            if (dateInput) dateInput.min = localDateValue(new Date());
+            const timezone = getScheduleTimezone();
+            const timezoneLabel = document.getElementById('schedule-timezone');
+            if (timezoneLabel) timezoneLabel.textContent = `Times shown in Central Time (${timezone})`;
         }
 
         function applyInitialScheduleState() {
@@ -1018,12 +1060,20 @@
             toggle.checked = true;
             fields.style.display = 'block';
             const dateParam = params.get('date');
-            const datetimeParam = params.get('datetime');
             const input = document.getElementById('schedule-date');
-            if (input && (datetimeParam || dateParam)) {
-                input.value = datetimeParam || `${dateParam}T09:00`;
-            }
+            if (input && dateParam) input.value = dateParam;
             updatePublishButton();
+        }
+
+        function localDateValue(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getScheduleTimezone() {
+            return SCHEDULE_TIMEZONE;
         }
 
         const MAX_FILE_SIZE_MB = 500;
@@ -1158,13 +1208,15 @@
             const needsYouTube = selectedTargets.some(target => target.platform === 'youtube');
             const youtubeTitle = document.getElementById('youtube-title')?.value.trim() || '';
             const hasMedia = !!selectedFile || !!selectedReusableMedia;
+            const scheduleToggle = document.getElementById('schedule-toggle');
+            const scheduleIsValid = !scheduleToggle?.checked || Boolean(document.getElementById('schedule-date')?.value);
 
             const isValid = selectedTargets.length > 0 &&
                 (hasMedia || (onlyTextFriendly && caption.length > 0)) &&
-                (!needsYouTube || youtubeTitle.length > 0);
+                (!needsYouTube || youtubeTitle.length > 0) &&
+                scheduleIsValid;
 
             btn.disabled = !isValid;
-            const scheduleToggle = document.getElementById('schedule-toggle');
             if (SCHEDULING_ENABLED && scheduleToggle.checked) {
                 btn.textContent = 'Schedule Post';
             } else {
@@ -1196,8 +1248,9 @@
                 return acc;
             }, {});
             const scheduleToggle = document.getElementById('schedule-toggle');
-            const shouldSchedule = SCHEDULING_ENABLED && scheduleToggle.checked;
+            const shouldSchedule = !isDraft && SCHEDULING_ENABLED && scheduleToggle.checked;
             const scheduleDate = document.getElementById('schedule-date').value;
+            const schedulePeriod = document.getElementById('schedule-period').value;
             const youtubeTitle = document.getElementById('youtube-title')?.value.trim() || '';
             const youtubeDescription = document.getElementById('youtube-description')?.value.trim() || '';
 
@@ -1207,9 +1260,18 @@
                 return;
             }
 
+            if (shouldSchedule && !scheduleDate) {
+                alert('Choose a date for this post.');
+                isSubmitting = false;
+                return;
+            }
+
             if (!isDraft) {
                 const accountNames = selectedTargets.map(target => target.label).join(', ');
-                if (!confirm(`Post to: ${accountNames}\n\nAre you sure?`)) {
+                const action = shouldSchedule
+                    ? `Schedule the ${schedulePeriod.toUpperCase()} post for ${scheduleDate}`
+                    : 'Publish now';
+                if (!confirm(`${action} to: ${accountNames}\n\nAre you sure?`)) {
                     isSubmitting = false;
                     return;
                 }
@@ -1252,7 +1314,7 @@
             if (!isDraft && !shouldSchedule) {
                 showPublishingModal(selectedPlatforms);
                 setPublishingStage('Preparing media and post details...');
-                selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Waiting for media upload...', 'preparing'));
+                updateMediaProgress('processing', 'Preparing media...', 2);
             }
 
             try {
@@ -1273,18 +1335,23 @@
                     publishBtn.textContent = 'Uploading media...';
                     if (!isDraft && !shouldSchedule) {
                         setPublishingStage(`Uploading ${selectedMediaType || 'media'} to storage...`);
-                        selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Media upload in progress...', 'uploading'));
+                        updateMediaProgress('processing', `Uploading ${formatFileSize(selectedFile.size)} to storage...`, 3);
                     }
-                    const upload = await uploadMediaToR2(selectedFile, authToken);
+                    const upload = await uploadMediaToR2(selectedFile, authToken, progress => {
+                        if (!isDraft && !shouldSchedule) {
+                            updateMediaProgress('processing', `Uploading ${formatFileSize(selectedFile.size)} to storage...`, progress);
+                        }
+                    });
                     mediaUrl = upload.publicUrl;
                     metadata.r2_key = upload.key;
                     metadata.file_size_bytes = selectedFile.size;
                     metadata.content_type = selectedFile.type;
+                    if (!isDraft && !shouldSchedule) updateMediaProgress('success', 'Media uploaded and ready', 100);
                 } else if (selectedReusableMedia) {
                     publishBtn.textContent = 'Using uploaded media...';
                     if (!isDraft && !shouldSchedule) {
                         setPublishingStage('Reusing already uploaded media...');
-                        selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Using saved media...', 'preparing'));
+                        updateMediaProgress('success', 'Existing media is ready', 100);
                     }
                     mediaUrl = selectedReusableMedia.url;
                     metadata.reused_from_post_id = selectedReusableMedia.postId;
@@ -1297,7 +1364,6 @@
                 publishBtn.textContent = 'Creating post...';
                 if (!isDraft && !shouldSchedule) {
                     setPublishingStage('Creating the post record...');
-                    selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Post is being prepared...', 'preparing'));
                 }
 
                 const postData = {
@@ -1306,8 +1372,8 @@
                     thumbnail_url: thumbnailUrl,
                     caption: caption,
                     platforms: selectedPlatforms,
-                    status: isDraft ? 'draft' : (shouldSchedule ? 'scheduled' : 'publishing'),
-                    scheduled_at: shouldSchedule ? scheduleDate : null,
+                    status: (isDraft || shouldSchedule) ? 'draft' : 'publishing',
+                    scheduled_at: null,
                     platform_results: {},
                     metadata: { ...metadata, media_type: selectedMediaType, account_selections: accountSelections }
                 };
@@ -1315,44 +1381,78 @@
                 const { data: post, error: postError } = await supabaseClient.from('posts').insert(postData).select().single();
                 if (postError) throw postError;
 
+                if (shouldSchedule) {
+                    publishBtn.textContent = 'Reserving schedule...';
+                    const response = await fetch(API.schedule(), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${authToken}`,
+                        },
+                        body: JSON.stringify({
+                            postId: post.id,
+                            localDate: scheduleDate,
+                            period: schedulePeriod,
+                            timezone: getScheduleTimezone(),
+                        }),
+                    });
+                    const result = await response.json().catch(() => ({}));
+                    if (!response.ok) {
+                        await supabaseClient.from('posts').delete().eq('id', post.id);
+                        throw new Error(result.error || 'Could not schedule this post');
+                    }
+                }
+
                 if (!isDraft && !shouldSchedule) {
-                    showPublishingModal(selectedPlatforms);
+                    beginPlatformPublishing(selectedPlatforms);
                     setPublishingStage('Sending to selected platforms...');
                     selectedPlatforms.forEach(p => updatePlatformProgress(p, 'processing', 'Publishing...'));
 
                     const postId = post.id;
                     let realtimeChannel = null;
                     let isCompleted = false;
+                    const latestResults = {};
+                    const instagramPolls = new Set();
+
+                    const applyResults = (incomingResults = {}) => {
+                        Object.assign(latestResults, incomingResults);
+                        selectedPlatforms.forEach(key => {
+                            const result = latestResults[key];
+                            if (!result) return;
+                            if (result.status === 'success') {
+                                updatePlatformProgress(key, 'success', result.url ? 'Posted!' : (result.note || 'Posted!'));
+                            } else if (result.status === 'pending') {
+                                updatePlatformProgress(key, 'pending', result.note || 'Processing on platform...');
+                                const platform = result.platform || getTargetPlatform(key);
+                                if (platform === 'instagram' && result.container_id && !instagramPolls.has(key)) {
+                                    instagramPolls.add(key);
+                                    pollInstagramCompletion(postId, key, finalResult => {
+                                        instagramPolls.delete(key);
+                                        latestResults[key] = { ...result, ...finalResult, platform };
+                                        applyResults({ [key]: latestResults[key] });
+                                    });
+                                }
+                            } else if (result.status === 'error') {
+                                updatePlatformProgress(key, 'failed', result.error || 'Failed');
+                            } else if (result.status === 'unknown') {
+                                updatePlatformProgress(key, 'unknown', result.note || 'Status unknown');
+                            } else if (result.status === 'processing') {
+                                updatePlatformProgress(key, 'processing', result.message || 'Working...', result.stage, result.pct || 0);
+                            }
+                        });
+
+                        const terminalResults = selectedPlatforms.map(key => latestResults[key]).filter(result => ['success', 'error', 'unknown'].includes(result?.status));
+                        if (terminalResults.length !== selectedPlatforms.length || isCompleted) return;
+                        isCompleted = true;
+                        const successCount = terminalResults.filter(result => result.status === 'success').length;
+                        const overallStatus = successCount === selectedPlatforms.length ? 'published' : successCount > 0 ? 'partial' : 'failed';
+                        completePublishingModal(overallStatus, successCount, selectedPlatforms.length, postId, latestResults);
+                        if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+                    };
 
                     const handleRealtimeUpdate = (payload) => {
                         const updatedPost = payload.new;
-                        const platformResults = updatedPost.platform_results || {};
-                        let successCount = 0;
-                        let completedCount = 0;
-
-                        for (const [platform, result] of Object.entries(platformResults)) {
-                            if (result.status === 'success') {
-                                completedCount++;
-                                successCount++;
-                                updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : (result.note || 'Success!'));
-                            } else if (result.status === 'pending') {
-                                completedCount++;
-                                successCount++;
-                                updatePlatformProgress(platform, 'success', result.note || 'Processing...');
-                            } else if (result.status === 'error') {
-                                completedCount++;
-                                updatePlatformProgress(platform, 'failed', result.error || 'Failed');
-                            } else if (result.status === 'processing') {
-                                updatePlatformProgress(platform, 'processing', result.message || 'Working...', result.stage, result.pct || 0);
-                            }
-                        }
-
-                        if (completedCount >= selectedPlatforms.length && !isCompleted) {
-                            isCompleted = true;
-                            const status = updatedPost.status || (successCount > 0 ? 'partial' : 'failed');
-                            completePublishingModal(status, successCount, selectedPlatforms.length, postId, platformResults);
-                            if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
-                        }
+                        applyResults(updatedPost.platform_results || {});
                     };
 
                     realtimeChannel = supabaseClient.channel(`post-${postId}`)
@@ -1361,68 +1461,22 @@
 
                     publishToAllPlatforms(post.id, selectedPlatforms)
                         .then(publishResult => {
-                            if (!isCompleted) {
-                                isCompleted = true;
-                                let successCount = 0;
-                                const results = buildInterruptedPublishResults(
-                                    selectedPlatforms,
-                                    publishResult.results || {},
-                                    'No final status was returned for this platform.'
-                                );
-                                for (const platform of selectedPlatforms) {
-                                    const result = results[platform];
-                                    if (result.status === 'success' || result.status === 'pending') {
-                                        successCount++;
-                                        updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : (result.note || 'Success!'));
-                                    } else if (result.status === 'error') {
-                                        updatePlatformProgress(platform, 'failed', result.error || 'Failed');
-                                    } else {
-                                        updatePlatformProgress(platform, 'unknown', result.note || 'Status unknown');
-                                    }
-                                }
-                                completePublishingModal(publishResult.status, successCount, selectedPlatforms.length, post.id, results);
-                                if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
-                            }
+                            if (isCompleted) return;
+                            const results = buildInterruptedPublishResults(
+                                selectedPlatforms,
+                                publishResult.results || {},
+                                'No final status was returned for this platform.'
+                            );
+                            applyResults(results);
                         })
                         .catch(async err => {
                             console.error('[PUBLISH API ERROR]', err);
                             if (!isCompleted) {
-                                isCompleted = true;
-                                if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
                                 const latestPost = await fetchLatestPostState(post.id);
                                 const actualResults = latestPost.platform_results || {};
                                 const errorMessage = err.message || 'Unknown error';
                                 const displayResults = buildInterruptedPublishResults(selectedPlatforms, actualResults, errorMessage);
-                                let successCount = 0;
-                                selectedPlatforms.forEach(p => {
-                                    const r = displayResults[p];
-                                    if (r?.status === 'success' || r?.status === 'pending') {
-                                        successCount++;
-                                        updatePlatformProgress(p, 'success', r.url ? 'Posted!' : (r.note || 'Success!'));
-                                    } else if (r?.status === 'error') {
-                                        updatePlatformProgress(p, 'failed', r.error || 'Failed');
-                                    } else if (r?.status === 'unknown') {
-                                        updatePlatformProgress(p, 'unknown', r.note || 'Status unknown. Check dashboard before retrying.');
-                                    } else {
-                                        updatePlatformProgress(p, 'unknown', 'Not confirmed. The publish request stopped before this platform reported back.');
-                                    }
-                                });
-
-                                const modalIcon = document.getElementById('modal-icon');
-                                const modalTitle = document.getElementById('modal-title');
-                                const modalSubtitle = document.getElementById('modal-subtitle');
-                                modalIcon.className = 'w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-full bg-red-50';
-                                modalIcon.innerHTML = '<span class="material-symbols-outlined text-red-600 text-3xl">error_outline</span>';
-                                modalTitle.textContent = successCount > 0 ? 'Publishing interrupted' : 'Could not confirm publishing';
-                                modalSubtitle.textContent = successCount > 0
-                                    ? `${successCount} of ${selectedPlatforms.length} confirmed. Unconfirmed platforms were not marked as platform failures.`
-                                    : errorMessage;
-                                modalSubtitle.style.fontSize = '0.75rem';
-                                modalSubtitle.style.wordBreak = 'break-word';
-                                modalSubtitle.style.maxHeight = '80px';
-                                modalSubtitle.style.overflowY = 'auto';
-                                document.getElementById('retry-failed-btn').style.display = 'block';
-                                completePublishingModal(successCount > 0 ? 'partial' : 'failed', successCount, selectedPlatforms.length, post.id, displayResults);
+                                applyResults(displayResults);
                             }
                         });
 
@@ -1442,6 +1496,10 @@
                 }
                 const modal = document.getElementById('publishing-modal');
                 if (modal.style.display === 'flex') {
+                    const mediaItem = document.getElementById('media-progress');
+                    if (mediaItem && !mediaItem.classList.contains('success')) {
+                        updateMediaProgress('failed', errorMsg, 100);
+                    }
                     setPublishingStage('Stopped before platform publishing.');
                     if (typeof selectedPlatforms !== 'undefined') {
                         selectedPlatforms.forEach(p => updatePlatformProgress(p, 'unknown', 'Not attempted because setup failed.'));
@@ -1516,6 +1574,7 @@
             document.getElementById('overall-bar').style.width = '0%';
             document.getElementById('overall-stage').textContent = '';
             document.getElementById('elapsed-time').textContent = '0:00';
+            updateMediaProgress('processing', 'Preparing media...', 2);
 
             progressContainer.innerHTML = platforms.map(platform => {
                 const info = getTargetInfo(platform);
@@ -1543,6 +1602,52 @@
 
             modal.style.display = 'flex';
             startTimer(platforms);
+        }
+
+        function beginPlatformPublishing(platforms) {
+            updateMediaProgress('success', 'Media uploaded and ready', 100);
+            const label = document.getElementById('overall-label');
+            const count = document.getElementById('overall-count');
+            if (label) label.textContent = 'Publishing to platforms';
+            if (count) count.textContent = `0 / ${platforms.length}`;
+            platforms.forEach(platform => {
+                publishTimer.platformStarts[platform] = Date.now();
+            });
+        }
+
+        function updateMediaProgress(status, message, percent = 0) {
+            const item = document.getElementById('media-progress');
+            const text = document.getElementById('media-progress-message');
+            const pct = document.getElementById('media-progress-percent');
+            const bar = document.getElementById('media-progress-bar');
+            const icon = document.getElementById('media-progress-icon');
+            const symbol = document.getElementById('media-progress-symbol');
+            if (!item) return;
+            const normalized = Math.max(0, Math.min(100, Math.round(percent || 0)));
+            item.className = `progress-item ${status} mb-4`;
+            if (text) text.textContent = message || 'Preparing media...';
+            if (pct) pct.textContent = `${normalized}%`;
+            if (bar) {
+                bar.style.width = `${Math.max(normalized, status === 'processing' ? 2 : 0)}%`;
+                bar.className = `progress-bar-fill ${status === 'success' ? 'done' : status === 'failed' ? 'failed' : ''}`;
+            }
+            if (status === 'success') {
+                if (icon) icon.innerHTML = '<span class="text-green-600 font-bold text-sm">✓</span>';
+                if (symbol) symbol.textContent = 'cloud_done';
+            } else if (status === 'failed') {
+                if (icon) icon.innerHTML = '<span class="text-red-600 font-bold text-sm">✗</span>';
+                if (symbol) symbol.textContent = 'cloud_off';
+            } else if (icon) {
+                icon.innerHTML = '<div class="mini-spinner"></div>';
+                if (symbol) symbol.textContent = 'cloud_upload';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            const size = Number(bytes || 0);
+            if (size >= 1024 * 1024) return `${(size / 1024 / 1024).toFixed(size >= 100 * 1024 * 1024 ? 0 : 1)} MB`;
+            if (size >= 1024) return `${Math.round(size / 1024)} KB`;
+            return `${size} bytes`;
         }
 
         function setPublishingStage(message) {
@@ -1606,6 +1711,18 @@
                 if (track) track.style.display = 'block';
                 statusText.classList.add('stage-text-in');
                 setTimeout(() => statusText.classList.remove('stage-text-in'), 300);
+                updateOverallProgress();
+                return;
+            }
+
+            if (status === 'pending') {
+                item.className = 'progress-item pending';
+                statusText.textContent = message || 'Processing on platform...';
+                statusIcon.innerHTML = '<span class="material-symbols-outlined text-violet-600 text-base">hourglass_top</span>';
+                const bar = document.getElementById(`bar-${platform}`);
+                const track = document.getElementById(`track-${platform}`);
+                if (bar) { bar.className = 'progress-bar-fill indeterminate'; bar.style.width = '100%'; bar.style.background = '#8b5cf6'; }
+                if (track) track.style.display = 'block';
                 updateOverallProgress();
                 return;
             }
@@ -1718,17 +1835,9 @@
 
             modalActions.style.display = 'block';
 
-            if (postId) {
-                Object.entries(platformResults || {}).forEach(([key, result]) => {
-                    const platform = result?.platform || getTargetPlatform(key);
-                    if (platform === 'instagram' && result?.status === 'pending' && result?.container_id) {
-                        pollInstagramCompletion(postId, key);
-                    }
-                });
-            }
         }
 
-        async function pollInstagramCompletion(postId, resultKey = 'instagram') {
+        async function pollInstagramCompletion(postId, resultKey = 'instagram', onSettled = () => {}) {
             const { data: { session } } = await supabaseClient.auth.getSession();
             const authToken = session?.access_token;
             if (!authToken) return;
@@ -1737,6 +1846,7 @@
             const poll = async () => {
                 if (attempts >= maxAttempts) {
                     updatePlatformProgress(resultKey, 'failed', 'Timed out — check Instagram app');
+                    onSettled({ status: 'unknown', note: 'Timed out while Instagram was processing. Check Instagram before retrying.' });
                     return;
                 }
                 attempts++;
@@ -1747,9 +1857,15 @@
                         body: JSON.stringify({ postId, resultKey }),
                     });
                     const result = await res.json();
-                    if (result.status === 'success') updatePlatformProgress(resultKey, 'success', 'Posted!');
+                    if (result.status === 'success') {
+                        updatePlatformProgress(resultKey, 'success', 'Posted!');
+                        onSettled(result);
+                    }
                     else if (result.status === 'pending') setTimeout(poll, 5000);
-                    else updatePlatformProgress(resultKey, 'failed', result.error || 'Processing failed');
+                    else {
+                        updatePlatformProgress(resultKey, 'failed', result.error || 'Processing failed');
+                        onSettled(result);
+                    }
                 } catch (err) { setTimeout(poll, 5000); }
             };
             setTimeout(poll, 5000);
@@ -1785,7 +1901,7 @@
             return result;
         }
 
-        async function uploadMediaToR2(file, authToken) {
+        async function uploadMediaToR2(file, authToken, onProgress) {
             const fileSha256 = await getFileSha256ForUpload(file);
             let presignRes;
             try {
@@ -1811,24 +1927,36 @@
             if (upload.existing) return upload;
             if (!upload.uploadUrl) throw new Error('R2 upload URL was not returned.');
 
-            let putRes;
             try {
-                putRes = await fetch(upload.uploadUrl, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': file.type,
-                    },
-                    body: file,
-                });
+                await uploadFileWithProgress(upload.uploadUrl, file, onProgress);
             } catch (err) {
                 throw new Error(`Media upload failed before publishing started: ${err.message || 'network error'}`);
             }
 
-            if (!putRes.ok) {
-                throw new Error(`Media upload failed with HTTP ${putRes.status}. Check your connection and retry.`);
-            }
-
             return upload;
+        }
+
+        function uploadFileWithProgress(url, file, onProgress) {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', url, true);
+                xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+                xhr.upload.addEventListener('progress', event => {
+                    if (!event.lengthComputable || typeof onProgress !== 'function') return;
+                    onProgress(Math.round((event.loaded / event.total) * 100));
+                });
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        if (typeof onProgress === 'function') onProgress(100);
+                        resolve();
+                    } else {
+                        reject(new Error(`HTTP ${xhr.status}. Check your connection and retry.`));
+                    }
+                });
+                xhr.addEventListener('error', () => reject(new Error('Network error')));
+                xhr.addEventListener('abort', () => reject(new Error('Upload was cancelled')));
+                xhr.send(file);
+            });
         }
 
         async function getFileSha256ForUpload(file) {
@@ -1895,8 +2023,10 @@
                 );
                 for (const platform of failedPlatforms) {
                     const platformResult = results[platform];
-                    if (platformResult.status === 'success' || platformResult.status === 'pending') {
-                        updatePlatformProgress(platform, 'success', platformResult.url ? 'Posted!' : (platformResult.note || 'Success!'));
+                    if (platformResult.status === 'success') {
+                        updatePlatformProgress(platform, 'success', platformResult.url ? 'Posted!' : (platformResult.note || 'Posted!'));
+                    } else if (platformResult.status === 'pending') {
+                        updatePlatformProgress(platform, 'pending', platformResult.note || 'Processing on platform...');
                     } else if (platformResult.status === 'error') {
                         updatePlatformProgress(platform, 'failed', platformResult.error || 'Failed');
                     } else {
@@ -1904,11 +2034,7 @@
                     }
                 }
                 const mergedResults = { ...lastPublishState.platformResults, ...results };
-                const totalPlatforms = Object.keys(mergedResults).length;
-                const newTotalSuccess = Object.values(mergedResults).filter(r => r.status === 'success' || r.status === 'pending').length;
-                const newStatus = newTotalSuccess === totalPlatforms ? 'published' : newTotalSuccess > 0 ? 'partial' : 'failed';
-                completePublishingModal(newStatus, newTotalSuccess, totalPlatforms, postId, mergedResults);
-                if (newStatus === 'published') launchConfetti();
+                finishRetryResults(postId, mergedResults);
             } catch (error) {
                 const latestPost = await fetchLatestPostState(postId);
                 const retryResults = buildInterruptedPublishResults(
@@ -1918,8 +2044,10 @@
                 );
                 failedPlatforms.forEach(platform => {
                     const result = retryResults[platform];
-                    if (result.status === 'success' || result.status === 'pending') {
-                        updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : (result.note || 'Success!'));
+                    if (result.status === 'success') {
+                        updatePlatformProgress(platform, 'success', result.url ? 'Posted!' : (result.note || 'Posted!'));
+                    } else if (result.status === 'pending') {
+                        updatePlatformProgress(platform, 'pending', result.note || 'Processing on platform...');
                     } else if (result.status === 'error') {
                         updatePlatformProgress(platform, 'failed', result.error || 'Retry failed');
                     } else {
@@ -1927,12 +2055,38 @@
                     }
                 });
                 const mergedResults = { ...lastPublishState.platformResults, ...retryResults };
-                const totalPlatforms = Object.keys(mergedResults).length;
-                const previousSuccess = Object.values(mergedResults).filter(r => r.status === 'success' || r.status === 'pending').length;
-                const retryStatus = previousSuccess === totalPlatforms ? 'published' : previousSuccess > 0 ? 'partial' : 'failed';
-                completePublishingModal(retryStatus, previousSuccess, totalPlatforms, postId, mergedResults);
+                finishRetryResults(postId, mergedResults);
             }
             retryBtn.disabled = false;
+        }
+
+        function finishRetryResults(postId, mergedResults) {
+            lastPublishState.platformResults = mergedResults;
+            const entries = Object.entries(mergedResults);
+            const pendingEntries = entries.filter(([_, result]) => result.status === 'pending');
+            if (pendingEntries.length) {
+                const modalTitle = document.getElementById('modal-title');
+                const modalSubtitle = document.getElementById('modal-subtitle');
+                const modalActions = document.getElementById('modal-actions');
+                if (modalTitle) modalTitle.textContent = 'Finishing your post...';
+                if (modalSubtitle) modalSubtitle.textContent = `${pendingEntries.length} platform${pendingEntries.length === 1 ? ' is' : 's are'} still processing`;
+                if (modalActions) modalActions.style.display = 'block';
+                document.getElementById('retry-failed-btn').style.display = 'none';
+                pendingEntries.forEach(([key, result]) => {
+                    const platform = result.platform || getTargetPlatform(key);
+                    if (platform !== 'instagram' || !result.container_id) return;
+                    pollInstagramCompletion(postId, key, finalResult => {
+                        const nextResults = { ...lastPublishState.platformResults, [key]: { ...result, ...finalResult, platform } };
+                        updatePlatformProgress(key, finalResult.status === 'success' ? 'success' : finalResult.status === 'error' ? 'failed' : 'unknown', finalResult.error || finalResult.note || 'Posted!');
+                        finishRetryResults(postId, nextResults);
+                    });
+                });
+                return;
+            }
+            const totalPlatforms = entries.length;
+            const successCount = entries.filter(([_, result]) => result.status === 'success').length;
+            const status = successCount === totalPlatforms ? 'published' : successCount > 0 ? 'partial' : 'failed';
+            completePublishingModal(status, successCount, totalPlatforms, postId, mergedResults);
         }
 
         let analysisInProgress = false;

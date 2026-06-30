@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automations - Lexaya Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-bright": "#f9f9f7", "outline": "#777c79", "primary-dim": "#0050ab",
+                        "surface-container-highest": "#e0e3e0", "surface-tint": "#005bc2",
+                        "on-primary-container": "#000e29", "on-primary": "#f9f8ff",
+                        "surface-container-high": "#e6e9e6", "surface": "#f9f9f7",
+                        "outline-variant": "#afb3b0", "on-background": "#2f3332",
+                        "on-surface": "#2f3332", "surface-container": "#eceeec",
+                        "error": "#a83836", "surface-variant": "#e0e3e0",
+                        "primary": "#005bc2", "background": "#f9f9f7",
+                        "surface-container-low": "#f3f4f2", "surface-container-lowest": "#ffffff",
+                        "surface-dim": "#d7dbd8", "primary-container": "#4c8efe",
+                        "on-surface-variant": "#5c605e"
+                    },
+                    borderRadius: { DEFAULT: "0.125rem", lg: "0.25rem", xl: "0.5rem", full: "0.75rem" },
+                    fontFamily: { headline: ["Manrope"], display: ["Manrope"], body: ["Manrope"], label: ["Manrope"] }
+                }
+            }
+        }
+    </script>
+    <style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+        .glass { background: rgba(249, 249, 247, 0.8); backdrop-filter: blur(24px); }
+        .text-headline-lg { font-size: 2rem; line-height: 1.2; font-weight: 700; }
+        .text-headline-sm { font-size: 1.25rem; line-height: 1.4; font-weight: 800; }
+        .text-label-md { font-size: 0.875rem; font-weight: 600; letter-spacing: 0.05em; }
+        .text-label-sm { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em; }
+        .ambient-shadow { box-shadow: 0 18px 40px rgba(47, 51, 50, 0.06); }
+
+        .automation-grid { display: grid; grid-template-columns: minmax(300px, 0.9fr) minmax(360px, 1.3fr); gap: 1rem; align-items: start; }
+        .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; }
+        .panel-header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border-bottom: 1px solid #eef0ee; background: #fbfbfa; }
+        .panel-title { margin: 0; font-size: 0.98rem; font-weight: 800; color: #111827; }
+        .panel-meta { margin: 0.15rem 0 0; font-size: 0.75rem; color: #6b7280; }
+        .panel-body { padding: 1rem; }
+        .form-grid { display: grid; gap: 0.85rem; }
+        .field { display: grid; gap: 0.35rem; }
+        .field label { color: #374151; font-size: 0.75rem; font-weight: 900; }
+        .field input, .field textarea, .field select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; color: #111827; font: inherit; font-size: 0.86rem; }
+        .field textarea { min-height: 110px; resize: vertical; }
+        .help { color: #6b7280; font-size: 0.72rem; line-height: 1.4; }
+        .btn-primary, .btn-secondary, .btn-danger { border-radius: 9px; padding: 0.58rem 0.78rem; font-size: 0.78rem; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer; text-decoration: none; white-space: nowrap; }
+        .btn-primary { border: 0; background: #005bc2; color: #fff; }
+        .btn-primary:hover { background: #004a9f; }
+        .btn-secondary { border: 1px solid #d1d5db; background: #fff; color: #374151; }
+        .btn-secondary:hover { border-color: #9fc6f5; color: #005bc2; background: #f7fbff; }
+        .btn-danger { border: 1px solid #fecaca; background: #fff; color: #b91c1c; }
+        .btn-danger:hover { background: #fef2f2; }
+        .rule-list, .log-list { display: grid; gap: 0.75rem; }
+        .rule-row, .log-row { border: 1px solid #eef0ee; border-radius: 10px; padding: 0.85rem; display: grid; gap: 0.7rem; }
+        .rule-top, .log-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.7rem; }
+        .rule-name, .log-name { font-size: 0.9rem; font-weight: 900; color: #111827; }
+        .rule-meta, .log-meta { margin-top: 0.15rem; color: #6b7280; font-size: 0.72rem; }
+        .keyword-list { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+        .keyword { border-radius: 999px; background: #eef5ff; color: #005bc2; padding: 0.18rem 0.48rem; font-size: 0.68rem; font-weight: 900; }
+        .status-pill { border-radius: 999px; padding: 0.18rem 0.48rem; font-size: 0.66rem; font-weight: 900; color: #047857; background: #ecfdf5; }
+        .status-pill.off { color: #6b7280; background: #f3f4f6; }
+        .status-pill.failed { color: #b91c1c; background: #fee2e2; }
+        .rule-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+        .empty-state { text-align: center; padding: 2rem 1rem; color: #6b7280; }
+        .empty-state .material-symbols-outlined { display: block; font-size: 2.5rem; margin-bottom: 0.7rem; color: #9ca3af; }
+        .toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); color: white; padding: 0.9rem 1.2rem; border-radius: 10px; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.2); z-index: 1000; transition: opacity 0.3s ease; }
+        @media (max-width: 980px) { .automation-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 640px) {
+            .panel-header, .rule-top, .log-top { align-items: flex-start; flex-direction: column; }
+            .btn-primary, .btn-secondary, .btn-danger { width: 100%; }
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-on-primary-container antialiased" data-page="automations" data-title="Automations" data-subtitle="Instagram">
+    <div id="app-shell"></div>
+
+    <div data-content style="display: none;">
+        <div class="automation-grid">
+            <section class="panel ambient-shadow">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="panel-title">Comment DM rule</h2>
+                        <p class="panel-meta" id="media-summary">Loading Instagram posts...</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <form class="form-grid" id="rule-form">
+                        <input type="hidden" id="rule-id">
+                        <div class="field">
+                            <label for="rule-name">Rule name</label>
+                            <input id="rule-name" name="name" placeholder="Free guide DM" required>
+                        </div>
+                        <div class="field">
+                            <label for="trigger-keywords">Trigger keywords</label>
+                            <input id="trigger-keywords" name="trigger_keywords" placeholder="guide, info, link" required>
+                            <p class="help">Comma separated. Matching is case-insensitive.</p>
+                        </div>
+                        <div class="field">
+                            <label for="trigger-post">Trigger post</label>
+                            <select id="trigger-post" name="trigger_post">
+                                <option value="">All Instagram posts</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="dm-template">DM message</label>
+                            <textarea id="dm-template" name="dm_template" placeholder="Thanks for commenting, {{username}}. Here is the link: https://..." required></textarea>
+                            <p class="help">Available variables: {{username}}, {{comment}}, plus any JSON variables saved later.</p>
+                        </div>
+                        <label class="flex items-center gap-2 text-sm font-extrabold text-slate-700">
+                            <input type="checkbox" id="is-active" checked>
+                            Active
+                        </label>
+                        <button type="submit" class="btn-primary">
+                            <span class="material-symbols-outlined text-base">save</span>
+                            Save rule
+                        </button>
+                        <button type="button" class="btn-secondary" id="reset-form">
+                            <span class="material-symbols-outlined text-base">refresh</span>
+                            New rule
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="panel ambient-shadow">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="panel-title">Rules</h2>
+                        <p class="panel-meta" id="rules-summary">Loading rules...</p>
+                    </div>
+                    <button type="button" class="btn-secondary" id="refresh-btn">
+                        <span class="material-symbols-outlined text-base">sync</span>
+                        Refresh
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <div class="rule-list" id="rule-list"></div>
+                </div>
+            </section>
+
+            <section class="panel ambient-shadow md:col-span-2">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="panel-title">Recent DM activity</h2>
+                        <p class="panel-meta" id="logs-summary">Loading logs...</p>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div class="log-list" id="log-list"></div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/api-config.js"></script>
+    <script>
+        const supabaseClient = window.LEXAYA_SUPABASE_CLIENT || window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
+
+        let currentUser = null;
+        let currentSession = null;
+        let rules = [];
+        let media = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            currentUser = user;
+            currentSession = session;
+
+            if (!currentUser) {
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+            }
+
+            document.getElementById('rule-form').addEventListener('submit', saveRule);
+            document.getElementById('reset-form').addEventListener('click', resetForm);
+            document.getElementById('refresh-btn').addEventListener('click', loadAll);
+            await loadAll();
+        });
+
+        async function authHeaders() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            currentSession = session;
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentSession.access_token}`,
+            };
+        }
+
+        async function loadAll() {
+            await Promise.all([loadMedia(), loadRules(), loadLogs()]);
+        }
+
+        async function loadMedia() {
+            const summary = document.getElementById('media-summary');
+            const select = document.getElementById('trigger-post');
+            try {
+                const response = await fetch(API.instagramMedia(), { headers: await authHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Could not load Instagram posts');
+                media = data.media || [];
+                summary.textContent = media.length ? `${media.length} recent posts available` : 'No recent posts found';
+                select.innerHTML = '<option value="">All Instagram posts</option>' + media.map(item => `
+                    <option value="${escapeHtml(item.id)}">${escapeHtml((item.caption || item.permalink || item.id).slice(0, 80))}</option>
+                `).join('');
+            } catch (error) {
+                summary.textContent = 'Connect Instagram before choosing specific posts';
+                select.innerHTML = '<option value="">All Instagram posts</option>';
+            }
+        }
+
+        async function loadRules() {
+            const response = await fetch(API.instagramRules(), { headers: await authHeaders() });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Could not load rules', 'error');
+                return;
+            }
+            rules = data.rules || [];
+            renderRules();
+        }
+
+        async function loadLogs() {
+            const response = await fetch(API.instagramLogs(), { headers: await authHeaders() });
+            const data = await response.json();
+            if (!response.ok) {
+                renderLogs([]);
+                return;
+            }
+            renderLogs(data.logs || []);
+        }
+
+        function renderRules() {
+            const list = document.getElementById('rule-list');
+            const summary = document.getElementById('rules-summary');
+            summary.textContent = `${rules.length} rule${rules.length === 1 ? '' : 's'} configured`;
+            if (!rules.length) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-symbols-outlined">auto_awesome_motion</span>
+                        <p class="font-extrabold text-on-surface mb-1">No rules yet</p>
+                        <p class="text-sm">Create a keyword rule to reply privately when someone comments.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = rules.map(rule => `
+                <article class="rule-row">
+                    <div class="rule-top">
+                        <div>
+                            <div class="rule-name">${escapeHtml(rule.name)}</div>
+                            <div class="rule-meta">${rule.trigger_scope === 'specific' ? `${(rule.trigger_post_ids || []).length} selected post` : 'All posts'} · ${escapeHtml(rule.action_type || 'send_dm')}</div>
+                        </div>
+                        <span class="status-pill ${rule.is_active ? '' : 'off'}">${rule.is_active ? 'Active' : 'Paused'}</span>
+                    </div>
+                    <div class="keyword-list">${(rule.trigger_keywords || []).map(keyword => `<span class="keyword">${escapeHtml(keyword)}</span>`).join('')}</div>
+                    <p class="text-sm text-slate-700">${escapeHtml(rule.dm_template)}</p>
+                    <div class="rule-actions">
+                        <button type="button" class="btn-secondary" onclick="editRule('${rule.id}')"><span class="material-symbols-outlined text-base">edit</span>Edit</button>
+                        <button type="button" class="btn-danger" onclick="deleteRule('${rule.id}')"><span class="material-symbols-outlined text-base">delete</span>Delete</button>
+                    </div>
+                </article>
+            `).join('');
+        }
+
+        function renderLogs(logs) {
+            const list = document.getElementById('log-list');
+            const summary = document.getElementById('logs-summary');
+            summary.textContent = `${logs.length} recent event${logs.length === 1 ? '' : 's'}`;
+            if (!logs.length) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-symbols-outlined">forum</span>
+                        <p class="font-extrabold text-on-surface mb-1">No DMs sent yet</p>
+                        <p class="text-sm">Webhook-triggered sends appear here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = logs.map(log => `
+                <article class="log-row">
+                    <div class="log-top">
+                        <div>
+                            <div class="log-name">${escapeHtml(log.automation_rules?.name || 'Automation')}</div>
+                            <div class="log-meta">@${escapeHtml(log.ig_username || log.ig_user_id)} · ${formatDate(log.created_at)}</div>
+                        </div>
+                        <span class="status-pill ${log.dm_status === 'failed' ? 'failed' : ''}">${escapeHtml(log.dm_status)}</span>
+                    </div>
+                    <p class="text-sm text-slate-700">${escapeHtml(log.dm_message)}</p>
+                    ${log.dm_error ? `<p class="text-sm text-red-700">${escapeHtml(log.dm_error)}</p>` : ''}
+                </article>
+            `).join('');
+        }
+
+        async function saveRule(event) {
+            event.preventDefault();
+            const ruleId = document.getElementById('rule-id').value;
+            const postId = document.getElementById('trigger-post').value;
+            const payload = {
+                name: document.getElementById('rule-name').value,
+                trigger_keywords: document.getElementById('trigger-keywords').value,
+                trigger_post_ids: postId ? [postId] : [],
+                dm_template: document.getElementById('dm-template').value,
+                is_active: document.getElementById('is-active').checked,
+            };
+
+            const url = ruleId ? `${API.instagramRules()}?id=${encodeURIComponent(ruleId)}` : API.instagramRules();
+            const response = await fetch(url, {
+                method: ruleId ? 'PUT' : 'POST',
+                headers: await authHeaders(),
+                body: JSON.stringify(payload),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Could not save rule', 'error');
+                return;
+            }
+            showToast('Rule saved');
+            resetForm();
+            await loadRules();
+        }
+
+        function editRule(ruleId) {
+            const rule = rules.find(item => item.id === ruleId);
+            if (!rule) return;
+            document.getElementById('rule-id').value = rule.id;
+            document.getElementById('rule-name').value = rule.name || '';
+            document.getElementById('trigger-keywords').value = (rule.trigger_keywords || []).join(', ');
+            document.getElementById('trigger-post').value = (rule.trigger_post_ids || [])[0] || '';
+            document.getElementById('dm-template').value = rule.dm_template || '';
+            document.getElementById('is-active').checked = Boolean(rule.is_active);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function deleteRule(ruleId) {
+            if (!confirm('Delete this automation rule?')) return;
+            const response = await fetch(`${API.instagramRules()}?id=${encodeURIComponent(ruleId)}`, {
+                method: 'DELETE',
+                headers: await authHeaders(),
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                showToast(data.error || 'Could not delete rule', 'error');
+                return;
+            }
+            showToast('Rule deleted');
+            await loadRules();
+        }
+
+        function resetForm() {
+            document.getElementById('rule-form').reset();
+            document.getElementById('rule-id').value = '';
+            document.getElementById('is-active').checked = true;
+        }
+
+        function formatDate(value) {
+            return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, char => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[char]));
+        }
+
+        function showToast(message, type = 'success') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.style.background = type === 'success' ? '#10b981' : '#dc2626';
+            toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i><span>${escapeHtml(message)}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+    <script src="/js/layout.js"></script>
+</body>
+</html>

@@ -11,6 +11,7 @@ const API = {
   r2Upload:           () => `${BASE_URL}/api/broadcast/publish?action=upload`,
   reusableMedia:      () => `${BASE_URL}/api/broadcast/publish?action=media`,
   publish:            () => `${BASE_URL}/api/broadcast/publish`,
+  schedule:           () => `${BASE_URL}/api/broadcast/publish?action=schedule`,
   instagramComplete:  () => `${BASE_URL}/api/broadcast/publish?action=instagram-complete`,
   analyzeHook:        () => `${BASE_URL}/api/broadcast/analyze-hook`,
   health:             () => `${BASE_URL}/api/publish/health`,

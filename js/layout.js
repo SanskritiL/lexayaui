@@ -65,6 +65,7 @@
 
         moveContent();
         setupAuthButtons();
+        if (user) setupActivityBell(user);
     }
 
     function moveContent() {
@@ -145,6 +146,26 @@
                 <h1 class="text-headline-lg mt-1">${pageTitle}</h1>
             </div>
             <div class="flex items-center gap-6">
+                ${user ? `
+                <div class="activity-bell-wrap" id="activity-bell-wrap">
+                    <button type="button" class="activity-bell-button" id="activity-bell-button" aria-label="Recent publishing activity" aria-expanded="false">
+                        <span class="material-symbols-outlined">notifications</span>
+                        <span class="activity-badge" id="activity-badge" hidden>0</span>
+                    </button>
+                    <div class="activity-popover" id="activity-popover" hidden>
+                        <div class="activity-popover-head">
+                            <div>
+                                <strong>Recent activity</strong>
+                                <span>Last 7 days</span>
+                            </div>
+                            <button type="button" id="activity-mark-read">Mark all read</button>
+                        </div>
+                        <div class="activity-list" id="activity-list">
+                            <div class="activity-empty">Loading activity...</div>
+                        </div>
+                        <a class="activity-history-link" href="/broadcast/#publishing-history">View publishing history</a>
+                    </div>
+                </div>` : ''}
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high flex items-center justify-center">
                         <span class="material-symbols-outlined text-sm text-on-surface-variant">person</span>
@@ -198,6 +219,122 @@
 
     function setupAuthButtons() {
         const logoutBtn = document.querySelector('[onclick="handleLogout()"]');
+    }
+
+    function setupActivityBell(user) {
+        injectActivityStyles();
+        const button = document.getElementById('activity-bell-button');
+        const popover = document.getElementById('activity-popover');
+        const markRead = document.getElementById('activity-mark-read');
+        if (!button || !popover || !supabaseClient) return;
+
+        const readKey = `lexaya.activity.read.${user.id}`;
+        let activityPosts = [];
+
+        const render = () => {
+            const list = document.getElementById('activity-list');
+            const badge = document.getElementById('activity-badge');
+            if (!list || !badge) return;
+            const lastRead = Number(localStorage.getItem(readKey) || 0);
+            const unreadCount = activityPosts.filter(post => new Date(post.updated_at || post.created_at).getTime() > lastRead).length;
+            badge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+            badge.hidden = unreadCount === 0;
+
+            if (!activityPosts.length) {
+                list.innerHTML = '<div class="activity-empty">No publishing activity in the last 7 days.</div>';
+                return;
+            }
+
+            list.innerHTML = activityPosts.map(post => {
+                const summary = summarizePostActivity(post);
+                const isUnread = new Date(post.updated_at || post.created_at).getTime() > lastRead;
+                return `
+                    <a class="activity-item ${isUnread ? 'unread' : ''}" href="/broadcast/#publishing-history">
+                        <span class="activity-state ${summary.tone}"><span class="material-symbols-outlined">${summary.icon}</span></span>
+                        <span class="activity-copy">
+                            <strong>${escapeLayoutHtml(summary.title)}</strong>
+                            <span>${escapeLayoutHtml(summary.detail)}</span>
+                            <time>${escapeLayoutHtml(formatActivityTime(post.updated_at || post.created_at))}</time>
+                        </span>
+                    </a>`;
+            }).join('');
+        };
+
+        const load = async () => {
+            const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            const { data, error } = await supabaseClient
+                .from('posts')
+                .select('id, caption, status, platforms, platform_results, created_at, updated_at')
+                .eq('user_id', user.id)
+                .gte('created_at', since)
+                .neq('status', 'draft')
+                .order('updated_at', { ascending: false })
+                .limit(30);
+            activityPosts = error ? [] : (data || []);
+            render();
+        };
+
+        button.addEventListener('click', event => {
+            event.stopPropagation();
+            const willOpen = popover.hidden;
+            popover.hidden = !willOpen;
+            button.setAttribute('aria-expanded', String(willOpen));
+        });
+        popover.addEventListener('click', event => event.stopPropagation());
+        document.addEventListener('click', () => {
+            popover.hidden = true;
+            button.setAttribute('aria-expanded', 'false');
+        });
+        markRead?.addEventListener('click', () => {
+            localStorage.setItem(readKey, String(Date.now()));
+            render();
+        });
+
+        load();
+        supabaseClient.channel(`activity-${user.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `user_id=eq.${user.id}` }, load)
+            .subscribe();
+    }
+
+    function summarizePostActivity(post) {
+        const results = Object.values(post.platform_results || {});
+        const total = Math.max((post.platforms || []).length, results.length);
+        const succeeded = results.filter(result => result?.status === 'success').length;
+        const failed = results.filter(result => result?.status === 'error' || result?.status === 'unknown').length;
+        const pending = results.filter(result => result?.status === 'pending' || result?.status === 'processing').length;
+        const caption = String(post.caption || 'Untitled post').trim();
+        const detail = caption.length > 54 ? `${caption.slice(0, 51)}...` : caption;
+
+        if (failed && succeeded) return { title: `${succeeded} of ${total} platforms posted`, detail, icon: 'warning', tone: 'warning' };
+        if (failed) return { title: total > 1 ? `Post failed on ${failed} platform${failed === 1 ? '' : 's'}` : 'Post failed', detail, icon: 'error', tone: 'error' };
+        if (pending || post.status === 'publishing') return { title: 'Publishing in progress', detail, icon: 'progress_activity', tone: 'processing' };
+        if (post.status === 'scheduled') return { title: 'Post scheduled', detail, icon: 'event', tone: 'scheduled' };
+        return { title: `Posted to ${succeeded || total} platform${(succeeded || total) === 1 ? '' : 's'}`, detail, icon: 'check_circle', tone: 'success' };
+    }
+
+    function formatActivityTime(value) {
+        const date = new Date(value);
+        const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+        if (seconds < 60) return 'Just now';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    }
+
+    function escapeLayoutHtml(value) {
+        return String(value || '').replace(/[&<>'"]/g, character => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[character]));
+    }
+
+    function injectActivityStyles() {
+        if (document.getElementById('activity-bell-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'activity-bell-styles';
+        style.textContent = `
+            .activity-bell-wrap{position:relative}.activity-bell-button{position:relative;width:42px;height:42px;border:1px solid #e0e3e0;border-radius:12px;background:#fff;color:#5c605e;display:flex;align-items:center;justify-content:center;cursor:pointer}.activity-bell-button:hover{color:#005bc2;border-color:#b8d5ff;background:#f7fbff}.activity-badge{position:absolute;right:-5px;top:-5px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#a83836;color:#fff;border:2px solid #f9f9f7;font:800 10px/15px Manrope,sans-serif}.activity-popover{position:absolute;right:0;top:calc(100% + 12px);width:min(390px,calc(100vw - 32px));background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 24px 60px rgba(17,24,39,.16);overflow:hidden;z-index:80}.activity-popover-head{padding:15px 16px 12px;display:flex;align-items:start;justify-content:space-between;border-bottom:1px solid #eef0ee}.activity-popover-head strong{display:block;font-size:14px}.activity-popover-head span{display:block;color:#777c79;font-size:11px;margin-top:2px}.activity-popover-head button{border:0;background:transparent;color:#005bc2;font:800 11px Manrope,sans-serif;cursor:pointer;padding:4px}.activity-list{max-height:390px;overflow:auto}.activity-item{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:12px 16px;color:#2f3332;text-decoration:none;border-bottom:1px solid #f0f1f0}.activity-item:hover{background:#f7fbff}.activity-item.unread:after{content:'';position:absolute;right:12px;top:17px;width:7px;height:7px;border-radius:50%;background:#005bc2}.activity-state{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center}.activity-state .material-symbols-outlined{font-size:18px}.activity-state.success{background:#ecfdf5;color:#047857}.activity-state.error{background:#fef2f2;color:#b91c1c}.activity-state.warning{background:#fffbeb;color:#b45309}.activity-state.processing{background:#eef5ff;color:#005bc2}.activity-state.scheduled{background:#f5f3ff;color:#6d28d9}.activity-copy{min-width:0;padding-right:9px}.activity-copy strong,.activity-copy span,.activity-copy time{display:block}.activity-copy strong{font-size:12px}.activity-copy span{font-size:11px;color:#5c605e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.activity-copy time{font-size:10px;color:#929895;margin-top:4px}.activity-empty{padding:28px 18px;text-align:center;color:#777c79;font-size:12px}.activity-history-link{display:block;padding:12px 16px;text-align:center;color:#005bc2;text-decoration:none;font-size:12px;font-weight:800;background:#fbfbfa}.activity-history-link:hover{background:#f3f7fb}@media(max-width:640px){.activity-popover{position:fixed;right:16px;top:86px}.activity-bell-button{width:38px;height:38px}}
+        `;
+        document.head.appendChild(style);
     }
 
     window.handleLogout = function() {

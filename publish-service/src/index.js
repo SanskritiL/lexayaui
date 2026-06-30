@@ -188,6 +188,40 @@ app.all('/broadcast/publish', async (req, res) => {
       return res.json(result);
     }
 
+    // POST /broadcast/publish?action=schedule
+    if (method === 'POST' && action === 'schedule') {
+      const { postId, localDate, period, timezone } = req.body || {};
+      if (!postId || !/^\d{4}-\d{2}-\d{2}$/.test(localDate || '')) {
+        return res.status(400).json({ error: 'postId and localDate (YYYY-MM-DD) are required' });
+      }
+      if (!['am', 'pm'].includes(period)) {
+        return res.status(400).json({ error: 'period must be am or pm' });
+      }
+      if (!timezone || typeof timezone !== 'string' || timezone.length > 100) {
+        return res.status(400).json({ error: 'A valid IANA timezone is required' });
+      }
+
+      const supabase = getClient();
+      const { data, error } = await supabase.rpc('reserve_post_schedule', {
+        p_post_id: postId,
+        p_user_id: user.id,
+        p_local_date: localDate,
+        p_period: period,
+        p_timezone: timezone,
+      });
+
+      if (error) {
+        const message = String(error.message || 'Could not schedule post')
+          .replace(/^.*\[(SCHEDULE_[A-Z]+)\]\s*/, '');
+        const status = error.message?.includes('[SCHEDULE_CONFLICT]') ? 409
+          : error.message?.includes('[SCHEDULE_PAST]') ? 422
+            : error.message?.includes('[SCHEDULE_NOT_FOUND]') ? 404 : 400;
+        return res.status(status).json({ error: message });
+      }
+
+      return res.status(201).json({ postId, scheduledAt: data, period, timezone });
+    }
+
     // POST /broadcast/publish?action=instagram-complete
     if (method === 'POST' && action === 'instagram-complete') {
       const { postId, resultKey } = req.body || {};
