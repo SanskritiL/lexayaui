@@ -4,6 +4,25 @@
 const getClient = require('../../_supabase');
 const crypto = require('crypto');
 
+const INSTAGRAM_REQUESTED_SCOPES = [
+    'instagram_basic',
+    'instagram_content_publish',
+    'instagram_manage_comments',
+    'instagram_manage_messages',
+    'pages_show_list',
+    'pages_read_engagement',
+    'pages_manage_metadata',
+    'pages_messaging',
+    'business_management',
+];
+
+const INSTAGRAM_PUBLISH_SCOPES = [
+    'instagram_basic',
+    'instagram_content_publish',
+    'pages_show_list',
+    'pages_read_engagement',
+];
+
 async function getUserState(supabase, state) {
   if (!state) return null;
   try {
@@ -227,24 +246,14 @@ async function handleInstagram(req, res) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent('Facebook App not configured'));
         }
 
-        // Scopes for publishing + DM automation + insights
-        const scopes = [
-            'instagram_basic',
-            'instagram_content_publish',
-            'instagram_manage_comments',    // For reading comments (DM automation)
-            'instagram_manage_messages',    // For sending DMs (DM automation)
-            'pages_show_list',
-            'pages_read_engagement',
-            'pages_manage_metadata',
-            'pages_messaging',              // For webhook subscriptions
-            'business_management'
-        ].join(',');
         const authUrl = new URL('https://www.facebook.com/v18.0/dialog/oauth');
         authUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
-        authUrl.searchParams.set('scope', scopes);
+        authUrl.searchParams.set('scope', INSTAGRAM_REQUESTED_SCOPES.join(','));
         authUrl.searchParams.set('state', debug === 'true' ? `DEBUG:${state || ''}` : (state || ''));
         authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('auth_type', 'rerequest');
+        authUrl.searchParams.set('return_scopes', 'true');
 
         return res.redirect(authUrl.toString());
     }
@@ -286,6 +295,13 @@ async function handleInstagram(req, res) {
 
         const accessToken = longTokenData.access_token;
         const expiresIn = longTokenData.expires_in || (60 * 24 * 60 * 60);
+        const grantedScopes = await getFacebookGrantedScopes(accessToken);
+        const missingPublishScopes = INSTAGRAM_PUBLISH_SCOPES.filter(scope => !grantedScopes.includes(scope));
+        if (missingPublishScopes.length > 0) {
+            return res.redirect('/broadcast/?error=' + encodeURIComponent(
+                `Instagram connection is missing required permissions: ${missingPublishScopes.join(', ')}. Grant all requested Page and Instagram permissions, then try again.`
+            ));
+        }
 
         // Fetch pages only after the long-lived exchange so saved page tokens are not short-lived.
         let pagesResponse = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`);
@@ -306,6 +322,11 @@ async function handleInstagram(req, res) {
 
         for (const page of pagesData.data) {
             if (page.instagram_business_account) {
+                const tokenInfo = await inspectFacebookToken(page.access_token, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET);
+                if (!tokenInfo.isValid) {
+                    console.error('[Instagram] Meta returned an invalid Page token', { pageId: page.id });
+                    continue;
+                }
                 const igResponse = await fetch(
                     `https://graph.facebook.com/v18.0/${page.instagram_business_account.id}?fields=id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${page.access_token}`
                 );
@@ -317,6 +338,7 @@ async function handleInstagram(req, res) {
                         pageAccessToken: page.access_token,
                         pageId: page.id,
                         pageName: page.name,
+                        grantedScopes: [...new Set([...grantedScopes, ...tokenInfo.scopes])],
                     });
                 }
             }
@@ -345,7 +367,7 @@ async function handleInstagram(req, res) {
                 access_token: item.pageAccessToken,
                 refresh_token: null,
                 token_expires_at: tokenExpiresAt,
-                scopes: ['instagram_basic', 'instagram_content_publish', 'instagram_manage_comments', 'instagram_manage_messages', 'pages_messaging'],
+                scopes: item.grantedScopes,
                 metadata: {
                     profile_picture: instagramAccount.profile_picture_url,
                     ig_user_id: instagramAccount.id,
@@ -372,6 +394,33 @@ async function handleInstagram(req, res) {
         console.error('Instagram OAuth Error:', error);
         return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
     }
+}
+
+async function getFacebookGrantedScopes(accessToken) {
+    const permissionsUrl = new URL('https://graph.facebook.com/v18.0/me/permissions');
+    permissionsUrl.searchParams.set('access_token', accessToken);
+    const response = await fetch(permissionsUrl);
+    const payload = await response.json();
+    if (!response.ok || payload.error) {
+        throw new Error(payload.error?.message || 'Could not verify Instagram permissions');
+    }
+    return (payload.data || [])
+        .filter(entry => entry.status === 'granted')
+        .map(entry => entry.permission);
+}
+
+async function inspectFacebookToken(accessToken, appId, appSecret) {
+    const debugUrl = new URL('https://graph.facebook.com/v18.0/debug_token');
+    debugUrl.searchParams.set('input_token', accessToken);
+    debugUrl.searchParams.set('access_token', `${appId}|${appSecret}`);
+    const response = await fetch(debugUrl);
+    const payload = await response.json();
+    const data = payload.data || {};
+    const granularScopes = (data.granular_scopes || []).map(entry => entry.scope);
+    return {
+        isValid: response.ok && !payload.error && data.is_valid === true,
+        scopes: [...new Set([...(data.scopes || []), ...granularScopes])],
+    };
 }
 
 // ============== TIKTOK ==============

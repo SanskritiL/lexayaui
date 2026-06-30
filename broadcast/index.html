@@ -153,6 +153,8 @@
         .history-result-name { font-size: 0.76rem; font-weight: 900; color: #111827; }
         .history-result-message { margin-top: 0.15rem; font-size: 0.69rem; color: #6b7280; word-break: break-word; }
         .history-result-action { color: #005bc2; font-size: 0.69rem; font-weight: 900; text-decoration: none; white-space: nowrap; }
+        .history-reconnect { border: 1px solid #f3c7c7; border-radius: 8px; background: #fff; color: #b91c1c; padding: 0.42rem 0.58rem; font-size: 0.69rem; font-weight: 900; cursor: pointer; white-space: nowrap; }
+        .history-reconnect:hover { background: #fef2f2; }
         .history-retry { border: 1px solid #f3c7c7; border-radius: 8px; background: #fff; color: #b91c1c; padding: 0.45rem 0.65rem; font-size: 0.7rem; font-weight: 900; cursor: pointer; justify-self: end; }
         .history-retry:disabled { opacity: 0.55; cursor: wait; }
         @media (max-width: 980px) { .dashboard-grid { grid-template-columns: 1fr; } }
@@ -303,7 +305,10 @@
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `user_id=eq.${currentUser.id}` }, loadPublishingHistory)
                 .subscribe();
 
-            if (oauthResult.success) showSuccessBanner(oauthResult.platform);
+            if (oauthResult.success) {
+                showSuccessBanner(oauthResult.platform);
+                await resumeRetryAfterReconnect(oauthResult.platform);
+            }
             if (oauthResult.error) showToast(oauthResult.error, 'error');
         });
 
@@ -515,7 +520,7 @@
                             </div>
                         </summary>
                         <div class="history-details">
-                            ${targetKeys.map(key => renderHistoryResult(key, results[key])).join('')}
+                            ${targetKeys.map(key => renderHistoryResult(post.id, key, results[key])).join('')}
                             ${failedKeys.length ? `<button type="button" class="history-retry" data-retry-post="${post.id}" data-retry-platforms="${escapeHtml(JSON.stringify(failedKeys))}"><span class="material-symbols-outlined text-sm align-text-bottom">refresh</span> Retry ${failedKeys.length === 1 ? 'failed platform' : `${failedKeys.length} failed platforms`}</button>` : ''}
                         </div>
                     </details>`;
@@ -523,6 +528,9 @@
 
             list.querySelectorAll('[data-retry-post]').forEach(button => {
                 button.addEventListener('click', () => retryHistoryPlatforms(button));
+            });
+            list.querySelectorAll('[data-reconnect-result]').forEach(button => {
+                button.addEventListener('click', () => reconnectFailedResult(button));
             });
         }
 
@@ -533,11 +541,12 @@
             return `<span class="history-platform ${escapeHtml(status)}" title="${escapeHtml(result.error || result.note || result.message || status)}">${PLATFORM_ICONS[platform] || ''}${escapeHtml(PLATFORM_NAMES[platform] || platform)} ${statusIcon}</span>`;
         }
 
-        function renderHistoryResult(key, result = {}) {
+        function renderHistoryResult(postId, key, result = {}) {
             const platform = result.platform || String(key).split(':')[0];
             const name = result.account_name ? `${PLATFORM_NAMES[platform] || platform} · ${result.account_name}` : (PLATFORM_NAMES[platform] || platform);
             const status = result.status || 'processing';
             const message = status === 'success' ? 'Published successfully' : status === 'pending' ? (result.note || 'Processing on platform') : status === 'processing' ? (result.message || 'Publishing in progress') : (result.error || result.note || 'No final status received');
+            const requiresAuth = result.error_code === 'AUTH_REQUIRED' || result.error_code === 'AUTH_EXPIRED';
             return `
                 <div class="history-result">
                     <span class="history-result-icon platform-mark ${escapeHtml(platform)}">${PLATFORM_ICONS[platform] || '<i class="fas fa-link"></i>'}</span>
@@ -545,8 +554,31 @@
                         <div class="history-result-name">${escapeHtml(name)}</div>
                         <div class="history-result-message">${escapeHtml(message)}</div>
                     </div>
-                    ${result.url ? `<a class="history-result-action" href="${escapeHtml(result.url)}" target="_blank" rel="noopener">View post ↗</a>` : ''}
+                    ${result.url ? `<a class="history-result-action" href="${escapeHtml(result.url)}" target="_blank" rel="noopener">View post ↗</a>` : requiresAuth ? `<button type="button" class="history-reconnect" data-reconnect-result data-post-id="${escapeHtml(postId)}" data-result-key="${escapeHtml(key)}" data-platform="${escapeHtml(platform)}">Reconnect &amp; retry</button>` : ''}
                 </div>`;
+        }
+
+        function reconnectFailedResult(button) {
+            const pendingRetry = {
+                postId: button.dataset.postId,
+                resultKey: button.dataset.resultKey,
+                platform: button.dataset.platform,
+                createdAt: Date.now(),
+            };
+            sessionStorage.setItem('lexaya.pending-auth-retry', JSON.stringify(pendingRetry));
+            connectPlatform(pendingRetry.platform);
+        }
+
+        async function resumeRetryAfterReconnect(platform) {
+            let pendingRetry = null;
+            try {
+                pendingRetry = JSON.parse(sessionStorage.getItem('lexaya.pending-auth-retry') || 'null');
+            } catch (_) {}
+            if (!pendingRetry || pendingRetry.platform !== platform) return;
+            sessionStorage.removeItem('lexaya.pending-auth-retry');
+            if (Date.now() - Number(pendingRetry.createdAt || 0) > 30 * 60 * 1000) return;
+            showToast(`Authorization refreshed. Retrying ${PLATFORM_NAMES[platform] || platform}...`);
+            await retryPostPlatforms(pendingRetry.postId, [pendingRetry.resultKey]);
         }
 
         async function retryHistoryPlatforms(button) {
@@ -554,9 +586,15 @@
             let platforms = [];
             try { platforms = JSON.parse(button.dataset.retryPlatforms || '[]'); } catch (_) {}
             if (!postId || !platforms.length) return;
-            const original = button.innerHTML;
-            button.disabled = true;
-            button.textContent = 'Retrying...';
+            await retryPostPlatforms(postId, platforms, button);
+        }
+
+        async function retryPostPlatforms(postId, platforms, button = null) {
+            const original = button?.innerHTML || '';
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Retrying...';
+            }
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (!session?.access_token) throw new Error('Sign in again to retry.');
@@ -571,8 +609,10 @@
                 await loadPublishingHistory();
             } catch (retryError) {
                 showToast(retryError.message || 'Retry failed', 'error');
-                button.disabled = false;
-                button.innerHTML = original;
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = original;
+                }
             }
         }
 
