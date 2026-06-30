@@ -20,17 +20,20 @@ get_env_var() {
   local value=""
   local file
 
-  for file in ../.env.local ../.env; do
-    if [ -f "$file" ]; then
-      value="$(grep -E "^(export[[:space:]]+)?${name}=" "$file" 2>/dev/null | tail -n1 | cut -d'=' -f2- || true)"
-      if [ -n "$value" ]; then
-        break
-      fi
-    fi
-  done
+  # Preserve the production service configuration by default. Local env files
+  # can lag behind OAuth credentials managed in Vercel and must not silently
+  # overwrite working Cloud Run secrets on every source deploy.
+  value="$(get_deployed_env_var "$name")"
 
-  if [ -z "$value" ]; then
-    value="$(get_deployed_env_var "$name")"
+  if [ -z "$value" ] || [ "${PREFER_LOCAL_ENV:-false}" = "true" ]; then
+    for file in ../.env.local ../.env; do
+      if [ -f "$file" ]; then
+        value="$(grep -E "^(export[[:space:]]+)?${name}=" "$file" 2>/dev/null | tail -n1 | cut -d'=' -f2- || true)"
+        if [ -n "$value" ]; then
+          break
+        fi
+      fi
+    done
   fi
 
   value="${value%$'\r'}"
