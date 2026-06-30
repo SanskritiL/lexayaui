@@ -5,6 +5,8 @@ const { ReadableStream } = require('node:stream/web');
 const {
   buildTikTokUploadPlan,
   createChunkSource,
+  isRetryableTikTokUploadFailure,
+  readTikTokUploadErrorCode,
   TIKTOK_MAX_CHUNK_SIZE,
   TIKTOK_MAX_FINAL_CHUNK_SIZE,
 } = require('../src/platforms/tiktok')._private;
@@ -57,4 +59,14 @@ test('reads exact chunk lengths from a stream without losing byte order', async 
   assert.equal((await source.read(4)).toString(), 'abcd');
   assert.equal((await source.read(3)).toString(), 'efg');
   assert.equal((await source.read(4)).toString(), 'hijk');
+});
+
+test('retries TikTok upload server and request-id failures', () => {
+  const requestIdError = JSON.stringify({ code: 50001, message: 'missing or invalid request id' });
+
+  assert.equal(readTikTokUploadErrorCode(requestIdError), 50001);
+  assert.equal(isRetryableTikTokUploadFailure(500, requestIdError), true);
+  assert.equal(isRetryableTikTokUploadFailure(400, requestIdError), true);
+  assert.equal(isRetryableTikTokUploadFailure(429, '{}'), true);
+  assert.equal(isRetryableTikTokUploadFailure(400, '{"code":10002}'), false);
 });

@@ -4,6 +4,7 @@ const TIKTOK_MIN_CHUNK_SIZE = 5_000_000;
 const TIKTOK_MAX_CHUNK_SIZE = 64_000_000;
 const TIKTOK_MAX_FINAL_CHUNK_SIZE = 128_000_000;
 const TIKTOK_MAX_CHUNKS = 1000;
+const TIKTOK_CHUNK_MAX_ATTEMPTS = 4;
 
 async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
@@ -86,20 +87,15 @@ async function uploadFileToTikTok(accessToken, media, onProgress) {
 
     await p('uploading', `Uploading chunk ${i + 1} of ${uploadPlan.totalChunks} (${pct}%)...`, pct);
 
-    const uploadRes = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': chunk.length.toString(),
-        'Content-Range': `bytes ${part.start}-${part.end}/${videoSize}`,
-      },
-      body: chunk,
-    });
     const isLastChunk = i === uploadPlan.totalChunks - 1;
-    const expectedStatus = isLastChunk ? 201 : 206;
-    if (uploadRes.status !== expectedStatus && uploadRes.status !== 201 && uploadRes.status !== 206) {
-      throw new Error(`TikTok chunk ${i + 1} failed: ${await uploadRes.text()}`);
-    }
+    await uploadTikTokChunk({
+      uploadUrl,
+      chunk,
+      contentType,
+      contentRange: `bytes ${part.start}-${part.end}/${videoSize}`,
+      chunkNumber: i + 1,
+      isLastChunk,
+    });
   }
 
   await p('finalizing', 'Finalizing with TikTok...');
@@ -108,6 +104,79 @@ async function uploadFileToTikTok(accessToken, media, onProgress) {
     publish_id: publishId,
     note: 'Video sent to TikTok inbox. Open TikTok app to post.',
   };
+}
+
+async function uploadTikTokChunk({ uploadUrl, chunk, contentType, contentRange, chunkNumber, isLastChunk }) {
+  let lastFailure = null;
+
+  for (let attempt = 1; attempt <= TIKTOK_CHUNK_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': chunk.length.toString(),
+          'Content-Range': contentRange,
+        },
+        body: chunk,
+      });
+      const expectedStatus = isLastChunk ? 201 : 206;
+      if (response.status === expectedStatus || response.status === 201 || response.status === 206) return;
+
+      const responseBody = await response.text();
+      lastFailure = { status: response.status, body: responseBody };
+      if (!isRetryableTikTokUploadFailure(response.status, responseBody) || attempt === TIKTOK_CHUNK_MAX_ATTEMPTS) {
+        throw buildTikTokChunkError(chunkNumber, lastFailure, attempt);
+      }
+    } catch (error) {
+      if (error?.code === 'TIKTOK_CHUNK_UPLOAD_FAILED') throw error;
+      lastFailure = { status: 0, body: error?.message || 'Network error' };
+      if (attempt === TIKTOK_CHUNK_MAX_ATTEMPTS) {
+        throw buildTikTokChunkError(chunkNumber, lastFailure, attempt);
+      }
+    }
+
+    const uploadHost = safeUrlHost(uploadUrl);
+    console.warn('[TIKTOK] Retrying chunk upload', {
+      uploadHost,
+      chunkNumber,
+      attempt,
+      status: lastFailure.status,
+      providerCode: readTikTokUploadErrorCode(lastFailure.body),
+    });
+    await delay(750 * (2 ** (attempt - 1)));
+  }
+}
+
+function isRetryableTikTokUploadFailure(status, body) {
+  const code = readTikTokUploadErrorCode(body);
+  return status === 0 || status === 408 || status === 429 || status >= 500 || code === 50001;
+}
+
+function readTikTokUploadErrorCode(body) {
+  try {
+    return Number(JSON.parse(body || '{}').code) || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function buildTikTokChunkError(chunkNumber, failure, attempts) {
+  const error = new Error(`TikTok chunk ${chunkNumber} failed after ${attempts} attempts: ${failure.body}`);
+  error.code = 'TIKTOK_CHUNK_UPLOAD_FAILED';
+  return error;
+}
+
+function safeUrlHost(value) {
+  try {
+    return new URL(value).host;
+  } catch (_) {
+    return 'unknown';
+  }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function buildTikTokUploadPlan(videoSize) {
@@ -301,10 +370,13 @@ module.exports = {
     buildTikTokUploadPlan,
     createChunkSource,
     getTikTokUploadContentType,
+    isRetryableTikTokUploadFailure,
+    readTikTokUploadErrorCode,
     refreshTikTokAccessToken,
     TIKTOK_MIN_CHUNK_SIZE,
     TIKTOK_MAX_CHUNK_SIZE,
     TIKTOK_MAX_FINAL_CHUNK_SIZE,
     TIKTOK_MAX_CHUNKS,
+    TIKTOK_CHUNK_MAX_ATTEMPTS,
   },
 };
