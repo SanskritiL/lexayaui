@@ -1,8 +1,22 @@
 const crypto = require('crypto');
 const getClient = require('./_supabase');
 
-const GRAPH_VERSION = 'v18.0';
+const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0';
 const GRAPH_BASE = `https://graph.facebook.com/${GRAPH_VERSION}`;
+
+function webhookLog(requestId, stage, details = {}, level = 'log') {
+  const safeLevel = ['log', 'warn', 'error'].includes(level) ? level : 'log';
+  console[safeLevel]('[Instagram Webhook]', JSON.stringify({
+    requestId,
+    stage,
+    ...details,
+  }));
+}
+
+function diagnosticRef(value) {
+  if (!value) return null;
+  return crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 12);
+}
 
 function getSupabase() {
   return getClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
@@ -120,17 +134,36 @@ function ruleMatchesPost(rule, mediaId) {
   return (rule.trigger_post_ids || []).includes(mediaId);
 }
 
-async function sendPrivateReply(commentId, message, accessToken) {
-  return graphFetch(`${commentId}/private_replies`, {
-    message,
-    access_token: accessToken,
-  }, { method: 'POST' });
+async function sendPrivateReply(igAccountId, commentId, message, accessToken) {
+  // This app uses Facebook Login for Business and stores a Page access token,
+  // so Meta requires the graph.facebook.com host for the Send API.
+  const response = await fetch(`${GRAPH_BASE}/${igAccountId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      recipient: { comment_id: commentId },
+      message: { text: message },
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) {
+    const error = new Error(data.error?.message || `Instagram private reply failed (${response.status})`);
+    error.status = response.status;
+    error.graph = data.error;
+    throw error;
+  }
+  return data;
 }
 
 function verifyWebhookSignature(req, rawBody) {
   const appSecret = process.env.FACEBOOK_APP_SECRET;
   const signature = req.headers['x-hub-signature-256'];
-  if (!appSecret || !signature) return true;
+  const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+  if (!appSecret || !signature) return !isProduction;
 
   const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
   try {
@@ -263,24 +296,63 @@ async function handleLogs(req, res, supabase) {
 }
 
 async function handleWebhook(req, res, supabase) {
+  const requestId = req.headers['x-vercel-id'] || crypto.randomUUID();
+
   if (req.method === 'GET') {
     const verifyToken = process.env.INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
-    if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === verifyToken) {
+    const modeMatches = req.query['hub.mode'] === 'subscribe';
+    const tokenMatches = Boolean(verifyToken) && req.query['hub.verify_token'] === verifyToken;
+    webhookLog(requestId, 'verification_received', {
+      modeMatches,
+      tokenConfigured: Boolean(verifyToken),
+      tokenMatches,
+      challengePresent: Boolean(req.query['hub.challenge']),
+    });
+    if (modeMatches && tokenMatches) {
+      webhookLog(requestId, 'verification_succeeded');
       return res.status(200).send(req.query['hub.challenge']);
     }
+    webhookLog(requestId, 'verification_failed', { modeMatches, tokenMatches }, 'warn');
     return res.status(403).send('Verification failed');
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const rawBody = await readRawBody(req);
-  if (!verifyWebhookSignature(req, rawBody)) return res.status(401).json({ error: 'Invalid signature' });
+  webhookLog(requestId, 'delivery_received', {
+    contentLength: rawBody.length,
+    signaturePresent: Boolean(req.headers['x-hub-signature-256']),
+    contentType: req.headers['content-type'] || null,
+  });
+  if (!verifyWebhookSignature(req, rawBody)) {
+    webhookLog(requestId, 'signature_rejected', {
+      appSecretConfigured: Boolean(process.env.FACEBOOK_APP_SECRET),
+      signaturePresent: Boolean(req.headers['x-hub-signature-256']),
+    }, 'warn');
+    return res.status(401).json({ error: 'Invalid signature', requestId });
+  }
+  webhookLog(requestId, 'signature_accepted');
 
   const payload = JSON.parse(rawBody.toString('utf8') || '{}');
   const events = extractCommentEvents(payload);
   const results = [];
+  webhookLog(requestId, 'payload_parsed', {
+    object: payload.object || null,
+    entryCount: Array.isArray(payload.entry) ? payload.entry.length : 0,
+    commentEventCount: events.length,
+  });
+
+  if (!events.length) {
+    webhookLog(requestId, 'no_supported_events', {}, 'warn');
+  }
 
   for (const event of events) {
+    const eventRef = diagnosticRef(event.commentId);
+    webhookLog(requestId, 'event_processing', {
+      eventRef,
+      accountRef: diagnosticRef(event.igAccountId),
+      mediaRef: diagnosticRef(event.mediaId),
+    });
     const { data: allAccounts, error: accountError } = await supabase
       .from('connected_accounts')
       .select('*')
@@ -294,11 +366,18 @@ async function handleWebhook(req, res, supabase) {
     });
 
     if (accountError || !accounts?.length) {
+      webhookLog(requestId, 'account_match_failed', {
+        eventRef,
+        candidateCount: allAccounts?.length || 0,
+        error: accountError?.message || null,
+      }, 'warn');
       results.push({ commentId: event.commentId, status: 'skipped', reason: 'No connected account matched webhook event' });
       continue;
     }
+    webhookLog(requestId, 'accounts_matched', { eventRef, accountCount: accounts.length });
 
     for (const account of accounts) {
+      const accountRef = diagnosticRef(account.id);
       const { data: rules, error: rulesError } = await supabase
         .from('automation_rules')
         .select('*')
@@ -307,24 +386,27 @@ async function handleWebhook(req, res, supabase) {
         .eq('trigger_type', 'comment_keyword');
 
       if (rulesError) {
+        webhookLog(requestId, 'rules_load_failed', {
+          eventRef,
+          accountRef,
+          error: rulesError.message,
+        }, 'error');
         results.push({ commentId: event.commentId, status: 'failed', error: rulesError.message });
         continue;
       }
 
-      for (const rule of rules || []) {
-        if (!ruleMatchesPost(rule, event.mediaId) || !commentTextMatches(rule, event.text)) continue;
+      const matchingRules = (rules || []).filter(rule =>
+        ruleMatchesPost(rule, event.mediaId) && commentTextMatches(rule, event.text)
+      );
+      webhookLog(requestId, 'rules_evaluated', {
+        eventRef,
+        accountRef,
+        activeRuleCount: rules?.length || 0,
+        matchingRuleCount: matchingRules.length,
+      });
 
-        const { data: existingLog } = await supabase
-          .from('dm_log')
-          .select('id, dm_status')
-          .eq('automation_rule_id', rule.id)
-          .eq('ig_comment_id', event.commentId)
-          .maybeSingle();
-
-        if (existingLog) {
-          results.push({ commentId: event.commentId, ruleId: rule.id, status: 'duplicate' });
-          continue;
-        }
+      for (const rule of matchingRules) {
+        const ruleRef = diagnosticRef(rule.id);
 
         const message = renderTemplate(rule.dm_template, {
           username: event.username || '',
@@ -341,27 +423,78 @@ async function handleWebhook(req, res, supabase) {
           ig_comment_id: event.commentId,
           ig_comment_text: event.text,
           dm_message: message,
-          dm_status: 'sent',
+          dm_status: 'pending',
         };
 
+        // Claim this rule/comment pair before calling Meta. The unique database
+        // index makes concurrent or retried webhook deliveries idempotent.
+        const { data: claimedLog, error: claimError } = await supabase
+          .from('dm_log')
+          .insert(logPayload)
+          .select('id')
+          .single();
+
+        if (claimError?.code === '23505') {
+          webhookLog(requestId, 'duplicate_skipped', { eventRef, accountRef, ruleRef });
+          results.push({ commentId: event.commentId, ruleId: rule.id, status: 'duplicate' });
+          continue;
+        }
+        if (claimError) {
+          webhookLog(requestId, 'log_claim_failed', {
+            eventRef,
+            accountRef,
+            ruleRef,
+            error: claimError.message,
+          }, 'error');
+          results.push({ commentId: event.commentId, ruleId: rule.id, status: 'failed', error: claimError.message });
+          continue;
+        }
+        webhookLog(requestId, 'log_claimed', {
+          eventRef,
+          accountRef,
+          ruleRef,
+          logRef: diagnosticRef(claimedLog.id),
+          messageLength: message.length,
+        });
+
         try {
-          await sendPrivateReply(event.commentId, message, account.access_token);
-          const { error: insertError } = await supabase.from('dm_log').insert(logPayload);
-          if (insertError && insertError.code !== '23505') throw insertError;
-          results.push({ commentId: event.commentId, ruleId: rule.id, status: insertError?.code === '23505' ? 'duplicate' : 'sent' });
+          webhookLog(requestId, 'meta_send_started', { eventRef, accountRef, ruleRef });
+          await sendPrivateReply(account.platform_user_id, event.commentId, message, account.access_token);
+          webhookLog(requestId, 'meta_send_succeeded', { eventRef, accountRef, ruleRef });
+          const { error: updateError } = await supabase
+            .from('dm_log')
+            .update({ dm_status: 'sent', dm_sent_at: new Date().toISOString(), dm_error: null })
+            .eq('id', claimedLog.id);
+          if (updateError) throw updateError;
+          webhookLog(requestId, 'log_marked_sent', { eventRef, accountRef, ruleRef });
+          results.push({ commentId: event.commentId, ruleId: rule.id, status: 'sent' });
         } catch (error) {
-          await supabase.from('dm_log').insert({
-            ...logPayload,
-            dm_status: 'failed',
-            dm_error: error.message,
-          }).then(() => null);
+          webhookLog(requestId, 'send_or_update_failed', {
+            eventRef,
+            accountRef,
+            ruleRef,
+            error: error.message,
+            httpStatus: error.status || null,
+            graphCode: error.graph?.code || null,
+            graphSubcode: error.graph?.error_subcode || null,
+          }, 'error');
+          await supabase
+            .from('dm_log')
+            .update({ dm_status: 'failed', dm_error: error.message })
+            .eq('id', claimedLog.id)
+            .then(() => null);
           results.push({ commentId: event.commentId, ruleId: rule.id, status: 'failed', error: error.message });
         }
       }
     }
   }
 
-  return res.status(200).json({ received: true, processed: results });
+  const statusCounts = results.reduce((counts, result) => {
+    counts[result.status] = (counts[result.status] || 0) + 1;
+    return counts;
+  }, {});
+  webhookLog(requestId, 'delivery_completed', { processedCount: results.length, statusCounts });
+  return res.status(200).json({ received: true, requestId, processed: results });
 }
 
 module.exports = {

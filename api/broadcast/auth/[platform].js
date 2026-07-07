@@ -3,6 +3,8 @@
 
 const getClient = require('../../_supabase');
 const crypto = require('crypto');
+const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0';
+const FACEBOOK_GRAPH_BASE = `https://graph.facebook.com/${META_GRAPH_VERSION}`;
 
 const INSTAGRAM_REQUESTED_SCOPES = [
     'instagram_basic',
@@ -246,7 +248,7 @@ async function handleInstagram(req, res) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent('Facebook App not configured'));
         }
 
-        const authUrl = new URL('https://www.facebook.com/v18.0/dialog/oauth');
+        const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
         authUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
         authUrl.searchParams.set('scope', INSTAGRAM_REQUESTED_SCOPES.join(','));
@@ -265,7 +267,7 @@ async function handleInstagram(req, res) {
 
     try {
         // Exchange code for token
-        const tokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+        const tokenUrl = new URL(`${FACEBOOK_GRAPH_BASE}/oauth/access_token`);
         tokenUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
         tokenUrl.searchParams.set('client_secret', FACEBOOK_APP_SECRET);
         tokenUrl.searchParams.set('redirect_uri', redirectUri);
@@ -281,7 +283,7 @@ async function handleInstagram(req, res) {
         const shortLivedToken = tokenData.access_token;
 
         // Exchange for long-lived token
-        const longTokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+        const longTokenUrl = new URL(`${FACEBOOK_GRAPH_BASE}/oauth/access_token`);
         longTokenUrl.searchParams.set('grant_type', 'fb_exchange_token');
         longTokenUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
         longTokenUrl.searchParams.set('client_secret', FACEBOOK_APP_SECRET);
@@ -304,11 +306,11 @@ async function handleInstagram(req, res) {
         }
 
         // Fetch pages only after the long-lived exchange so saved page tokens are not short-lived.
-        let pagesResponse = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`);
+        let pagesResponse = await fetch(`${FACEBOOK_GRAPH_BASE}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`);
         let pagesData = await pagesResponse.json();
 
         if (!pagesData.data || pagesData.data.length === 0) {
-            const meResponse = await fetch(`https://graph.facebook.com/v18.0/me?fields=id,name,accounts{id,name,access_token,instagram_business_account}&access_token=${accessToken}`);
+            const meResponse = await fetch(`${FACEBOOK_GRAPH_BASE}/me?fields=id,name,accounts{id,name,access_token,instagram_business_account}&access_token=${accessToken}`);
             const meData = await meResponse.json();
             if (meData.accounts?.data?.length > 0) {
                 pagesData = meData.accounts;
@@ -328,7 +330,7 @@ async function handleInstagram(req, res) {
                     continue;
                 }
                 const igResponse = await fetch(
-                    `https://graph.facebook.com/v18.0/${page.instagram_business_account.id}?fields=id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${page.access_token}`
+                    `${FACEBOOK_GRAPH_BASE}/${page.instagram_business_account.id}?fields=id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${page.access_token}`
                 );
                 const igData = await igResponse.json();
 
@@ -397,7 +399,7 @@ async function handleInstagram(req, res) {
 }
 
 async function getFacebookGrantedScopes(accessToken) {
-    const permissionsUrl = new URL('https://graph.facebook.com/v18.0/me/permissions');
+    const permissionsUrl = new URL(`${FACEBOOK_GRAPH_BASE}/me/permissions`);
     permissionsUrl.searchParams.set('access_token', accessToken);
     const response = await fetch(permissionsUrl);
     const payload = await response.json();
@@ -410,7 +412,7 @@ async function getFacebookGrantedScopes(accessToken) {
 }
 
 async function inspectFacebookToken(accessToken, appId, appSecret) {
-    const debugUrl = new URL('https://graph.facebook.com/v18.0/debug_token');
+    const debugUrl = new URL(`${FACEBOOK_GRAPH_BASE}/debug_token`);
     debugUrl.searchParams.set('input_token', accessToken);
     debugUrl.searchParams.set('access_token', `${appId}|${appSecret}`);
     const response = await fetch(debugUrl);

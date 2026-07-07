@@ -13,6 +13,9 @@ const API = {
   publish:            () => `${BASE_URL}/api/broadcast/publish`,
   schedule:           () => `${BASE_URL}/api/broadcast/publish?action=schedule`,
   instagramComplete:  () => `${BASE_URL}/api/broadcast/publish?action=instagram-complete`,
+  instagramMedia:     () => `${BASE_URL}/api/instagram/media`,
+  instagramRules:     () => `${BASE_URL}/api/instagram/rules`,
+  instagramLogs:      () => `${BASE_URL}/api/instagram/logs`,
   analyzeHook:        () => `${BASE_URL}/api/broadcast/analyze-hook`,
   health:             () => `${BASE_URL}/api/publish/health`,
 };
