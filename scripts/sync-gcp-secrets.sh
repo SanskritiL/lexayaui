@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-turtle-487402}"
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null || true)}}"
 ENV_FILE="${1:-.env.local}"
+
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "(unset)" ]; then
+  echo "Set GOOGLE_CLOUD_PROJECT or run: gcloud config set project YOUR_PROJECT_ID" >&2
+  exit 1
+fi
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "Environment file not found: $ENV_FILE" >&2

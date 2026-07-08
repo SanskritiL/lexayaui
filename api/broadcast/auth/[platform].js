@@ -238,7 +238,7 @@ async function handleInstagram(req, res) {
 
     const { code, state, error: oauthError, error_description, error_reason, debug } = req.query;
 
-    const redirectUri = process.env.INSTAGRAM_REDIRECT_URI || 'https://lexaya.io/api/broadcast/auth/instagram';
+    const redirectUri = process.env.INSTAGRAM_REDIRECT_URI || `${getPublicBaseUrl(req)}/api/broadcast/auth/instagram`;
     const isDebug = debug === 'true' || debug === '1' || (state && state.startsWith('DEBUG:'));
     const requestId = req.headers['x-cloud-trace-context']?.split('/')?.[0] || crypto.randomUUID();
 

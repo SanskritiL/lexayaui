@@ -24,7 +24,11 @@ module.exports = async (req, res) => {
             return res.status(400).json({ error: 'Price ID is required' });
         }
 
-        const origin = req.headers.origin || 'https://lexaya.io';
+        const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+        const host = forwardedHost || req.headers.host;
+        const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+        const protocol = forwardedProto || (host?.includes('localhost') ? 'http' : 'https');
+        const origin = req.headers.origin || process.env.APP_BASE_URL || (host ? `${protocol}://${host}` : 'http://localhost:3000');
         const redirectUrl = successUrl || `${origin}/members.html?success=true`;
         const checkoutMode = mode || 'payment'; // 'payment' or 'subscription'
 

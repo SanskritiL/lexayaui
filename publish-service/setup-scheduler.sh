@@ -5,10 +5,15 @@ set -euo pipefail
 #   CRON_SECRET=... ./setup-scheduler.sh
 # Optional: PROJECT_ID, REGION, SERVICE_NAME, SCHEDULE_TIMEZONE
 
-PROJECT_ID="${PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-turtle-487402}}"
+PROJECT_ID="${PROJECT_ID:-${GOOGLE_CLOUD_PROJECT:-$(gcloud config get-value project 2>/dev/null || true)}}"
 REGION="${REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-publish-service}"
 SCHEDULE_TIMEZONE="${SCHEDULE_TIMEZONE:-America/Chicago}"
+
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "(unset)" ]; then
+  echo "Set GOOGLE_CLOUD_PROJECT or run: gcloud config set project YOUR_PROJECT_ID" >&2
+  exit 1
+fi
 
 if [ -z "${CRON_SECRET:-}" ]; then
   echo "CRON_SECRET is required" >&2

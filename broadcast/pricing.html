@@ -92,13 +92,10 @@
     </div>
 
     <script>
-        // Config
-        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
 
         // Stripe Price ID for Broadcast Pro ($2.99 one-time)
-        const BROADCAST_PRICE_ID = 'price_1T1ogBA1WPL5LnBtEQBc2ZXx';
+        const BROADCAST_PRICE_ID = CONFIG.PRODUCTS.broadcastPro;
 
         let currentUser = null;
 
@@ -132,6 +129,7 @@
             btn.textContent = 'Loading...';
 
             try {
+                if (!BROADCAST_PRICE_ID) throw new Error('Broadcast Pro price ID is not configured.');
                 const response = await fetch('/api/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

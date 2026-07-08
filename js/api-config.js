@@ -4,12 +4,14 @@
 // can outlive a hosting rewrite timeout.
 const BASE_URL = (() => {
   if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
+  if (window.CONFIG?.API_BASE_URL !== undefined) return window.CONFIG.API_BASE_URL;
   const isLocalStaticPreview = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
-  return isLocalStaticPreview || window.location.protocol === 'file:' ? 'https://lexaya.io' : '';
+  return isLocalStaticPreview || window.location.protocol === 'file:' ? 'http://localhost:8080' : '';
 })();
 
 const PUBLISH_BASE_URL = window.LEXAYA_PUBLISH_BASE_URL ||
-  'https://publish-service-266355090145.us-central1.run.app';
+  window.CONFIG?.PUBLISH_BASE_URL ||
+  (['localhost', '127.0.0.1', ''].includes(window.location.hostname) || window.location.protocol === 'file:' ? 'http://localhost:8081' : '');
 
 const API = {
   r2Upload:           () => `${PUBLISH_BASE_URL}/broadcast/publish?action=upload`,

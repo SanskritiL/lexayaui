@@ -225,16 +225,14 @@
         </div>
     </div>
 
+    <script src="/js/config.js"></script>
     <script>
-        // Config
-        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabaseClient = window.LEXAYA_SUPABASE_CLIENT || window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        const supabaseClient = window.LEXAYA_SUPABASE_CLIENT || window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
         window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
 
         let connectedAccounts = [];
         let currentUser = null;
-        const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
+        const ADMIN_EMAILS = CONFIG.ADMIN_EMAILS || [];
         let currentSession = null;
 
         // Cache config
@@ -556,8 +554,7 @@
         }
         function getAuthApiBase() {
             if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
-            const isLocalStaticPreview = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
-            return isLocalStaticPreview || window.location.protocol === 'file:' ? 'https://lexaya.io' : 'https://lexaya.io';
+            return CONFIG.API_BASE_URL || '';
         }
         function getAuthUrl(platform, state) {
             return `${getAuthApiBase()}/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;
@@ -661,7 +658,6 @@
         }
     </script>
 
-    <script src="/js/config.js"></script>
     <script src="/js/layout.js"></script>
 </body>
 </html>

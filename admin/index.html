@@ -283,13 +283,12 @@
         </main>
     </div>
 
+    <script src="/js/config.js"></script>
     <script>
-        const SUPABASE_URL = 'https://bcyhcsphmqizzvzmdqxc.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        const supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
 
         // Admin emails that can access this page
-        const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
+        const ADMIN_EMAILS = CONFIG.ADMIN_EMAILS || [];
 
         async function init() {
             const { data: { user } } = await supabase.auth.getUser();

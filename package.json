@@ -2,10 +2,16 @@
   "name": "lexaya",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "python3 -m http.server 3000",
     "dev": "python3 -m http.server 3000",
     "api:dev": "NODE_PATH=web-service/node_modules node --env-file=.env.local web-service/src/index.js",
+    "publish:dev": "PORT=8081 node --env-file=.env.local publish-service/src/index.js",
+    "install:all": "npm install && npm --prefix web-service install && npm --prefix publish-service install",
+    "check": "./scripts/check.sh",
     "build:hosting": "./scripts/build-hosting.sh",
     "deploy:site": "npm run build:hosting && npx firebase-tools deploy --only hosting",
     "deploy:web-api": "./web-service/deploy.sh",

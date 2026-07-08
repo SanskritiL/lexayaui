@@ -95,7 +95,7 @@
             youtube: '<i class="fa-brands fa-youtube"></i>'
         };
         const PLATFORM_NAMES = { tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn', youtube: 'YouTube' };
-        const ADMIN_EMAILS = ['sanslamsal6@gmail.com'];
+        const ADMIN_EMAILS = CONFIG.ADMIN_EMAILS || [];
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {

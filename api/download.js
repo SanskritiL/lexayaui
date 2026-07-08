@@ -27,6 +27,12 @@ const FREE_RESOURCES = {
     'calendar': { type: 'file', path: 'free/content_calendar.pdf', name: 'Content Calendar' }
 };
 
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'support@example.com';
+
+function supportMessage(message) {
+    return `${message} Email ${SUPPORT_EMAIL} for assistance.`;
+}
+
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -90,7 +96,7 @@ async function handleFreeDownload(req, res, resource) {
     if (urlError) {
         console.error('Signed URL error:', urlError);
         return res.status(500).json({
-            error: 'Could not generate download link. Email sans@lexaya.io for assistance.'
+            error: supportMessage('Could not generate download link.')
         });
     }
 
@@ -137,7 +143,7 @@ async function handlePaidDownload(req, res, session_id, test) {
 
         if (purchaseError || !purchase) {
             return res.status(403).json({
-                error: 'Purchase not found. If you just paid, please wait a moment and refresh. For help, email sans@lexaya.io'
+                error: supportMessage('Purchase not found. If you just paid, please wait a moment and refresh.')
             });
         }
 
@@ -146,7 +152,7 @@ async function handlePaidDownload(req, res, session_id, test) {
 
         if (!filePath) {
             return res.status(404).json({
-                error: 'File not found for this product. Email sans@lexaya.io for assistance.'
+                error: supportMessage('File not found for this product.')
             });
         }
 
@@ -159,7 +165,7 @@ async function handlePaidDownload(req, res, session_id, test) {
         if (urlError) {
             console.error('Signed URL error:', urlError);
             return res.status(500).json({
-                error: 'Could not generate download link. Email sans@lexaya.io for assistance.'
+                error: supportMessage('Could not generate download link.')
             });
         }
 
@@ -171,7 +177,7 @@ async function handlePaidDownload(req, res, session_id, test) {
     } catch (error) {
         console.error('Download error:', error);
         return res.status(500).json({
-            error: 'Something went wrong. Email sans@lexaya.io for assistance.'
+            error: supportMessage('Something went wrong.')
         });
     }
 };

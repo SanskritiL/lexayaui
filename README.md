@@ -1,79 +1,127 @@
 # Lexaya
 
-Lexaya is a vanilla HTML/CSS/JS site hosted on Firebase Hosting. Application APIs and media publishing run on Google Cloud Run, while authentication and application data remain in Supabase.
+Lexaya is an open-source social publishing and Instagram comment automation app.
 
-## Structure
+It uses a static browser UI, Supabase for auth/data, Firebase Hosting for the web app, and Cloud Run services for trusted server work.
+
+## What it does
+
+- Supabase magic-link authentication.
+- Connect social accounts with OAuth.
+- Create and schedule cross-platform posts.
+- Upload reusable media through Cloudflare R2.
+- Run Instagram comment automations:
+  - select one specific post/reel;
+  - define keyword triggers;
+  - send a private reply/DM;
+  - add a public “check your DMs” style reply.
+- Track publish results and recent activity.
+
+Instagram publishing is disabled by default so Meta permissions remain least-privilege for the automation use case. See [Meta app review](docs/META_APP_REVIEW.md).
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Browser app | Static HTML/CSS/JS |
+| Hosting | Firebase Hosting |
+| Auth/database | Supabase |
+| Web API | Express on Google Cloud Run |
+| Publish worker | Express on Google Cloud Run |
+| Media storage | Cloudflare R2 |
+| Payments | Stripe |
+| Social APIs | Instagram, LinkedIn, TikTok, YouTube, X/Twitter |
+
+## Repository structure
 
 ```text
 .
-├── index.html                 # Public marketing page
-├── login.html                 # Supabase magic-link login
-├── members.html               # Authenticated account page
-├── privacy.html, terms.html   # Legal pages
-├── style.css, script.js       # Shared public-site styling and behavior
-├── js/                        # Shared browser config, Supabase, and app layout helpers
-├── api/                       # Shared HTTP handlers used by lexaya-web-api
-├── broadcast/                 # Broadcast product UI and SQL schemas
-├── cs/                        # CS resource pages and downloads
-├── blog/                      # Blog index and static posts
-├── kit/                       # Public media kit page
-├── publish-service/           # Express service deployed to Cloud Run
-├── web-service/               # Former serverless APIs, deployed to Cloud Run
-├── firebase.json              # Firebase Hosting and /api rewrite configuration
-└── resources/                 # Static PDFs, images, and video assets
+├── api/                # Shared request handlers mounted by web-service
+├── broadcast/          # Broadcast UI and SQL schema/migration files
+├── docs/               # Setup, config, deployment, architecture docs
+├── js/                 # Browser config and shared frontend helpers
+├── publish-service/    # Cloud Run service for uploads/publishing/scheduler
+├── scripts/            # Build/check/secret-sync scripts
+├── web-service/        # Cloud Run web API wrapper
+└── *.html              # Static public pages
 ```
 
-## Local Setup
+## Quick start
 
 ```bash
-npm install
+git clone <your-fork-url>
+cd lexayaui
+npm run install:all
 cp .env.example .env.local
-npm run dev
+cp .firebaserc.example .firebaserc
 ```
 
-Use `npm run api:dev` for the Cloud Run-compatible API on port 8080. Use `npm run dev` for a static preview at `http://localhost:3000`.
+Then:
 
-The browser config in `js/config.js` contains public Supabase and Stripe publishable keys. Keep private keys only in `.env.local` or Google Secret Manager.
+1. Fill `.env.local` with server-side values.
+2. Fill `js/config.js` with public browser values.
+3. Apply the Supabase SQL files you need from `broadcast/`.
+4. Run the services:
+
+```bash
+npm run dev
+npm run api:dev
+npm run publish:dev
+```
+
+Open `http://localhost:3000`.
+
+Full setup instructions: [docs/SETUP.md](docs/SETUP.md).
+
+## Configuration
+
+- Public browser config lives in [js/config.js](js/config.js).
+- Server/private config lives in `.env.local` locally and Secret Manager/Cloud Run in production.
+- Example env values are in [.env.example](.env.example).
+
+More detail: [docs/CONFIGURATION.md](docs/CONFIGURATION.md).
 
 ## Deployment
 
-### Firebase Hosting
+- Firebase Hosting: `npm run deploy:site`
+- Web API Cloud Run service: `npm run deploy:web-api`
+- Publish Cloud Run service: `npm run deploy:service`
+- Everything: `npm run deploy`
+
+Deployment guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Development checks
 
 ```bash
-npm run deploy:site
+npm run check
 ```
 
-This builds an allowlisted static directory and deploys it to Firebase Hosting.
+This runs JavaScript syntax checks and builds the Firebase Hosting allowlist into `.firebase-public`.
 
-### Web API
+## Security before making a fork public
 
-```bash
-npm run deploy:web-api
-```
+Real `.env` files are intentionally ignored, but private development can still leak credentials through screenshots, terminal logs, or old git history.
 
-This builds and deploys `lexaya-web-api` to Cloud Run. Run `scripts/sync-gcp-secrets.sh` deliberately when secret values need to be added or rotated.
+Before making a repo public, follow [docs/OPEN_SOURCE_CHECKLIST.md](docs/OPEN_SOURCE_CHECKLIST.md). At minimum, rotate every credential that ever appeared outside a secret manager.
 
-### Publish service
+## Documentation
 
-```bash
-npm run deploy:service
-```
+- [Architecture](docs/ARCHITECTURE.md)
+- [Local setup](docs/SETUP.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Deployment](docs/DEPLOYMENT.md)
+- [Meta app review](docs/META_APP_REVIEW.md)
+- [Open-source checklist](docs/OPEN_SOURCE_CHECKLIST.md)
+- [Posting architecture](broadcast/POSTING-ARCHITECTURE.md)
 
-This runs `publish-service/deploy.sh`, which deploys the Express service to Google Cloud Run. It reads values from `.env.local` or `.env` first, then falls back to the current Cloud Run service environment.
+## Contributing
 
-### Full deploy
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-```bash
-npm run deploy
-```
+## Security
 
-This deploys both Cloud Run services, then Firebase Hosting.
+See [SECURITY.md](SECURITY.md).
 
-## Runtime Notes
+## License
 
-- Firebase Hosting rewrites `/api/**` to `lexaya-web-api`.
-- Publishing endpoints are called directly on the existing `publish-service` Cloud Run URL.
-- `broadcast/*.sql` files are database schema and migration references. Apply them deliberately in Supabase; they are not run automatically.
-- `publish-service/env.yaml.example` is useful for manual Cloud Run configuration, but the default deployment path is `npm run deploy:service`.
-- `.firebase-public` is generated by `scripts/build-hosting.sh`; never host the repository root.
-- `node_modules`, `.firebase-public`, `.env*`, and OS files are local-only and ignored.
+MIT. See [LICENSE](LICENSE).

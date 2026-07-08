@@ -35,15 +35,15 @@ steps:
 
 substitutions:
   _REGION: us-central1
-  _PROJECT_ID: turtle-487402
-  _SUPABASE_URL: https://bcyhcsphmqizzvzmdqxc.supabase.co
-  _SUPABASE_SERVICE_KEY: YOUR_SERVICE_KEY
+  _PROJECT_ID: your-google-cloud-project-id
+  _SUPABASE_URL: https://your-project.supabase.co
+  _SUPABASE_SERVICE_KEY: your-supabase-service-role-key
   _CRON_SECRET: YOUR_CRON_SECRET
   _R2_ACCOUNT_ID: YOUR_R2_ACCOUNT_ID
   _R2_ACCESS_KEY_ID: YOUR_R2_KEY
   _R2_SECRET_ACCESS_KEY: YOUR_R2_SECRET
   _R2_BUCKET_NAME: lexaya-videos
-  _R2_PUBLIC_URL: https://pub-d8491ccfbb3a45e2bb038d9ae60a1957.r2.dev
+  _R2_PUBLIC_URL: https://your-public-r2-domain.example.com
   _YOUTUBE_CLIENT_ID: YOUR_YT_CLIENT_ID
   _YOUTUBE_CLIENT_SECRET: YOUR_YT_CLIENT_SECRET
   _TIKTOK_CLIENT_KEY: YOUR_TT_KEY

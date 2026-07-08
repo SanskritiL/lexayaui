@@ -1,6 +1,6 @@
 # Cross‑platform posting architecture
 
-This document describes how media gets from the Yak Station broadcast UI into each social network **after** a user already has linked accounts stored in Supabase. It skips login, OAuth redirects, and payment setup unless they affect the publishing path.
+This document describes how media gets from the Lexaya broadcast UI into each social network **after** a user already has linked accounts stored in Supabase. It skips login, OAuth redirects, and payment setup unless they affect the publishing path.
 
 ## High‑level flow
 
@@ -54,7 +54,7 @@ Single file, multiple responsibilities:
 |----------|----------------|
 | **LinkedIn** | Resolves person URN from `userinfo`. Post types: commentary‑only **`/rest/posts`**; optional **image** or **video** via LinkedIn REST upload flows streamed from `post.video_url` / R2; if `metadata.linkedin_video_urn` is set (browser‑side LinkedIn upload path), it creates the feed post from that URN instead. |
 | **TikTok** | Uses **`PULL_FROM_URL`** when `post.video_url` is present, so TikTok fetches from R2 instead of Cloud Run buffering the video. The legacy file-buffer path remains for compatibility. |
-| **Instagram** | Graph **`/{ig‑user‑id}/media`** with `video_url` or `image_url` + caption (**REELS** for video). Does **not** call `media_publish` in that same request—it returns **`pending`** plus `container_id`. The browser or scheduler then calls **`instagram-complete`** so the worker can **`media_publish`** when processing finishes. **Requires publicly fetchable URLs** so Meta can pull media. |
+| **Instagram** | Currently disabled by default for least-privilege Meta review. If `INSTAGRAM_PUBLISHING_ENABLED=true` and the app has `instagram_business_content_publish`, the adapter uses Graph **`/{ig‑user‑id}/media`** with `video_url` or `image_url` + caption, then **`media_publish`** when processing finishes. |
 | **Twitter/X** | **`/2/tweets`** with optional **`/1.1/media/upload`** chunked video from `video_url`, or attaches `metadata.twitter_media_id` if the client uploaded media beforehand. Failures during video upload can fall back to text‑only. |
 | **YouTube** | Validates `metadata.media_type === 'video'`; refreshes OAuth if needed; resumable upload to **`youtube/v3/videos`**; adds `#Shorts` in description when missing; derives title from first caption line. |
 | **Threads** | `publishToThreads` exists in the file but the main switch does **not** route to it—it is wired for future enablement. |

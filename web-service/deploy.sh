@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-turtle-487402}"
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null || true)}}"
 REGION="${REGION:-us-central1}"
 SERVICE_NAME="lexaya-web-api"
 REPOSITORY="lexaya"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE_NAME}:$(date +%Y%m%d-%H%M%S)"
+
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "(unset)" ]; then
+  echo "Set GOOGLE_CLOUD_PROJECT or run: gcloud config set project YOUR_PROJECT_ID" >&2
+  exit 1
+fi
 
 gcloud config set project "$PROJECT_ID" >/dev/null
 gcloud services enable \

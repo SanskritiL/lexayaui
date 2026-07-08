@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-turtle-487402}"
+PROJECT_ID="${GOOGLE_CLOUD_PROJECT:-${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null || true)}}"
 REGION="${REGION:-us-central1}"
 SERVICE_NAME="publish-service"
 
@@ -12,6 +12,11 @@ echo -e "${YELLOW}═══ Lexaya Publish Service — Cloud Run Deploy ══�
 
 if ! command -v gcloud &>/dev/null; then
   echo -e "${RED}Error: gcloud not found. Install Google Cloud SDK first.${NC}"
+  exit 1
+fi
+
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "(unset)" ]; then
+  echo -e "${RED}Set GOOGLE_CLOUD_PROJECT or run: gcloud config set project YOUR_PROJECT_ID${NC}" >&2
   exit 1
 fi
 

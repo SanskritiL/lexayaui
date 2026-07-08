@@ -1,18 +1,28 @@
-// Configuration
-const CONFIG = {
-
-    // Supabase (keep from: https://supabase.com/dashboard/project/YOUR_PROJECT/settings/api)
-    SUPABASE_URL: 'https://bcyhcsphmqizzvzmdqxc.supabase.co',
-    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk',
-
-    // Stripe (get from: https://dashboard.stripe.com/apikeys)
-    STRIPE_PUBLISHABLE_KEY: 'pk_live_51R1BXqA1WPL5LnBtyn66feXbCMeWT1VIwyKSfkJ8Ydy6BVGRT6jN6tZZcALLfL7w2lVdkfZh6SdLsSTWKL9ZwIql005XoAQ4NP',
-
-    // Your products (create in Stripe Dashboard > Products)
+// Public browser configuration.
+//
+// These values are safe to expose to browsers, but each deployment must use
+// its own Supabase project, Stripe publishable key, API URLs, and price IDs.
+// Forks can either edit this file directly or define window.LEXAYA_CONFIG
+// before loading /js/config.js.
+window.CONFIG = {
+    SUPABASE_URL: window.LEXAYA_CONFIG?.SUPABASE_URL || '',
+    SUPABASE_ANON_KEY: window.LEXAYA_CONFIG?.SUPABASE_ANON_KEY || '',
+    STRIPE_PUBLISHABLE_KEY: window.LEXAYA_CONFIG?.STRIPE_PUBLISHABLE_KEY || '',
+    APP_BASE_URL: window.LEXAYA_CONFIG?.APP_BASE_URL || window.location.origin,
+    API_BASE_URL: window.LEXAYA_CONFIG?.API_BASE_URL ?? '',
+    PUBLISH_BASE_URL: window.LEXAYA_CONFIG?.PUBLISH_BASE_URL || '',
+    ADMIN_EMAILS: window.LEXAYA_CONFIG?.ADMIN_EMAILS || [],
     PRODUCTS: {
-        freeDigital: 'price_1SgEPNA1WPL5LnBtS2DTcsDz',
-        regularDigital: 'price_1SgDWdA1WPL5LnBtIYjfgFIx',
-        videoBundle5: 'price_1SgDO4A1WPL5LnBtArUCHkY7',
-        videoBundle20: 'price_1SgEmVA1WPL5LnBtw8pU7kBE'
-    }
+        freeDigital: window.LEXAYA_CONFIG?.PRODUCTS?.freeDigital || '',
+        regularDigital: window.LEXAYA_CONFIG?.PRODUCTS?.regularDigital || '',
+        videoBundle5: window.LEXAYA_CONFIG?.PRODUCTS?.videoBundle5 || '',
+        videoBundle20: window.LEXAYA_CONFIG?.PRODUCTS?.videoBundle20 || '',
+        broadcastPro: window.LEXAYA_CONFIG?.PRODUCTS?.broadcastPro || '',
+    },
 };
+
+if (!window.CONFIG.SUPABASE_URL || !window.CONFIG.SUPABASE_ANON_KEY) {
+    console.warn('[Lexaya] Missing Supabase browser config. Update js/config.js before running the app.');
+}
+
+var CONFIG = window.CONFIG;

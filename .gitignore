@@ -54,3 +54,5 @@ coverage/
 *.orig
 .vercel
 .env*.local
+.firebaserc
+CNAME
