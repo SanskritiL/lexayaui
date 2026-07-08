@@ -3,6 +3,10 @@ const FB_HOST = 'https://graph.facebook.com';
 const RUPLOAD_HOST = 'https://rupload.facebook.com';
 
 async function publishToInstagram(post, account, onProgress, fileBuffer) {
+  if (process.env.INSTAGRAM_PUBLISHING_ENABLED !== 'true') {
+    throw new Error('Instagram publishing is disabled. This Instagram connection is limited to comment automations for Meta least-privilege review.');
+  }
+
   const p = onProgress || (async () => {});
   await p('authenticating', 'Authenticating with Instagram...');
   console.log('[INSTAGRAM] Starting publish...');
@@ -91,6 +95,13 @@ async function publishToInstagram(post, account, onProgress, fileBuffer) {
 }
 
 async function completeInstagram(postId, userId, resultKey) {
+  if (process.env.INSTAGRAM_PUBLISHING_ENABLED !== 'true') {
+    return {
+      status: 'error',
+      error: 'Instagram publishing is disabled. This Instagram connection is limited to comment automations for Meta least-privilege review.',
+    };
+  }
+
   const { getClient } = require('../supabase');
   const supabase = getClient();
 

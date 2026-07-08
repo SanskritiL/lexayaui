@@ -813,7 +813,7 @@
         }
 
         function updatePlatformCheckboxes() {
-            const platforms = ['tiktok', 'instagram', 'linkedin', 'youtube'];
+            const platforms = ['tiktok', 'linkedin', 'youtube'];
             const warning = document.getElementById('no-accounts-warning');
             const list = document.getElementById('channels-list');
             const selectedCountEl = document.getElementById('selected-channel-count');
@@ -1278,7 +1278,6 @@
             }
 
             const needsTikTok = selectedProviderNames.includes('tiktok');
-            const needsInstagram = selectedProviderNames.includes('instagram');
             const needsYouTube = selectedProviderNames.includes('youtube');
 
             if (needsTikTok && (!hasMedia || selectedMediaType !== 'video') && !isDraft) {
@@ -1293,11 +1292,6 @@
             }
             if (needsYouTube && !youtubeTitle && !isDraft) {
                 alert('YouTube requires a title.');
-                isSubmitting = false;
-                return;
-            }
-            if (needsInstagram && !hasMedia && !isDraft) {
-                alert('Instagram requires an image or video.');
                 isSubmitting = false;
                 return;
             }

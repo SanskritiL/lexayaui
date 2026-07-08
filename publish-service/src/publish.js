@@ -1,12 +1,12 @@
 const { getClient } = require('./supabase');
 const { publishToLinkedIn } = require('./platforms/linkedin');
 const { publishToTikTok } = require('./platforms/tiktok');
-const { publishToInstagram } = require('./platforms/instagram');
 const { publishToYouTube } = require('./platforms/youtube');
 const { publishToTwitter } = require('./platforms/twitter');
 
 const PROGRESS_UPDATE_MIN_INTERVAL_MS = Number(process.env.PROGRESS_UPDATE_MIN_INTERVAL_MS || 1500);
 const PROGRESS_UPDATE_MIN_PCT_DELTA = Number(process.env.PROGRESS_UPDATE_MIN_PCT_DELTA || 10);
+const INSTAGRAM_PUBLISHING_ENABLED = process.env.INSTAGRAM_PUBLISHING_ENABLED === 'true';
 
 async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
   const supabase = getClient();
@@ -127,6 +127,19 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
       continue;
     }
 
+    if (target.platform === 'instagram' && !INSTAGRAM_PUBLISHING_ENABLED) {
+      results[target.key] = {
+        status: 'error',
+        error: 'Instagram publishing is disabled. This Instagram connection is limited to comment automations for Meta least-privilege review.',
+        platform: target.platform,
+        account_id: account.id,
+        account_name: account.account_name,
+        recoverable: false,
+        error_code: 'INSTAGRAM_PUBLISHING_DISABLED',
+      };
+      continue;
+    }
+
     publishableTargets.push(target);
   }
 
@@ -151,7 +164,6 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
       switch (platform) {
         case 'linkedin':   result = await publishToLinkedIn(post, account, p, fileBuffer); break;
         case 'tiktok':     result = await publishToTikTok(post, account, supabase, p, fileBuffer); break;
-        case 'instagram':  result = await publishToInstagram(post, account, p, fileBuffer); break;
         case 'twitter':    result = await publishToTwitter(post, account, p, fileBuffer); break;
         case 'youtube':    result = await publishToYouTube(post, account, supabase, p, fileBuffer); break;
         default:           result = { status: 'error', error: 'Unknown platform' };

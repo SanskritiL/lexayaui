@@ -7,15 +7,11 @@ const INSTAGRAM_GRAPH_BASE = `https://graph.instagram.com/${META_GRAPH_VERSION}`
 
 const INSTAGRAM_REQUESTED_SCOPES = [
     'instagram_business_basic',
-    'instagram_business_content_publish',
     'instagram_business_manage_comments',
     'instagram_business_manage_messages',
 ];
 
-const INSTAGRAM_PUBLISH_SCOPES = [
-    'instagram_business_basic',
-    'instagram_business_content_publish',
-];
+const INSTAGRAM_REQUIRED_SCOPES = INSTAGRAM_REQUESTED_SCOPES;
 
 function getPublicBaseUrl(req) {
     const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
@@ -359,10 +355,10 @@ async function handleInstagram(req, res) {
         const accessToken = longTokenData.access_token;
         const expiresIn = longTokenData.expires_in || (60 * 24 * 60 * 60);
         const grantedScopes = await getInstagramGrantedScopes(accessToken);
-        const missingPublishScopes = INSTAGRAM_PUBLISH_SCOPES.filter(scope => !grantedScopes.includes(scope));
-        if (missingPublishScopes.length > 0) {
+        const missingRequiredScopes = INSTAGRAM_REQUIRED_SCOPES.filter(scope => !grantedScopes.includes(scope));
+        if (missingRequiredScopes.length > 0) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent(
-                `Instagram connection is missing required permissions: ${missingPublishScopes.join(', ')}. Grant the requested Instagram permissions, then try again.`
+                `Instagram connection is missing required permissions: ${missingRequiredScopes.join(', ')}. Grant the requested Instagram permissions, then try again.`
             ));
         }
 
