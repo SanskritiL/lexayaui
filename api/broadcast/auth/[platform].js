@@ -367,7 +367,7 @@ async function handleInstagram(req, res) {
         }
 
         const meResponse = await fetch(
-            `${INSTAGRAM_GRAPH_BASE}/me?fields=id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${accessToken}`
+            `${INSTAGRAM_GRAPH_BASE}/me?fields=id,user_id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${accessToken}`
         );
         const meData = await meResponse.json();
         instagramAuthLog(requestId, 'me_result', {
@@ -375,6 +375,7 @@ async function handleInstagram(req, res) {
             status: meResponse.status,
             hasError: Boolean(meData?.error),
             idPresent: Boolean(meData?.id),
+            userIdPresent: Boolean(meData?.user_id),
             usernamePresent: Boolean(meData?.username),
         }, meResponse.ok ? 'log' : 'warn');
 
@@ -408,6 +409,7 @@ async function handleInstagram(req, res) {
             metadata: {
                 profile_picture: meData.profile_picture_url,
                 ig_user_id: meData.id,
+                instagram_user_id: meData.user_id || null,
                 display_name: meData.name || meData.username || 'Instagram account',
                 username: meData.username || '',
                 followers_count: meData.followers_count,

@@ -370,9 +370,13 @@ async function handleWebhook(req, res, supabase) {
 
     const accounts = (allAccounts || []).filter(account => {
       const metadata = account.metadata || {};
-      return account.platform_user_id === event.igAccountId ||
-        metadata.ig_user_id === event.igAccountId ||
-        metadata.facebook_page_id === event.igAccountId;
+      const eventAccountId = String(event.igAccountId);
+      return [
+        account.platform_user_id,
+        metadata.ig_user_id,
+        metadata.instagram_user_id,
+        metadata.facebook_page_id,
+      ].some(value => value != null && String(value) === eventAccountId);
     });
 
     if (accountError || !accounts?.length) {
@@ -388,7 +392,12 @@ async function handleWebhook(req, res, supabase) {
     for (const account of accounts) {
       const accountMetadata = account.metadata || {};
       const commenterId = String(event.igUserId);
-      if (commenterId === String(account.platform_user_id) || commenterId === String(accountMetadata.ig_user_id || '')) {
+      const isAccountComment = [
+        account.platform_user_id,
+        accountMetadata.ig_user_id,
+        accountMetadata.instagram_user_id,
+      ].some(value => value != null && String(value) === commenterId);
+      if (isAccountComment) {
         webhookLog(requestId, 'self_comment_skipped', { eventRef });
         results.push({ commentId: event.commentId, status: 'skipped', reason: 'Account-authored comment' });
         continue;
