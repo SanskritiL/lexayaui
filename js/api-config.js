@@ -1,18 +1,25 @@
 // API endpoints
-// Production uses same-origin Vercel rewrites. Static local previews do not have
-// those rewrites, so send API calls to production unless BASE_URL is overridden.
+// Short API requests use same-origin Firebase Hosting → Cloud Run rewrites.
+// Publishing calls go directly to the existing Cloud Run service because they
+// can outlive a hosting rewrite timeout.
 const BASE_URL = (() => {
   if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
   const isLocalStaticPreview = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
   return isLocalStaticPreview || window.location.protocol === 'file:' ? 'https://lexaya.io' : '';
 })();
 
+const PUBLISH_BASE_URL = window.LEXAYA_PUBLISH_BASE_URL ||
+  'https://publish-service-266355090145.us-central1.run.app';
+
 const API = {
-  r2Upload:           () => `${BASE_URL}/api/broadcast/publish?action=upload`,
-  reusableMedia:      () => `${BASE_URL}/api/broadcast/publish?action=media`,
-  publish:            () => `${BASE_URL}/api/broadcast/publish`,
-  schedule:           () => `${BASE_URL}/api/broadcast/publish?action=schedule`,
-  instagramComplete:  () => `${BASE_URL}/api/broadcast/publish?action=instagram-complete`,
+  r2Upload:           () => `${PUBLISH_BASE_URL}/broadcast/publish?action=upload`,
+  reusableMedia:      () => `${PUBLISH_BASE_URL}/broadcast/publish?action=media`,
+  publish:            () => `${PUBLISH_BASE_URL}/broadcast/publish`,
+  schedule:           () => `${PUBLISH_BASE_URL}/broadcast/publish?action=schedule`,
+  instagramComplete:  () => `${PUBLISH_BASE_URL}/broadcast/publish?action=instagram-complete`,
+  instagramMedia:     () => `${BASE_URL}/api/instagram/media`,
+  instagramRules:     () => `${BASE_URL}/api/instagram/rules`,
+  instagramLogs:      () => `${BASE_URL}/api/instagram/logs`,
   analyzeHook:        () => `${BASE_URL}/api/broadcast/analyze-hook`,
-  health:             () => `${BASE_URL}/api/publish/health`,
+  health:             () => `${PUBLISH_BASE_URL}/health`,
 };

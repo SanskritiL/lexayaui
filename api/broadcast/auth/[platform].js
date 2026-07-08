@@ -1,27 +1,34 @@
-// Dynamic OAuth Handler - handles all platforms via [platform] route parameter
-// Reduces 4 serverless functions to 1 to stay under Vercel Hobby limit
+// Dynamic OAuth handler shared by the Cloud Run web API.
 
 const getClient = require('../../_supabase');
 const crypto = require('crypto');
+const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0';
+const INSTAGRAM_GRAPH_BASE = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 
 const INSTAGRAM_REQUESTED_SCOPES = [
-    'instagram_basic',
-    'instagram_content_publish',
-    'instagram_manage_comments',
-    'instagram_manage_messages',
-    'pages_show_list',
-    'pages_read_engagement',
-    'pages_manage_metadata',
-    'pages_messaging',
-    'business_management',
+    'instagram_business_basic',
+    'instagram_business_content_publish',
+    'instagram_business_manage_comments',
+    'instagram_business_manage_messages',
 ];
 
 const INSTAGRAM_PUBLISH_SCOPES = [
-    'instagram_basic',
-    'instagram_content_publish',
-    'pages_show_list',
-    'pages_read_engagement',
+    'instagram_business_basic',
+    'instagram_business_content_publish',
 ];
+
+function getPublicBaseUrl(req) {
+    const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();
+    const host = forwardedHost || req.headers.host;
+    const forwardedProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim();
+    const protocol = forwardedProto || (host?.includes('localhost') ? 'http' : 'https');
+    return `${protocol}://${host}`;
+}
+
+function instagramAuthLog(requestId, stage, details = {}, level = 'log') {
+    const safeLevel = level in console ? level : 'log';
+    console[safeLevel]('[Instagram OAuth]', JSON.stringify({ requestId, stage, ...details }));
+}
 
 async function getUserState(supabase, state) {
   if (!state) return null;
@@ -108,8 +115,7 @@ async function handleLinkedIn(req, res) {
 
     const { code, state, error: oauthError, error_description } = req.query;
 
-    const isLocalhost = req.headers.host?.includes('localhost');
-    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
+    const baseUrl = getPublicBaseUrl(req);
     const redirectUri = `${baseUrl}/api/broadcast/auth/linkedin`;
 
     if (!code) {
@@ -229,123 +235,156 @@ async function handleLinkedIn(req, res) {
 
 // ============== INSTAGRAM ==============
 async function handleInstagram(req, res) {
-    const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
-    const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+    const INSTAGRAM_APP_ID = process.env.INSTAGRAM_APP_ID || process.env.FACEBOOK_APP_ID;
+    const INSTAGRAM_APP_SECRET = process.env.INSTAGRAM_APP_SECRET || process.env.FACEBOOK_APP_SECRET;
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
     const { code, state, error: oauthError, error_description, error_reason, debug } = req.query;
 
-    const isLocalhost = req.headers.host?.includes('localhost');
-    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
-    const redirectUri = `${baseUrl}/api/broadcast/auth/instagram`;
-    const isDebug = debug === 'true' || (state && state.startsWith('DEBUG:'));
+    const redirectUri = process.env.INSTAGRAM_REDIRECT_URI || 'https://lexaya.io/api/broadcast/auth/instagram';
+    const isDebug = debug === 'true' || debug === '1' || (state && state.startsWith('DEBUG:'));
+    const requestId = req.headers['x-cloud-trace-context']?.split('/')?.[0] || crypto.randomUUID();
+
+    instagramAuthLog(requestId, 'request_received', {
+        method: req.method,
+        hasCode: Boolean(code),
+        hasState: Boolean(state),
+        hasOauthError: Boolean(oauthError),
+        isDebug,
+        redirectUri,
+        appIdSuffix: INSTAGRAM_APP_ID ? String(INSTAGRAM_APP_ID).slice(-4) : null,
+        secretConfigured: Boolean(INSTAGRAM_APP_SECRET),
+    });
 
     if (!code) {
-        if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
-            return res.redirect('/broadcast/?error=' + encodeURIComponent('Facebook App not configured'));
+        if (!INSTAGRAM_APP_ID || !INSTAGRAM_APP_SECRET) {
+            instagramAuthLog(requestId, 'config_missing', {
+                appIdConfigured: Boolean(INSTAGRAM_APP_ID),
+                secretConfigured: Boolean(INSTAGRAM_APP_SECRET),
+            }, 'warn');
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Instagram app not configured'));
         }
 
-        const authUrl = new URL('https://www.facebook.com/v18.0/dialog/oauth');
-        authUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
+        const authUrl = new URL('https://www.instagram.com/oauth/authorize');
+        authUrl.searchParams.set('client_id', INSTAGRAM_APP_ID);
         authUrl.searchParams.set('redirect_uri', redirectUri);
         authUrl.searchParams.set('scope', INSTAGRAM_REQUESTED_SCOPES.join(','));
         authUrl.searchParams.set('state', debug === 'true' ? `DEBUG:${state || ''}` : (state || ''));
         authUrl.searchParams.set('response_type', 'code');
-        authUrl.searchParams.set('auth_type', 'rerequest');
-        authUrl.searchParams.set('return_scopes', 'true');
+        authUrl.searchParams.set('force_reauth', 'true');
+        authUrl.searchParams.set('enable_fb_login', 'false');
+
+        instagramAuthLog(requestId, 'auth_redirect', {
+            redirectUri,
+            scopeCount: INSTAGRAM_REQUESTED_SCOPES.length,
+            stateLength: (state || '').length,
+            authUrlHost: authUrl.host,
+        });
 
         return res.redirect(authUrl.toString());
     }
 
     if (oauthError) {
+        instagramAuthLog(requestId, 'oauth_error', {
+            oauthError,
+            errorDescription: error_description || null,
+            errorReason: error_reason || null,
+        }, 'warn');
         const errorMsg = `Facebook OAuth Error: ${oauthError}. ${error_description || ''} ${error_reason || ''}`.trim();
         return res.redirect(`/broadcast/?error=${encodeURIComponent(errorMsg)}`);
     }
 
     try {
-        // Exchange code for token
-        const tokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
-        tokenUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
-        tokenUrl.searchParams.set('client_secret', FACEBOOK_APP_SECRET);
-        tokenUrl.searchParams.set('redirect_uri', redirectUri);
-        tokenUrl.searchParams.set('code', code);
+        instagramAuthLog(requestId, 'token_exchange_start', {
+            redirectUri,
+            codeLength: String(code || '').length,
+        });
 
-        const tokenResponse = await fetch(tokenUrl.toString());
+        // Exchange code for token
+        const tokenResponse = await fetch('https://api.instagram.com/oauth/access_token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                client_id: INSTAGRAM_APP_ID,
+                client_secret: INSTAGRAM_APP_SECRET,
+                grant_type: 'authorization_code',
+                redirect_uri: redirectUri,
+                code,
+            }),
+        });
         const tokenData = await tokenResponse.json();
 
+        instagramAuthLog(requestId, 'token_exchange_result', {
+            ok: tokenResponse.ok,
+            status: tokenResponse.status,
+            hasError: Boolean(tokenData?.error),
+            errorType: tokenData?.error_type || tokenData?.error?.type || null,
+            errorCode: tokenData?.code || tokenData?.error?.code || null,
+            errorMessage: tokenData?.error_message || tokenData?.error?.message || null,
+            keys: tokenData && typeof tokenData === 'object' ? Object.keys(tokenData).slice(0, 10) : [],
+        }, tokenResponse.ok ? 'log' : 'warn');
+
         if (!tokenResponse.ok || tokenData.error) {
+            instagramAuthLog(requestId, 'token_exchange_failed', {
+                redirectUri,
+                responsePreview: typeof tokenData === 'object' ? JSON.stringify(tokenData).slice(0, 500) : String(tokenData).slice(0, 500),
+            }, 'warn');
             return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + (tokenData.error?.message || JSON.stringify(tokenData))));
         }
 
         const shortLivedToken = tokenData.access_token;
 
         // Exchange for long-lived token
-        const longTokenUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
-        longTokenUrl.searchParams.set('grant_type', 'fb_exchange_token');
-        longTokenUrl.searchParams.set('client_id', FACEBOOK_APP_ID);
-        longTokenUrl.searchParams.set('client_secret', FACEBOOK_APP_SECRET);
-        longTokenUrl.searchParams.set('fb_exchange_token', shortLivedToken);
+        const longTokenUrl = new URL('https://graph.instagram.com/access_token');
+        longTokenUrl.searchParams.set('grant_type', 'ig_exchange_token');
+        longTokenUrl.searchParams.set('client_secret', INSTAGRAM_APP_SECRET);
+        longTokenUrl.searchParams.set('access_token', shortLivedToken);
 
         const longTokenResponse = await fetch(longTokenUrl.toString());
         const longTokenData = await longTokenResponse.json();
+        instagramAuthLog(requestId, 'long_token_result', {
+            ok: longTokenResponse.ok,
+            status: longTokenResponse.status,
+            hasError: Boolean(longTokenData?.error),
+            keys: longTokenData && typeof longTokenData === 'object' ? Object.keys(longTokenData).slice(0, 10) : [],
+        }, longTokenResponse.ok ? 'log' : 'warn');
         if (!longTokenResponse.ok || longTokenData.error || !longTokenData.access_token) {
+            instagramAuthLog(requestId, 'long_token_failed', {
+                responsePreview: typeof longTokenData === 'object' ? JSON.stringify(longTokenData).slice(0, 500) : String(longTokenData).slice(0, 500),
+            }, 'warn');
             return res.redirect('/broadcast/?error=' + encodeURIComponent('Could not create a long-lived Instagram authorization. Please try connecting Instagram again.'));
         }
 
         const accessToken = longTokenData.access_token;
         const expiresIn = longTokenData.expires_in || (60 * 24 * 60 * 60);
-        const grantedScopes = await getFacebookGrantedScopes(accessToken);
+        const grantedScopes = await getInstagramGrantedScopes(accessToken);
         const missingPublishScopes = INSTAGRAM_PUBLISH_SCOPES.filter(scope => !grantedScopes.includes(scope));
         if (missingPublishScopes.length > 0) {
             return res.redirect('/broadcast/?error=' + encodeURIComponent(
-                `Instagram connection is missing required permissions: ${missingPublishScopes.join(', ')}. Grant all requested Page and Instagram permissions, then try again.`
+                `Instagram connection is missing required permissions: ${missingPublishScopes.join(', ')}. Grant the requested Instagram permissions, then try again.`
             ));
         }
 
-        // Fetch pages only after the long-lived exchange so saved page tokens are not short-lived.
-        let pagesResponse = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${accessToken}`);
-        let pagesData = await pagesResponse.json();
+        const meResponse = await fetch(
+            `${INSTAGRAM_GRAPH_BASE}/me?fields=id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${accessToken}`
+        );
+        const meData = await meResponse.json();
+        instagramAuthLog(requestId, 'me_result', {
+            ok: meResponse.ok,
+            status: meResponse.status,
+            hasError: Boolean(meData?.error),
+            idPresent: Boolean(meData?.id),
+            usernamePresent: Boolean(meData?.username),
+        }, meResponse.ok ? 'log' : 'warn');
 
-        if (!pagesData.data || pagesData.data.length === 0) {
-            const meResponse = await fetch(`https://graph.facebook.com/v18.0/me?fields=id,name,accounts{id,name,access_token,instagram_business_account}&access_token=${accessToken}`);
-            const meData = await meResponse.json();
-            if (meData.accounts?.data?.length > 0) {
-                pagesData = meData.accounts;
-            } else {
-                return res.redirect('/broadcast/?error=' + encodeURIComponent('No Facebook Pages found. Make sure you granted Page permissions.'));
-            }
-        }
-
-        // Find Instagram accounts connected to the authorized Facebook Pages.
-        const instagramAccounts = [];
-
-        for (const page of pagesData.data) {
-            if (page.instagram_business_account) {
-                const tokenInfo = await inspectFacebookToken(page.access_token, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET);
-                if (!tokenInfo.isValid) {
-                    console.error('[Instagram] Meta returned an invalid Page token', { pageId: page.id });
-                    continue;
-                }
-                const igResponse = await fetch(
-                    `https://graph.facebook.com/v18.0/${page.instagram_business_account.id}?fields=id,username,name,profile_picture_url,followers_count,follows_count,media_count&access_token=${page.access_token}`
-                );
-                const igData = await igResponse.json();
-
-                if (igData.id) {
-                    instagramAccounts.push({
-                        account: igData,
-                        pageAccessToken: page.access_token,
-                        pageId: page.id,
-                        pageName: page.name,
-                        grantedScopes: [...new Set([...grantedScopes, ...tokenInfo.scopes])],
-                    });
-                }
-            }
-        }
-
-        if (instagramAccounts.length === 0) {
-            return res.redirect('/broadcast/?error=' + encodeURIComponent('No Instagram Business account found.'));
+        if (!meResponse.ok || meData.error || !meData.id) {
+            instagramAuthLog(requestId, 'me_failed', {
+                responsePreview: typeof meData === 'object' ? JSON.stringify(meData).slice(0, 500) : String(meData).slice(0, 500),
+            }, 'warn');
+            return res.redirect('/broadcast/?error=' + encodeURIComponent(
+                'No Instagram account found. Make sure you selected the Instagram business login setup and approved the Instagram permissions.'
+            ));
         }
 
         const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -357,38 +396,33 @@ async function handleInstagram(req, res) {
         const dbUserId = await resolveDbUserId(supabase, userState);
         const tokenExpiresAt = new Date(Date.now() + (expiresIn * 1000)).toISOString();
 
-        for (const item of instagramAccounts) {
-            const instagramAccount = item.account;
-            const { error: saveError } = await upsertAccount(supabase, {
-                user_id: dbUserId,
-                platform: 'instagram',
-                platform_user_id: instagramAccount.id,
-                account_name: instagramAccount.username,
-                access_token: item.pageAccessToken,
-                refresh_token: null,
-                token_expires_at: tokenExpiresAt,
-                scopes: item.grantedScopes,
-                metadata: {
-                    profile_picture: instagramAccount.profile_picture_url,
-                    ig_user_id: instagramAccount.id,
-                    facebook_page_id: item.pageId,
-                    facebook_page_name: item.pageName,
-                    display_name: instagramAccount.name || instagramAccount.username,
-                    username: instagramAccount.username,
-                    followers_count: instagramAccount.followers_count,
-                    following_count: instagramAccount.follows_count,
-                    media_count: instagramAccount.media_count,
-                    account_type: 'Business',
-                },
-            }, dbUserId, 'instagram');
+        const { error: saveError } = await upsertAccount(supabase, {
+            user_id: dbUserId,
+            platform: 'instagram',
+            platform_user_id: meData.id,
+            account_name: meData.username || meData.name || 'instagram',
+            access_token: accessToken,
+            refresh_token: null,
+            token_expires_at: tokenExpiresAt,
+            scopes: [...new Set(grantedScopes)],
+            metadata: {
+                profile_picture: meData.profile_picture_url,
+                ig_user_id: meData.id,
+                display_name: meData.name || meData.username || 'Instagram account',
+                username: meData.username || '',
+                followers_count: meData.followers_count,
+                following_count: meData.follows_count,
+                media_count: meData.media_count,
+                account_type: 'Business',
+            },
+        }, dbUserId, 'instagram');
 
-            if (saveError) {
-                console.error('[Instagram] Save error:', saveError);
-                return res.redirect('/broadcast/?error=Failed to save account');
-            }
+        if (saveError) {
+            console.error('[Instagram] Save error:', saveError);
+            return res.redirect('/broadcast/?error=Failed to save account');
         }
 
-        return res.redirect(`/broadcast/?success=true&platform=instagram&accounts=${instagramAccounts.length}`);
+        return res.redirect('/broadcast/?success=true&platform=instagram&accounts=1');
 
     } catch (error) {
         console.error('Instagram OAuth Error:', error);
@@ -396,21 +430,35 @@ async function handleInstagram(req, res) {
     }
 }
 
-async function getFacebookGrantedScopes(accessToken) {
-    const permissionsUrl = new URL('https://graph.facebook.com/v18.0/me/permissions');
-    permissionsUrl.searchParams.set('access_token', accessToken);
-    const response = await fetch(permissionsUrl);
-    const payload = await response.json();
-    if (!response.ok || payload.error) {
-        throw new Error(payload.error?.message || 'Could not verify Instagram permissions');
+async function getInstagramGrantedScopes(accessToken) {
+    try {
+        const appId = process.env.INSTAGRAM_APP_ID || process.env.FACEBOOK_APP_ID;
+        const appSecret = process.env.INSTAGRAM_APP_SECRET || process.env.FACEBOOK_APP_SECRET;
+        const debugUrl = new URL('https://graph.facebook.com/debug_token');
+        debugUrl.searchParams.set('input_token', accessToken);
+        debugUrl.searchParams.set('access_token', `${appId}|${appSecret}`);
+
+        const response = await fetch(debugUrl);
+        const payload = await response.json();
+        const data = payload.data || {};
+
+        if (response.ok && !payload.error) {
+            const granularScopes = (data.granular_scopes || []).map(entry => entry.scope).filter(Boolean);
+            const scopes = [...new Set([...(data.scopes || []), ...granularScopes])];
+            if (scopes.length > 0) {
+                return scopes;
+            }
+        }
+    } catch (error) {
+        console.warn('[Instagram OAuth] permission_introspection_failed', error.message);
     }
-    return (payload.data || [])
-        .filter(entry => entry.status === 'granted')
-        .map(entry => entry.permission);
+
+    console.warn('[Instagram OAuth] permission_introspection_unavailable_falling_back_to_requested_scopes');
+    return INSTAGRAM_REQUESTED_SCOPES;
 }
 
 async function inspectFacebookToken(accessToken, appId, appSecret) {
-    const debugUrl = new URL('https://graph.facebook.com/v18.0/debug_token');
+    const debugUrl = new URL(`${INSTAGRAM_GRAPH_BASE}/debug_token`);
     debugUrl.searchParams.set('input_token', accessToken);
     debugUrl.searchParams.set('access_token', `${appId}|${appSecret}`);
     const response = await fetch(debugUrl);
@@ -432,8 +480,7 @@ async function handleTikTok(req, res) {
 
     const { code, state, error: oauthError, error_description } = req.query;
 
-    const isLocalhost = req.headers.host?.includes('localhost');
-    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
+    const baseUrl = getPublicBaseUrl(req);
     const redirectUri = `${baseUrl}/api/broadcast/auth/tiktok`;
     const callbackPath = '/broadcast/connect.html';
     const requestedScopes = buildTikTokScopes();
@@ -580,8 +627,7 @@ async function handleTwitter(req, res) {
 
     const { code, state, error: oauthError, error_description } = req.query;
 
-    const isLocalhost = req.headers.host?.includes('localhost');
-    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
+    const baseUrl = getPublicBaseUrl(req);
     const redirectUri = `${baseUrl}/api/broadcast/auth/twitter`;
 
     if (oauthError) {
@@ -732,8 +778,7 @@ async function handleThreads(req, res) {
 
     const { code, state, error: oauthError, error_description } = req.query;
 
-    const isLocalhost = req.headers.host?.includes('localhost');
-    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
+    const baseUrl = getPublicBaseUrl(req);
     const redirectUri = `${baseUrl}/api/broadcast/auth/threads`;
 
     if (!code) {
@@ -865,8 +910,7 @@ async function handleYouTube(req, res) {
 
     const { code, state, error: oauthError, error_description } = req.query;
 
-    const isLocalhost = req.headers.host?.includes('localhost');
-    const baseUrl = isLocalhost ? `http://${req.headers.host}` : `https://${req.headers.host}`;
+    const baseUrl = getPublicBaseUrl(req);
     const redirectUri = `${baseUrl}/api/broadcast/auth/youtube`;
 
     // Step 1: Redirect to Google OAuth

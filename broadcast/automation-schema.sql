@@ -63,8 +63,8 @@ CREATE TABLE IF NOT EXISTS dm_log (
 
     -- DM details
     dm_message TEXT NOT NULL,                    -- The actual message sent
-    dm_sent_at TIMESTAMPTZ DEFAULT NOW(),
-    dm_status TEXT DEFAULT 'sent',               -- 'sent', 'failed', 'rate_limited'
+    dm_sent_at TIMESTAMPTZ,
+    dm_status TEXT DEFAULT 'pending',            -- 'pending', 'sent', 'failed', 'rate_limited'
     dm_error TEXT,                               -- Error message if failed
 
     created_at TIMESTAMPTZ DEFAULT NOW()
@@ -75,6 +75,8 @@ CREATE INDEX IF NOT EXISTS idx_dm_log_rule_id ON dm_log(automation_rule_id);
 CREATE INDEX IF NOT EXISTS idx_dm_log_user_created ON dm_log(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dm_log_ig_user ON dm_log(ig_user_id);
 CREATE INDEX IF NOT EXISTS idx_dm_log_status ON dm_log(dm_status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dm_log_rule_comment_unique
+    ON dm_log(automation_rule_id, ig_comment_id);
 
 -- Note: Duplicate prevention (1 DM per user per rule per day) is handled
 -- in the webhook.js application logic by checking dm_log before sending

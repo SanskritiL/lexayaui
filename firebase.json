@@ -1,0 +1,21 @@
+{
+  "hosting": {
+    "public": ".firebase-public",
+    "cleanUrls": true,
+    "trailingSlash": false,
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "lexaya-web-api",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/kit/**",
+        "destination": "/kit/index.html"
+      }
+    ]
+  }
+}

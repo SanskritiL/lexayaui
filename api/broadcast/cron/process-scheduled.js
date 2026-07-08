@@ -8,7 +8,7 @@ module.exports = async function handler(req, res) {
     const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
     const supabase = getClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    // Verify this is a cron request (Vercel adds this header)
+    // Verify the Cloud Scheduler bearer secret.
     const authHeader = req.headers.authorization;
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
         // For local testing, allow without auth
@@ -284,7 +284,7 @@ async function publishToInstagram(post, account) {
         throw new Error('Video is required for Instagram');
     }
 
-    const containerUrl = new URL(`https://graph.facebook.com/v18.0/${igUserId}/media`);
+    const containerUrl = new URL(`https://graph.instagram.com/v18.0/${igUserId}/media`);
     containerUrl.searchParams.set('access_token', access_token);
     containerUrl.searchParams.set('media_type', 'REELS');
     containerUrl.searchParams.set('video_url', post.video_url);
@@ -305,7 +305,7 @@ async function publishToInstagram(post, account) {
     for (let i = 0; i < 30; i++) {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        const statusUrl = new URL(`https://graph.facebook.com/v18.0/${containerId}`);
+        const statusUrl = new URL(`https://graph.instagram.com/v18.0/${containerId}`);
         statusUrl.searchParams.set('fields', 'status_code');
         statusUrl.searchParams.set('access_token', access_token);
 
@@ -324,7 +324,7 @@ async function publishToInstagram(post, account) {
         return { status: 'pending', container_id: containerId, note: 'Still processing' };
     }
 
-    const publishUrl = new URL(`https://graph.facebook.com/v18.0/${igUserId}/media_publish`);
+    const publishUrl = new URL(`https://graph.instagram.com/v18.0/${igUserId}/media_publish`);
     publishUrl.searchParams.set('access_token', access_token);
     publishUrl.searchParams.set('creation_id', containerId);
 

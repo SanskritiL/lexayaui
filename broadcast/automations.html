@@ -56,6 +56,15 @@
         .field input, .field textarea, .field select { width: 100%; border: 1px solid #d1d5db; border-radius: 8px; color: #111827; font: inherit; font-size: 0.86rem; }
         .field textarea { min-height: 110px; resize: vertical; }
         .help { color: #6b7280; font-size: 0.72rem; line-height: 1.4; }
+        .content-scope { display: flex; align-items: center; gap: 0.55rem; padding: 0.7rem; border: 1px solid #d1d5db; border-radius: 9px; font-size: 0.78rem; font-weight: 800; color: #374151; }
+        .content-scope input { width: auto; }
+        .media-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.55rem; }
+        .media-card { position: relative; display: grid; gap: 0.4rem; padding: 0.45rem; border: 2px solid transparent; border-radius: 9px; background: #f3f4f2; cursor: pointer; overflow: hidden; }
+        .media-card:has(input:checked) { border-color: #005bc2; background: #eef5ff; }
+        .media-card input { position: absolute; top: 0.65rem; right: 0.65rem; width: 1rem; height: 1rem; z-index: 1; accent-color: #005bc2; }
+        .media-card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: #e5e7eb; }
+        .media-card-copy { font-size: 0.68rem; line-height: 1.3; font-weight: 700; color: #374151; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .media-picker.disabled { opacity: 0.45; pointer-events: none; }
         .btn-primary, .btn-secondary, .btn-danger { border-radius: 9px; padding: 0.58rem 0.78rem; font-size: 0.78rem; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; cursor: pointer; text-decoration: none; white-space: nowrap; }
         .btn-primary { border: 0; background: #005bc2; color: #fff; }
         .btn-primary:hover { background: #004a9f; }
@@ -81,6 +90,7 @@
         @media (max-width: 640px) {
             .panel-header, .rule-top, .log-top { align-items: flex-start; flex-direction: column; }
             .btn-primary, .btn-secondary, .btn-danger { width: 100%; }
+            .media-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
     </style>
 </head>
@@ -109,10 +119,13 @@
                             <p class="help">Comma separated. Matching is case-insensitive.</p>
                         </div>
                         <div class="field">
-                            <label for="trigger-post">Trigger post</label>
-                            <select id="trigger-post" name="trigger_post">
-                                <option value="">All Instagram posts</option>
-                            </select>
+                            <label>Instagram content</label>
+                            <label class="content-scope">
+                                <input type="checkbox" id="all-posts" checked>
+                                Apply to all current and future Instagram posts
+                            </label>
+                            <div class="media-picker disabled" id="media-picker" aria-label="Recent Instagram content"></div>
+                            <p class="help">Turn off “all posts” to select one or more recent posts.</p>
                         </div>
                         <div class="field">
                             <label for="dm-template">DM message</label>
@@ -190,6 +203,7 @@
             document.getElementById('rule-form').addEventListener('submit', saveRule);
             document.getElementById('reset-form').addEventListener('click', resetForm);
             document.getElementById('refresh-btn').addEventListener('click', loadAll);
+            document.getElementById('all-posts').addEventListener('change', updateMediaPickerState);
             await loadAll();
         });
 
@@ -208,20 +222,42 @@
 
         async function loadMedia() {
             const summary = document.getElementById('media-summary');
-            const select = document.getElementById('trigger-post');
+            const picker = document.getElementById('media-picker');
             try {
                 const response = await fetch(API.instagramMedia(), { headers: await authHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Could not load Instagram posts');
                 media = data.media || [];
                 summary.textContent = media.length ? `${media.length} recent posts available` : 'No recent posts found';
-                select.innerHTML = '<option value="">All Instagram posts</option>' + media.map(item => `
-                    <option value="${escapeHtml(item.id)}">${escapeHtml((item.caption || item.permalink || item.id).slice(0, 80))}</option>
+                picker.innerHTML = media.map(item => `
+                    <label class="media-card" title="${escapeHtml(item.caption || item.id)}">
+                        <input type="checkbox" name="trigger-post" value="${escapeHtml(item.id)}">
+                        <img src="${escapeHtml(item.thumbnail_url || item.media_url || '')}" alt="" loading="lazy">
+                        <span class="media-card-copy">${escapeHtml(item.caption || `${item.media_type || 'Instagram'} post`)}</span>
+                    </label>
                 `).join('');
+                updateMediaPickerState();
             } catch (error) {
                 summary.textContent = 'Connect Instagram before choosing specific posts';
-                select.innerHTML = '<option value="">All Instagram posts</option>';
+                picker.innerHTML = '<p class="help">Recent Instagram content could not be loaded.</p>';
+                console.error('[Instagram Automations] Media load failed:', error);
             }
+        }
+
+        function updateMediaPickerState() {
+            const allPosts = document.getElementById('all-posts').checked;
+            const picker = document.getElementById('media-picker');
+            picker.classList.toggle('disabled', allPosts);
+            picker.setAttribute('aria-disabled', String(allPosts));
+            picker.querySelectorAll('input[name="trigger-post"]').forEach(input => {
+                input.disabled = allPosts;
+                if (allPosts) input.checked = false;
+            });
+        }
+
+        function selectedPostIds() {
+            if (document.getElementById('all-posts').checked) return [];
+            return [...document.querySelectorAll('input[name="trigger-post"]:checked')].map(input => input.value);
         }
 
         async function loadRules() {
@@ -265,7 +301,7 @@
                     <div class="rule-top">
                         <div>
                             <div class="rule-name">${escapeHtml(rule.name)}</div>
-                            <div class="rule-meta">${rule.trigger_scope === 'specific' ? `${(rule.trigger_post_ids || []).length} selected post` : 'All posts'} · ${escapeHtml(rule.action_type || 'send_dm')}</div>
+                            <div class="rule-meta">${rule.trigger_scope === 'specific' ? `${(rule.trigger_post_ids || []).length} selected post${(rule.trigger_post_ids || []).length === 1 ? '' : 's'}` : 'All posts'} · ${escapeHtml(rule.action_type || 'send_dm')}</div>
                         </div>
                         <span class="status-pill ${rule.is_active ? '' : 'off'}">${rule.is_active ? 'Active' : 'Paused'}</span>
                     </div>
@@ -312,11 +348,15 @@
         async function saveRule(event) {
             event.preventDefault();
             const ruleId = document.getElementById('rule-id').value;
-            const postId = document.getElementById('trigger-post').value;
+            const postIds = selectedPostIds();
+            if (!document.getElementById('all-posts').checked && !postIds.length) {
+                showToast('Select at least one Instagram post or choose all posts', 'error');
+                return;
+            }
             const payload = {
                 name: document.getElementById('rule-name').value,
                 trigger_keywords: document.getElementById('trigger-keywords').value,
-                trigger_post_ids: postId ? [postId] : [],
+                trigger_post_ids: postIds,
                 dm_template: document.getElementById('dm-template').value,
                 is_active: document.getElementById('is-active').checked,
             };
@@ -343,7 +383,12 @@
             document.getElementById('rule-id').value = rule.id;
             document.getElementById('rule-name').value = rule.name || '';
             document.getElementById('trigger-keywords').value = (rule.trigger_keywords || []).join(', ');
-            document.getElementById('trigger-post').value = (rule.trigger_post_ids || [])[0] || '';
+            const selectedIds = new Set(rule.trigger_post_ids || []);
+            document.getElementById('all-posts').checked = rule.trigger_scope !== 'specific';
+            updateMediaPickerState();
+            document.querySelectorAll('input[name="trigger-post"]').forEach(input => {
+                input.checked = selectedIds.has(input.value);
+            });
             document.getElementById('dm-template').value = rule.dm_template || '';
             document.getElementById('is-active').checked = Boolean(rule.is_active);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -368,6 +413,8 @@
             document.getElementById('rule-form').reset();
             document.getElementById('rule-id').value = '';
             document.getElementById('is-active').checked = true;
+            document.getElementById('all-posts').checked = true;
+            updateMediaPickerState();
         }
 
         function formatDate(value) {

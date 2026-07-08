@@ -5,10 +5,12 @@
   "scripts": {
     "start": "python3 -m http.server 3000",
     "dev": "python3 -m http.server 3000",
-    "vercel:dev": "npx vercel dev --listen 3000",
-    "deploy:site": "npx vercel --prod",
+    "api:dev": "NODE_PATH=web-service/node_modules node --env-file=.env.local web-service/src/index.js",
+    "build:hosting": "./scripts/build-hosting.sh",
+    "deploy:site": "npm run build:hosting && npx firebase-tools deploy --only hosting",
+    "deploy:web-api": "./web-service/deploy.sh",
     "deploy:service": "cd publish-service && ./deploy.sh",
-    "deploy": "npm run deploy:site && npm run deploy:service"
+    "deploy": "npm run deploy:web-api && npm run deploy:service && npm run deploy:site"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

@@ -557,7 +557,7 @@
         function getAuthApiBase() {
             if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
             const isLocalStaticPreview = ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
-            return isLocalStaticPreview || window.location.protocol === 'file:' ? 'https://lexaya.io' : '';
+            return isLocalStaticPreview || window.location.protocol === 'file:' ? 'https://lexaya.io' : 'https://lexaya.io';
         }
         function getAuthUrl(platform, state) {
             return `${getAuthApiBase()}/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;

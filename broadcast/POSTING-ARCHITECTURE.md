@@ -8,7 +8,7 @@ This document describes how media gets from the Yak Station broadcast UI into ea
 2. **Media** goes to **Cloudflare R2**: the browser calls `POST /api/broadcast/publish?action=upload` with a Supabase JWT; the Cloud Run publish service returns a presigned PUT URL; the browser uploads the file directly to R2. The public URL (`R2_PUBLIC_URL` + object key) is stored on the post as `video_url` (used for images too). `metadata.r2_key`, `metadata.file_size_bytes`, and `metadata.content_type` capture the bucket key and media details for later publish/cleanup.
 3. **Optional thumbnail** goes to Supabase Storage bucket `videos` (same project as posts).
 4. **Post row** is inserted into Supabase table `posts` with `video_url`, `thumbnail_url`, `caption`, `platforms[]`, `metadata` (`media_type`, etc.), status (`draft` | `scheduled` | `publishing`), and empty `platform_results`.
-5. **Publish** happens via `POST /api/broadcast/publish` with body `{ postId, platforms }` and the user’s Bearer token. Vercel rewrites this to the **Cloud Run publish service**, which validates the JWT, loads the post and matching `connected_accounts` rows (tokens live there—it does not walk through OAuth during publish).
+5. **Publish** happens directly against the **Cloud Run publish service** with body `{ postId, platforms }` and the user’s Bearer token. The service validates the JWT, loads the post and matching `connected_accounts` rows (tokens live there—it does not walk through OAuth during publish).
 6. **Results** merge into `platform_results` JSONB and `status` transitions (`publishing` → `published` | `partial` | `failed`). The UI listens on Supabase Realtime for `posts` UPDATEs while the modal is open.
 
 ```mermaid
@@ -95,10 +95,10 @@ Single file, multiple responsibilities:
 ## Operational checklist (non‑auth)
 
 - R2 credentials and **`R2_PUBLIC_URL`** reachable from **Instagram** / any **pull‑URL** integrations.
-- Vercel function timeout vs. largest plausible video publish.
+- Cloud Run request timeout vs. largest plausible video publish.
 - TikTok interactive vs. cron divergence if you rely on nightly scheduled jobs.
 - Instagram two‑step publishing needs the client (or something else) to keep calling **`instagram-complete`** until `success`/`error`.
 
 ---
 
-*Generated from repository layout (`api/broadcast/publish.js`, `broadcast/upload.html`, `api/broadcast/cron/process-scheduled.js`, `broadcast/database.sql`, `vercel.json`).*
+*Generated from the Cloud Run services, broadcast UI, scheduling logic, and Supabase schemas in this repository.*

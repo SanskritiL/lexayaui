@@ -17,6 +17,8 @@ module.exports.config = {
 };
 
 async function buffer(readable) {
+    if (Buffer.isBuffer(readable.rawBody)) return readable.rawBody;
+    if (Buffer.isBuffer(readable.body)) return readable.body;
     const chunks = [];
     for await (const chunk of readable) {
         chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);

@@ -1,9 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
     }
@@ -88,6 +88,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ accounts: updatedAccounts });
 }
+
+module.exports = handler;
 
 async function refreshLinkedIn(account, metadata) {
     const accessToken = account.access_token;
