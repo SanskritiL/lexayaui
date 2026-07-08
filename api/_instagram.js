@@ -182,7 +182,7 @@ async function sendPrivateReply(igAccountId, commentId, message, accessToken) {
 }
 
 function verifyWebhookSignature(req, rawBody) {
-  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  const appSecret = process.env.INSTAGRAM_APP_SECRET || process.env.FACEBOOK_APP_SECRET;
   const signature = req.headers['x-hub-signature-256'];
   const isProduction = process.env.NODE_ENV === 'production' || process.env.K_SERVICE;
   if (!appSecret || !signature) return !isProduction;
