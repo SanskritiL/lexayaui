@@ -14,17 +14,17 @@ CREATE TABLE IF NOT EXISTS automation_rules (
     -- Trigger Configuration
     trigger_type TEXT NOT NULL DEFAULT 'comment_keyword',
     trigger_keywords TEXT[] NOT NULL,            -- ['INFO', 'GUIDE', 'FREE']
-    trigger_post_ids TEXT[],                     -- Specific post IDs, or null for all posts
-    trigger_scope TEXT DEFAULT 'all',            -- 'specific', 'all'
+    trigger_post_ids TEXT[] NOT NULL,             -- Exactly one Instagram post or reel ID
+    trigger_scope TEXT DEFAULT 'specific',        -- New rules are always post-specific
     exclude_keywords TEXT[],                     -- Keywords to ignore
 
     -- Action Configuration
-    action_type TEXT DEFAULT 'send_dm',
+    action_type TEXT DEFAULT 'both',
     dm_template TEXT NOT NULL,                   -- "Thanks! Here's your guide: {{link}}"
     dm_delay_seconds INT DEFAULT 0,              -- 0, 30, 60, 300
 
     -- Variables for template substitution
-    variables JSONB DEFAULT '{}',                -- {"link": "https://...", "code": "SAVE20"}
+    variables JSONB DEFAULT '{}',                -- Includes public_reply_template and custom values
 
     -- Status & Limits
     is_active BOOLEAN DEFAULT true,

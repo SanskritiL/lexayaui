@@ -120,12 +120,13 @@
                         </div>
                         <div class="field">
                             <label>Instagram content</label>
-                            <label class="content-scope">
-                                <input type="checkbox" id="all-posts" checked>
-                                Apply to all current and future Instagram posts
-                            </label>
-                            <div class="media-picker disabled" id="media-picker" aria-label="Recent Instagram content"></div>
-                            <p class="help">Turn off “all posts” to select one or more recent posts.</p>
+                            <div class="media-picker" id="media-picker" aria-label="Recent Instagram content"></div>
+                            <p class="help">Select the one post or reel where this keyword should work.</p>
+                        </div>
+                        <div class="field">
+                            <label for="public-reply-template">Public comment reply</label>
+                            <textarea id="public-reply-template" name="public_reply_template" placeholder="Thanks, {{username}}! Check your DMs." required>Thanks, {{username}}! Check your DMs.</textarea>
+                            <p class="help">Posted under their comment after the DM is sent. Available variables: {{username}}, {{comment}}.</p>
                         </div>
                         <div class="field">
                             <label for="dm-template">DM message</label>
@@ -203,7 +204,6 @@
             document.getElementById('rule-form').addEventListener('submit', saveRule);
             document.getElementById('reset-form').addEventListener('click', resetForm);
             document.getElementById('refresh-btn').addEventListener('click', loadAll);
-            document.getElementById('all-posts').addEventListener('change', updateMediaPickerState);
             await loadAll();
         });
 
@@ -231,12 +231,11 @@
                 summary.textContent = media.length ? `${media.length} recent posts available` : 'No recent posts found';
                 picker.innerHTML = media.map(item => `
                     <label class="media-card" title="${escapeHtml(item.caption || item.id)}">
-                        <input type="checkbox" name="trigger-post" value="${escapeHtml(item.id)}">
+                        <input type="radio" name="trigger-post" value="${escapeHtml(item.id)}" required>
                         <img src="${escapeHtml(item.thumbnail_url || item.media_url || '')}" alt="" loading="lazy">
                         <span class="media-card-copy">${escapeHtml(item.caption || `${item.media_type || 'Instagram'} post`)}</span>
                     </label>
                 `).join('');
-                updateMediaPickerState();
             } catch (error) {
                 summary.textContent = 'Connect Instagram before choosing specific posts';
                 picker.innerHTML = '<p class="help">Recent Instagram content could not be loaded.</p>';
@@ -244,19 +243,7 @@
             }
         }
 
-        function updateMediaPickerState() {
-            const allPosts = document.getElementById('all-posts').checked;
-            const picker = document.getElementById('media-picker');
-            picker.classList.toggle('disabled', allPosts);
-            picker.setAttribute('aria-disabled', String(allPosts));
-            picker.querySelectorAll('input[name="trigger-post"]').forEach(input => {
-                input.disabled = allPosts;
-                if (allPosts) input.checked = false;
-            });
-        }
-
         function selectedPostIds() {
-            if (document.getElementById('all-posts').checked) return [];
             return [...document.querySelectorAll('input[name="trigger-post"]:checked')].map(input => input.value);
         }
 
@@ -290,7 +277,7 @@
                     <div class="empty-state">
                         <span class="material-symbols-outlined">auto_awesome_motion</span>
                         <p class="font-extrabold text-on-surface mb-1">No rules yet</p>
-                        <p class="text-sm">Create a keyword rule to reply privately when someone comments.</p>
+                        <p class="text-sm">Create a post-specific keyword rule to reply publicly and by DM.</p>
                     </div>
                 `;
                 return;
@@ -301,11 +288,12 @@
                     <div class="rule-top">
                         <div>
                             <div class="rule-name">${escapeHtml(rule.name)}</div>
-                            <div class="rule-meta">${rule.trigger_scope === 'specific' ? `${(rule.trigger_post_ids || []).length} selected post${(rule.trigger_post_ids || []).length === 1 ? '' : 's'}` : 'All posts'} · ${escapeHtml(rule.action_type || 'send_dm')}</div>
+                            <div class="rule-meta">${rule.trigger_scope === 'specific' && (rule.trigger_post_ids || []).length === 1 ? '1 selected post' : 'Select a post to reactivate'} · public reply + DM</div>
                         </div>
                         <span class="status-pill ${rule.is_active ? '' : 'off'}">${rule.is_active ? 'Active' : 'Paused'}</span>
                     </div>
                     <div class="keyword-list">${(rule.trigger_keywords || []).map(keyword => `<span class="keyword">${escapeHtml(keyword)}</span>`).join('')}</div>
+                    <p class="text-sm text-slate-700"><strong>Comment:</strong> ${escapeHtml(rule.variables?.public_reply_template || 'Thanks! Check your DMs.')}</p>
                     <p class="text-sm text-slate-700">${escapeHtml(rule.dm_template)}</p>
                     <div class="rule-actions">
                         <button type="button" class="btn-secondary" onclick="editRule('${rule.id}')"><span class="material-symbols-outlined text-base">edit</span>Edit</button>
@@ -348,16 +336,19 @@
         async function saveRule(event) {
             event.preventDefault();
             const ruleId = document.getElementById('rule-id').value;
+            const existingRule = rules.find(rule => rule.id === ruleId);
             const postIds = selectedPostIds();
-            if (!document.getElementById('all-posts').checked && !postIds.length) {
-                showToast('Select at least one Instagram post or choose all posts', 'error');
+            if (postIds.length !== 1) {
+                showToast('Select exactly one Instagram post or reel', 'error');
                 return;
             }
             const payload = {
                 name: document.getElementById('rule-name').value,
                 trigger_keywords: document.getElementById('trigger-keywords').value,
                 trigger_post_ids: postIds,
+                public_reply_template: document.getElementById('public-reply-template').value,
                 dm_template: document.getElementById('dm-template').value,
+                variables: existingRule?.variables || {},
                 is_active: document.getElementById('is-active').checked,
             };
 
@@ -384,11 +375,10 @@
             document.getElementById('rule-name').value = rule.name || '';
             document.getElementById('trigger-keywords').value = (rule.trigger_keywords || []).join(', ');
             const selectedIds = new Set(rule.trigger_post_ids || []);
-            document.getElementById('all-posts').checked = rule.trigger_scope !== 'specific';
-            updateMediaPickerState();
             document.querySelectorAll('input[name="trigger-post"]').forEach(input => {
                 input.checked = selectedIds.has(input.value);
             });
+            document.getElementById('public-reply-template').value = rule.variables?.public_reply_template || 'Thanks, {{username}}! Check your DMs.';
             document.getElementById('dm-template').value = rule.dm_template || '';
             document.getElementById('is-active').checked = Boolean(rule.is_active);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -413,8 +403,7 @@
             document.getElementById('rule-form').reset();
             document.getElementById('rule-id').value = '';
             document.getElementById('is-active').checked = true;
-            document.getElementById('all-posts').checked = true;
-            updateMediaPickerState();
+            document.getElementById('public-reply-template').value = 'Thanks, {{username}}! Check your DMs.';
         }
 
         function formatDate(value) {

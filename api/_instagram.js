@@ -74,6 +74,9 @@ async function graphFetch(path, params = {}, options = {}) {
 }
 
 function normalizeRuleInput(body, userId) {
+  const variables = body.variables && typeof body.variables === 'object' && !Array.isArray(body.variables)
+    ? body.variables
+    : {};
   const triggerKeywords = Array.isArray(body.trigger_keywords)
     ? body.trigger_keywords
     : String(body.trigger_keywords || '')
@@ -90,6 +93,8 @@ function normalizeRuleInput(body, userId) {
 
   if (!body.name?.trim()) throw new Error('Rule name is required');
   if (!triggerKeywords.length) throw new Error('At least one trigger keyword is required');
+  if (triggerPostIds.length !== 1) throw new Error('Select exactly one Instagram post or reel');
+  if (!body.public_reply_template?.trim()) throw new Error('Public reply message is required');
   if (!body.dm_template?.trim()) throw new Error('DM template is required');
 
   return {
@@ -97,13 +102,16 @@ function normalizeRuleInput(body, userId) {
     name: body.name.trim(),
     trigger_type: 'comment_keyword',
     trigger_keywords: triggerKeywords.map(keyword => keyword.toLowerCase()),
-    trigger_post_ids: triggerPostIds.length ? triggerPostIds : null,
-    trigger_scope: triggerPostIds.length ? 'specific' : 'all',
+    trigger_post_ids: triggerPostIds,
+    trigger_scope: 'specific',
     exclude_keywords: Array.isArray(body.exclude_keywords) ? body.exclude_keywords : null,
-    action_type: body.action_type || 'send_dm',
+    action_type: 'both',
     dm_template: body.dm_template.trim(),
     dm_delay_seconds: Number(body.dm_delay_seconds || 0),
-    variables: body.variables || {},
+    variables: {
+      ...variables,
+      public_reply_template: body.public_reply_template.trim(),
+    },
     is_active: body.is_active !== false,
     max_dms_per_hour: Number(body.max_dms_per_hour || 50),
   };
@@ -126,8 +134,28 @@ function commentTextMatches(rule, text) {
 }
 
 function ruleMatchesPost(rule, mediaId) {
-  if (rule.trigger_scope !== 'specific') return true;
+  if (rule.trigger_scope !== 'specific') return false;
   return (rule.trigger_post_ids || []).includes(mediaId);
+}
+
+async function sendPublicReply(commentId, message, accessToken) {
+  const response = await fetch(`${GRAPH_BASE}/${commentId}/replies`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ message }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) {
+    const error = new Error(data.error?.message || `Instagram comment reply failed (${response.status})`);
+    error.status = response.status;
+    error.graph = data.error;
+    throw error;
+  }
+  return data;
 }
 
 async function sendPrivateReply(igAccountId, commentId, message, accessToken) {
@@ -358,6 +386,14 @@ async function handleWebhook(req, res, supabase) {
     }
 
     for (const account of accounts) {
+      const accountMetadata = account.metadata || {};
+      const commenterId = String(event.igUserId);
+      if (commenterId === String(account.platform_user_id) || commenterId === String(accountMetadata.ig_user_id || '')) {
+        webhookLog(requestId, 'self_comment_skipped', { eventRef });
+        results.push({ commentId: event.commentId, status: 'skipped', reason: 'Account-authored comment' });
+        continue;
+      }
+
       const { data: rules, error: rulesError } = await supabase
         .from('automation_rules')
         .select('*')
@@ -381,12 +417,14 @@ async function handleWebhook(req, res, supabase) {
       });
 
       for (const rule of matchingRules) {
-
-        const message = renderTemplate(rule.dm_template, {
+        const templateContext = {
           username: event.username || '',
           comment: event.text,
           variables: rule.variables || {},
-        });
+        };
+        const message = renderTemplate(rule.dm_template, templateContext);
+        const publicReplyTemplate = rule.variables?.public_reply_template || 'Thanks! Check your DMs.';
+        const publicReplyMessage = renderTemplate(publicReplyTemplate, templateContext);
 
         const logPayload = {
           automation_rule_id: rule.id,
@@ -417,18 +455,26 @@ async function handleWebhook(req, res, supabase) {
           continue;
         }
 
+        let dmSent = false;
+        let publicReplySent = false;
+        let dmError = null;
+        let publicReplyError = null;
+
         try {
-          webhookLog(requestId, 'meta_send_started', { eventRef, ruleRef: diagnosticRef(rule.id) });
+          webhookLog(requestId, 'dm_send_started', { eventRef, ruleRef: diagnosticRef(rule.id) });
           await sendPrivateReply(account.platform_user_id, event.commentId, message, account.access_token);
+          dmSent = true;
+          webhookLog(requestId, 'dm_send_succeeded', { eventRef, ruleRef: diagnosticRef(rule.id) });
           const { error: updateError } = await supabase
             .from('dm_log')
             .update({ dm_status: 'sent', dm_sent_at: new Date().toISOString(), dm_error: null })
             .eq('id', claimedLog.id);
-          if (updateError) throw updateError;
-          webhookLog(requestId, 'meta_send_succeeded', { eventRef, ruleRef: diagnosticRef(rule.id) });
-          results.push({ commentId: event.commentId, ruleId: rule.id, status: 'sent' });
+          if (updateError) {
+            webhookLog(requestId, 'dm_log_update_failed', { eventRef, error: updateError.message }, 'error');
+          }
         } catch (error) {
-          webhookLog(requestId, 'send_failed', {
+          dmError = error.message;
+          webhookLog(requestId, 'dm_send_failed', {
             eventRef,
             ruleRef: diagnosticRef(rule.id),
             error: error.message,
@@ -439,8 +485,37 @@ async function handleWebhook(req, res, supabase) {
             .update({ dm_status: 'failed', dm_error: error.message })
             .eq('id', claimedLog.id)
             .then(() => null);
-          results.push({ commentId: event.commentId, ruleId: rule.id, status: 'failed', error: error.message });
         }
+
+        if (dmSent) {
+          try {
+            webhookLog(requestId, 'comment_reply_started', { eventRef, ruleRef: diagnosticRef(rule.id) });
+            await sendPublicReply(event.commentId, publicReplyMessage, account.access_token);
+            publicReplySent = true;
+            webhookLog(requestId, 'comment_reply_succeeded', { eventRef, ruleRef: diagnosticRef(rule.id) });
+          } catch (error) {
+            publicReplyError = error.message;
+            webhookLog(requestId, 'comment_reply_failed', {
+              eventRef,
+              ruleRef: diagnosticRef(rule.id),
+              error: error.message,
+              graphCode: error.graph?.code || null,
+              graphSubcode: error.graph?.error_subcode || null,
+            }, 'error');
+          }
+        } else {
+          publicReplyError = 'Skipped because the DM was not sent';
+        }
+
+        const status = dmSent && publicReplySent ? 'sent' : (dmSent || publicReplySent ? 'partial' : 'failed');
+        results.push({
+          commentId: event.commentId,
+          ruleId: rule.id,
+          status,
+          dmStatus: dmSent ? 'sent' : 'failed',
+          publicReplyStatus: publicReplySent ? 'sent' : (dmSent ? 'failed' : 'skipped'),
+          error: dmError || publicReplyError || undefined,
+        });
       }
     }
   }
