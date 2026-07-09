@@ -283,15 +283,18 @@
         </main>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="/js/config.js"></script>
+    <script src="/js/supabase.js"></script>
     <script>
-        const supabase = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        const supabase = initSupabase();
 
         // Admin emails that can access this page
         const ADMIN_EMAILS = CONFIG.ADMIN_EMAILS || [];
 
         async function init() {
-            const { data: { user } } = await supabase.auth.getUser();
+            const user = await window.LEXAYA_AUTH.getUser();
 
             if (!user || !ADMIN_EMAILS.includes(user.email)) {
                 document.getElementById('auth-wall').style.display = 'flex';

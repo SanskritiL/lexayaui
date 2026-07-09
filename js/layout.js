@@ -3,12 +3,11 @@
     'use strict';
 
     const LAYOUT_CONFIG = {
-        supabaseUrl: CONFIG.SUPABASE_URL,
-        supabaseKey: CONFIG.SUPABASE_ANON_KEY,
         siteName: 'Lexaya Studio',
         mode: 'Editorial Mode',
         navItems: [
             { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/broadcast/' },
+            { id: 'automations', label: 'Instagram Automated DM', icon: 'forum', href: '/broadcast/automations.html' },
         ],
         bottomNavItems: [
             { id: 'dashboard', icon: 'dashboard', label: 'Studio', href: '/broadcast/' },
@@ -31,19 +30,15 @@
         }
 
         activePage = document.body.dataset.page || 'dashboard';
-        supabaseClient = window.LEXAYA_SUPABASE_CLIENT || (window.supabase?.createClient
-            ? window.supabase.createClient(LAYOUT_CONFIG.supabaseUrl, LAYOUT_CONFIG.supabaseKey, {
-                realtime: { transport: window.WebSocket }
-            })
-            : null);
-        if (supabaseClient) window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
+        supabaseClient = window.LEXAYA_SUPABASE_CLIENT
+            || (typeof initSupabase === 'function' ? initSupabase() : null);
 
-        if (!supabaseClient) {
+        if (!supabaseClient || !window.LEXAYA_AUTH) {
             renderLayout(null);
             return;
         }
 
-        supabaseClient.auth.getUser().then(({ data: { user } }) => {
+        window.LEXAYA_AUTH.getUser().then((user) => {
             currentUser = user;
             renderLayout(user);
         });
@@ -338,13 +333,11 @@
     }
 
     window.handleLogout = function() {
-        if (!supabaseClient) {
+        if (!window.LEXAYA_AUTH) {
             window.location.href = '/';
             return;
         }
-        supabaseClient.auth.signOut().then(() => {
-            window.location.href = '/';
-        });
+        window.LEXAYA_AUTH.signOut();
     };
 
     if (document.readyState === 'loading') {

@@ -5,6 +5,7 @@
 //   - test=true: test mode for paid downloads
 
 const getClient = require('./_supabase');
+const { verifyToken } = require('./_firebase');
 
 const supabase = getClient(
     process.env.SUPABASE_URL,
@@ -67,9 +68,9 @@ async function handleFreeDownload(req, res, resource) {
     }
 
     const token = authHeader.split(' ')[1];
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const user = await verifyToken(token);
 
-    if (authError || !user) {
+    if (!user) {
         return res.status(401).json({ error: 'Please log in to access this resource.' });
     }
 

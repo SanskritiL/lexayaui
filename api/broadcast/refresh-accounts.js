@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { verifyToken } = require('../_firebase');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
@@ -16,8 +17,8 @@ async function handler(req, res) {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
+    const user = await verifyToken(token);
+    if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const userId = user.id;

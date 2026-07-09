@@ -7,6 +7,16 @@
 window.CONFIG = {
     SUPABASE_URL: window.LEXAYA_CONFIG?.SUPABASE_URL || 'https://bcyhcsphmqizzvzmdqxc.supabase.co',
     SUPABASE_ANON_KEY: window.LEXAYA_CONFIG?.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJjeWhjc3BobXFpenp2em1kcXhjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYxNjEwMjQsImV4cCI6MjA4MTczNzAyNH0.8CGKr_2IzxmdcCidKE0pIpsGJnkDKIYmNxDtns2ZRFk',
+    // Firebase web app config (Firebase console → Project settings → Your apps).
+    // Public-safe, like the Supabase anon key.
+    FIREBASE: window.LEXAYA_CONFIG?.FIREBASE || {
+        apiKey: 'AIzaSyCCBklSwc18cYgHD0I8Nu4_jBhKY92iA8Y',
+        // Can become 'lexaya.io' once that domain is connected to this
+        // project's Firebase Hosting (nicer popup branding).
+        authDomain: 'turtle-487402.firebaseapp.com',
+        projectId: 'turtle-487402',
+        appId: '1:266355090145:web:31d34b545aa5f07143cda0',
+    },
     STRIPE_PUBLISHABLE_KEY: window.LEXAYA_CONFIG?.STRIPE_PUBLISHABLE_KEY || 'pk_live_51R1BXqA1WPL5LnBtyn66feXbCMeWT1VIwyKSfkJ8Ydy6BVGRT6jN6tZZcALLfL7w2lVdkfZh6SdLsSTWKL9ZwIql005XoAQ4NP',
     APP_BASE_URL: window.LEXAYA_CONFIG?.APP_BASE_URL || 'https://lexaya.io',
     API_BASE_URL: window.LEXAYA_CONFIG?.API_BASE_URL ?? '',
@@ -23,6 +33,10 @@ window.CONFIG = {
 
 if (!window.CONFIG.SUPABASE_URL || !window.CONFIG.SUPABASE_ANON_KEY) {
     console.warn('[Lexaya] Missing Supabase browser config. Update js/config.js before running the app.');
+}
+
+if (String(window.CONFIG.FIREBASE?.apiKey || '').startsWith('REPLACE_WITH')) {
+    console.warn('[Lexaya] Missing Firebase browser config. Update js/config.js before running the app.');
 }
 
 var CONFIG = window.CONFIG;

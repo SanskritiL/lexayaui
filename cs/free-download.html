@@ -6,6 +6,8 @@
     <title>Download Resource - Lexaya</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
@@ -199,6 +201,7 @@
     </div>
 
     <script src="/js/config.js"></script>
+    <script src="/js/supabase.js"></script>
     <script>
         // ============ CACHE UTILITIES ============
         const CACHE_KEYS = {
@@ -245,8 +248,6 @@
         }
 
         // ============ MAIN LOGIC ============
-        let supabaseClient;
-
         async function checkAccessAndDownload() {
             // Get resource from URL or localStorage
             const urlParams = new URLSearchParams(window.location.search);
@@ -278,44 +279,24 @@
                 return;
             }
 
-            // Need to fetch - check session
-            let session = getCache(CACHE_KEYS.SESSION);
+            // Need to fetch - get a fresh session (the Firebase SDK caches and
+            // refreshes ID tokens itself, so no localStorage session cache)
+            let session = null;
+            try {
+                session = await Promise.race([
+                    window.LEXAYA_AUTH.getSession(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
+                ]);
+            } catch (err) {
+                showError('Connection error. Please refresh.');
+                return;
+            }
 
             if (!session) {
-                // Initialize Supabase only when needed
-                if (!supabaseClient) {
-                    try {
-                        if (typeof CONFIG === 'undefined') throw new Error('CONFIG not loaded');
-                        supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-                    } catch (e) {
-                        showError('Failed to initialize. Please refresh.');
-                        return;
-                    }
-                }
-
-                console.log('[Free Download] Fetching session from Supabase...');
-                try {
-                    const { data, error } = await Promise.race([
-                        supabaseClient.auth.getSession(),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000))
-                    ]);
-
-                    if (error || !data.session) {
-                        const currentUrl = window.location.pathname + window.location.search;
-                        document.getElementById('login-link').href = `/login.html?redirect=${encodeURIComponent(currentUrl)}`;
-                        showLogin();
-                        return;
-                    }
-
-                    session = data.session;
-                    setCache(CACHE_KEYS.SESSION, session, CACHE_DURATION.SESSION);
-                    console.log('[Free Download] Session cached');
-                } catch (err) {
-                    showError('Connection error. Please refresh.');
-                    return;
-                }
-            } else {
-                console.log('[Free Download] Using cached session');
+                const currentUrl = window.location.pathname + window.location.search;
+                document.getElementById('login-link').href = `/login.html?redirect=${encodeURIComponent(currentUrl)}`;
+                showLogin();
+                return;
             }
 
             // Fetch download URL from API

@@ -4,7 +4,7 @@
 -- Create media_kits table (minimal - just what we need for sharing)
 CREATE TABLE IF NOT EXISTS media_kits (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT,
     share_token TEXT UNIQUE NOT NULL,
 
     -- Only store what's needed for sharing
@@ -38,7 +38,7 @@ ALTER TABLE media_kits ENABLE ROW LEVEL SECURITY;
 
 -- Users can manage their own kit
 CREATE POLICY "Users can manage own kit" ON media_kits
-    FOR ALL USING (auth.uid() = user_id);
+    FOR ALL USING ((select auth.jwt()->>'sub') = user_id);
 
 -- Anyone can view public kits (for share links)
 CREATE POLICY "Public can view kits by token" ON media_kits

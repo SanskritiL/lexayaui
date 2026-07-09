@@ -9,6 +9,7 @@ const refreshAccountsHandler = require('../../api/broadcast/refresh-accounts');
 const checkoutHandler = require('../../api/create-checkout');
 const stripeWebhookHandler = require('../../api/webhook');
 const downloadHandler = require('../../api/download');
+const ensureClaimsHandler = require('../../api/auth/ensure-claims');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -59,6 +60,7 @@ app.all('/api/broadcast/init-video', initVideoHandler);
 app.all('/api/broadcast/refresh-accounts', refreshAccountsHandler);
 app.all('/api/create-checkout', checkoutHandler);
 app.all('/api/download', downloadHandler);
+app.all('/api/auth/ensure-claims', ensureClaimsHandler);
 
 app.use((error, _req, res, _next) => {
   console.error('[WEB-API] Unhandled request error:', error);

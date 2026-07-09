@@ -2,9 +2,11 @@
 -- Run this in your Supabase SQL Editor
 
 -- 1. Connected platform accounts table
+-- user_id holds the Firebase Auth uid (imported legacy users keep their old
+-- Supabase UUID as their Firebase uid, so both shapes appear in these columns).
 CREATE TABLE IF NOT EXISTS connected_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT,
     platform TEXT NOT NULL CHECK (platform IN ('tiktok', 'instagram', 'linkedin', 'twitter', 'threads', 'youtube')),
     platform_user_id TEXT,
     account_name TEXT,
@@ -20,7 +22,7 @@ CREATE TABLE IF NOT EXISTS connected_accounts (
 -- 2. Posts table
 CREATE TABLE IF NOT EXISTS posts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT,
     video_url TEXT,
     thumbnail_url TEXT,
     caption TEXT,
@@ -50,31 +52,32 @@ CREATE INDEX IF NOT EXISTS idx_posts_scheduled_at ON posts(scheduled_at) WHERE s
 ALTER TABLE connected_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
 
--- Users can only see/modify their own connected accounts
+-- Users can only see/modify their own rows. Policies compare the JWT sub claim
+-- (the Firebase uid; also valid for legacy Supabase tokens) against user_id.
 CREATE POLICY "Users can view own connected accounts" ON connected_accounts
-    FOR SELECT USING (auth.uid() = user_id);
+    FOR SELECT USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can insert own connected accounts" ON connected_accounts
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+    FOR INSERT WITH CHECK ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can update own connected accounts" ON connected_accounts
-    FOR UPDATE USING (auth.uid() = user_id);
+    FOR UPDATE USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can delete own connected accounts" ON connected_accounts
-    FOR DELETE USING (auth.uid() = user_id);
+    FOR DELETE USING ((select auth.jwt()->>'sub') = user_id);
 
 -- Users can only see/modify their own posts
 CREATE POLICY "Users can view own posts" ON posts
-    FOR SELECT USING (auth.uid() = user_id);
+    FOR SELECT USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can insert own posts" ON posts
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+    FOR INSERT WITH CHECK ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can update own posts" ON posts
-    FOR UPDATE USING (auth.uid() = user_id);
+    FOR UPDATE USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can delete own posts" ON posts
-    FOR DELETE USING (auth.uid() = user_id);
+    FOR DELETE USING ((select auth.jwt()->>'sub') = user_id);
 
 -- 5. Create storage bucket for videos (run separately in Storage section)
 -- Go to Storage > Create new bucket
@@ -83,37 +86,11 @@ CREATE POLICY "Users can delete own posts" ON posts
 -- File size limit: 500MB when using R2 direct uploads
 -- Allowed MIME types: video/mp4, video/quicktime, video/webm
 
--- IMPORTANT: Storage bucket RLS policies (run in SQL Editor)
--- These allow authenticated users to upload/read their own videos
-
--- Allow users to upload videos to their own folder
-CREATE POLICY "Users can upload videos to own folder"
-ON storage.objects FOR INSERT TO authenticated
-WITH CHECK (
-    bucket_id = 'videos' AND
-    (storage.foldername(name))[1] = auth.uid()::text
-);
-
--- Allow users to read their own videos
-CREATE POLICY "Users can read own videos"
-ON storage.objects FOR SELECT TO authenticated
-USING (
-    bucket_id = 'videos' AND
-    (storage.foldername(name))[1] = auth.uid()::text
-);
-
--- Allow public read access (for Instagram to fetch the video)
+-- Video uploads go through Cloudflare R2 (publish-service), so the bucket only
+-- needs public read (for Instagram to fetch the video).
 CREATE POLICY "Public can read videos"
 ON storage.objects FOR SELECT TO public
 USING (bucket_id = 'videos');
-
--- Allow users to delete their own videos
-CREATE POLICY "Users can delete own videos"
-ON storage.objects FOR DELETE TO authenticated
-USING (
-    bucket_id = 'videos' AND
-    (storage.foldername(name))[1] = auth.uid()::text
-);
 
 -- 6. Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -146,7 +123,7 @@ CREATE POLICY "Service role full access to posts" ON posts
 -- 9. Subscriptions table for Broadcast Pro
 CREATE TABLE IF NOT EXISTS subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT,
     customer_email TEXT NOT NULL,
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,

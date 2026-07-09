@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS post_schedule_targets (
     post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
     account_id UUID NOT NULL REFERENCES connected_accounts(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT NOT NULL,
     local_date DATE NOT NULL,
     period TEXT NOT NULL CHECK (period IN ('am', 'pm')),
     timezone TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_post_schedule_targets_scheduled_at
 ALTER TABLE post_schedule_targets ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own post schedule targets" ON post_schedule_targets
-    FOR SELECT USING (auth.uid() = user_id);
+    FOR SELECT USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Service role full access to post schedule targets" ON post_schedule_targets
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
@@ -33,7 +33,7 @@ CREATE POLICY "Service role full access to post schedule targets" ON post_schedu
 -- reservations and the post status change happen in one transaction.
 CREATE OR REPLACE FUNCTION reserve_post_schedule(
     p_post_id UUID,
-    p_user_id UUID,
+    p_user_id TEXT,
     p_local_date DATE,
     p_period TEXT,
     p_timezone TEXT
@@ -135,5 +135,5 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION reserve_post_schedule(UUID, UUID, DATE, TEXT, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION reserve_post_schedule(UUID, UUID, DATE, TEXT, TEXT) TO service_role;
+REVOKE ALL ON FUNCTION reserve_post_schedule(UUID, TEXT, DATE, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION reserve_post_schedule(UUID, TEXT, DATE, TEXT, TEXT) TO service_role;

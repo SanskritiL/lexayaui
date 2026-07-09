@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
@@ -591,12 +593,10 @@
 
     <script src="/js/config.js"></script>
     <script src="/js/api-config.js"></script>
+    <script src="/js/supabase.js"></script>
     <script src="/js/layout.js"></script>
     <script>
-        const supabaseClient = window.LEXAYA_SUPABASE_CLIENT || window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
-            realtime: { transport: window.WebSocket }
-        });
-        window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
+        const supabaseClient = initSupabase();
 
         let selectedFile = null;
         let selectedReusableMedia = null;
@@ -619,8 +619,7 @@
         };
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            currentUser = user;
+            currentUser = await window.LEXAYA_AUTH.getUser();
             if (!currentUser) {
                 window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
                 return;
@@ -663,7 +662,7 @@
             const clearButton = document.getElementById('clear-existing-media');
             if (!select) return;
 
-            const { data: { session } } = await supabaseClient.auth.getSession();
+            const session = await window.LEXAYA_AUTH.getSession();
             const authToken = session?.access_token;
             if (!authToken) {
                 select.innerHTML = '<option value="">Sign in to load uploads</option>';
@@ -1331,7 +1330,7 @@
                 };
                 const isImage = selectedMediaType === 'image';
                 const isVideo = selectedMediaType === 'video';
-                const { data: { session } } = await supabaseClient.auth.getSession();
+                const session = await window.LEXAYA_AUTH.getSession();
                 const authToken = session?.access_token;
                 if (!authToken) throw new Error('No valid session. Please login again.');
 
@@ -1842,7 +1841,7 @@
         }
 
         async function pollInstagramCompletion(postId, resultKey = 'instagram', onSettled = () => {}) {
-            const { data: { session } } = await supabaseClient.auth.getSession();
+            const session = await window.LEXAYA_AUTH.getSession();
             const authToken = session?.access_token;
             if (!authToken) return;
             let attempts = 0;
@@ -1877,7 +1876,7 @@
 
         async function publishToAllPlatforms(postId, platforms) {
             // Media is already uploaded directly to R2; publish service receives only post metadata.
-            const { data: { session } } = await supabaseClient.auth.getSession();
+            const session = await window.LEXAYA_AUTH.getSession();
             const authToken = session?.access_token;
             if (!authToken) throw new Error('No valid session. Please login again.');
 
@@ -2155,7 +2154,7 @@
 
             try {
                 const base64 = await blobToBase64(videoThumbnailBlob);
-                const { data: { session } } = await supabaseClient.auth.getSession();
+                const session = await window.LEXAYA_AUTH.getSession();
                 const authToken = session?.access_token;
                 const response = await fetch(API.analyzeHook(), {
                     method: 'POST',

@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const getClient = require('./_supabase');
+const { verifyToken } = require('./_firebase');
 
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0';
 const GRAPH_BASE = `https://graph.instagram.com/${GRAPH_VERSION}`;
@@ -32,8 +33,8 @@ async function requireUser(req, res, supabase) {
   }
 
   const token = authHeader.replace('Bearer ', '');
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
+  const user = await verifyToken(token);
+  if (!user) {
     res.status(401).json({ error: 'Invalid token' });
     return null;
   }

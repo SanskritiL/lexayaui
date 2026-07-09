@@ -88,6 +88,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --allow-unauthenticated \
   --set-env-vars="SUPABASE_URL=$(get_env_var SUPABASE_URL)" \
   --set-env-vars="SUPABASE_SERVICE_KEY=$(get_env_var SUPABASE_SERVICE_KEY)" \
+  --set-env-vars="FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-$PROJECT_ID}" \
   --set-env-vars="CRON_SECRET=$(get_env_var CRON_SECRET)" \
   --set-env-vars="R2_ACCOUNT_ID=$(get_env_var R2_ACCOUNT_ID)" \
   --set-env-vars="R2_ACCESS_KEY_ID=$(get_env_var R2_ACCESS_KEY_ID)" \

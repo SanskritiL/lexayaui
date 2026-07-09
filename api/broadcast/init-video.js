@@ -3,6 +3,7 @@
 // Query param: ?platform=tiktok or ?platform=linkedin
 
 const getClient = require('../_supabase');
+const { verifyToken } = require('../_firebase');
 
 module.exports = async function handler(req, res) {
     console.log('========== INIT VIDEO API ==========');
@@ -27,8 +28,8 @@ module.exports = async function handler(req, res) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !user) {
+    const user = await verifyToken(token);
+    if (!user) {
         console.log('[AUTH] Verification failed');
         return res.status(401).json({ error: 'Unauthorized' });
     }

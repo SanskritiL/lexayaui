@@ -8,7 +8,7 @@
 
 CREATE TABLE IF NOT EXISTS automation_rules (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT,
     name TEXT NOT NULL,                          -- "Free Guide DM Automation"
 
     -- Trigger Configuration
@@ -52,7 +52,7 @@ CREATE INDEX IF NOT EXISTS idx_automation_rules_active ON automation_rules(is_ac
 CREATE TABLE IF NOT EXISTS dm_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     automation_rule_id UUID REFERENCES automation_rules(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT,
 
     -- Instagram identifiers
     ig_user_id TEXT NOT NULL,                    -- Instagram Scoped User ID (commenter)
@@ -89,7 +89,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_dm_log_rule_comment_unique
 
 CREATE TABLE IF NOT EXISTS webhook_subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    user_id TEXT,
     platform TEXT DEFAULT 'instagram',
     ig_account_id TEXT NOT NULL,                 -- Instagram Business Account ID
     page_id TEXT,                                -- Facebook Page ID
@@ -116,35 +116,36 @@ ALTER TABLE automation_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE dm_log ENABLE ROW LEVEL SECURITY;
 ALTER TABLE webhook_subscriptions ENABLE ROW LEVEL SECURITY;
 
--- automation_rules policies
+-- automation_rules policies (user_id holds the Firebase uid; the JWT sub claim
+-- matches for both Firebase and legacy Supabase tokens)
 CREATE POLICY "Users can view own automation rules" ON automation_rules
-    FOR SELECT USING (auth.uid() = user_id);
+    FOR SELECT USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can insert own automation rules" ON automation_rules
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+    FOR INSERT WITH CHECK ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can update own automation rules" ON automation_rules
-    FOR UPDATE USING (auth.uid() = user_id);
+    FOR UPDATE USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can delete own automation rules" ON automation_rules
-    FOR DELETE USING (auth.uid() = user_id);
+    FOR DELETE USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Service role full access to automation_rules" ON automation_rules
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
 -- dm_log policies (users can only view, not modify)
 CREATE POLICY "Users can view own dm log" ON dm_log
-    FOR SELECT USING (auth.uid() = user_id);
+    FOR SELECT USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Service role full access to dm_log" ON dm_log
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
 -- webhook_subscriptions policies
 CREATE POLICY "Users can view own webhook subscriptions" ON webhook_subscriptions
-    FOR SELECT USING (auth.uid() = user_id);
+    FOR SELECT USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Users can manage own webhook subscriptions" ON webhook_subscriptions
-    FOR ALL USING (auth.uid() = user_id);
+    FOR ALL USING ((select auth.jwt()->>'sub') = user_id);
 
 CREATE POLICY "Service role full access to webhook_subscriptions" ON webhook_subscriptions
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
@@ -165,7 +166,7 @@ CREATE TRIGGER update_automation_rules_updated_at
 -- ============================================
 -- Returns true if user can send more DMs (under 200/hour limit)
 
-CREATE OR REPLACE FUNCTION check_dm_rate_limit(p_user_id UUID)
+CREATE OR REPLACE FUNCTION check_dm_rate_limit(p_user_id TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
     dm_count INT;

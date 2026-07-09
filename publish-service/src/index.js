@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const { getClient } = require('./supabase');
+const { getAdmin } = require('./firebase');
 const { publishPost } = require('./publish');
 const { completeInstagram } = require('./platforms/instagram');
 const { createR2Upload, verifyR2Upload } = require('./storage');
@@ -323,10 +324,18 @@ async function verifyPublishAuth(req) {
     return null;
   }
 
+  try {
+    const decoded = await getAdmin().auth().verifyIdToken(token);
+    return { id: decoded.uid, email: decoded.email || null };
+  } catch (err) {
+    // Not a Firebase token — fall back to a legacy Supabase access token
+    // below until pre-migration sessions have expired.
+  }
+
   const supabase = getClient();
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) {
-    console.warn('[AUTH] Supabase rejected token', {
+    console.warn('[AUTH] Firebase and Supabase both rejected token', {
       error: error?.message || null,
       status: error?.status || null,
       hasUser: Boolean(user),

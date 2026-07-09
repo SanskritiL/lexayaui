@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
@@ -84,9 +86,10 @@
     </div>
 
     <script src="/js/config.js"></script>
+    <script src="/js/supabase.js"></script>
     <script src="/js/layout.js"></script>
     <script>
-        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        const supabaseClient = initSupabase();
 
         const PLATFORM_ICONS = {
             tiktok: '<i class="fa-brands fa-tiktok"></i>',
@@ -99,8 +102,7 @@
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            currentUser = user;
+            currentUser = await window.LEXAYA_AUTH.getUser();
             if (!currentUser) {
                 window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
                 return;

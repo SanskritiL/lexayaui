@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="/broadcast/style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/js/config.js"></script>
 </head>
@@ -91,8 +93,9 @@
         </main>
     </div>
 
+    <script src="/js/supabase.js"></script>
     <script>
-        const supabaseClient = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
+        const supabaseClient = initSupabase();
 
         // Stripe Price ID for Broadcast Pro ($2.99 one-time)
         const BROADCAST_PRICE_ID = CONFIG.PRODUCTS.broadcastPro;
@@ -100,8 +103,7 @@
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            currentUser = user;
+            currentUser = await window.LEXAYA_AUTH.getUser();
             if (!currentUser) {
                 document.getElementById('login-required').style.display = 'block';
                 return;

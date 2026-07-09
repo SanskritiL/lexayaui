@@ -56,3 +56,6 @@ coverage/
 .env*.local
 .firebaserc
 CNAME
+
+# Claude Code local settings
+.claude/settings.local.json

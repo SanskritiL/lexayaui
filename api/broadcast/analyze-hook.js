@@ -3,6 +3,7 @@
 // Stateless - no database, examples included in prompt
 
 const getClient = require('../_supabase');
+const { verifyToken } = require('../_firebase');
 
 // Viral hook examples for RAG-style comparison (included in prompt)
 const VIRAL_HOOK_EXAMPLES = `
@@ -79,10 +80,10 @@ module.exports = async function handler(req, res) {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const user = await verifyToken(token);
 
-    if (userError || !user) {
-        console.log('[AUTH] User verification failed:', userError);
+    if (!user) {
+        console.log('[AUTH] User verification failed');
         return res.status(401).json({ error: 'Invalid token' });
     }
     console.log('[AUTH] User verified:', user.id);

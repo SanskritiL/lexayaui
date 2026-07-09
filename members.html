@@ -91,16 +91,12 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/supabase.js"></script>
     <script>
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        if (hashParams.get('error')) {
-            const errorDesc = hashParams.get('error_description') || 'Link expired';
-            window.location.href = '/login.html?error=' + encodeURIComponent(errorDesc);
-        }
-
         (async () => {
             const user = await auth.getUser();
 

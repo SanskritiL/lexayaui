@@ -51,31 +51,19 @@
         <!-- Brand -->
         <div class="text-center mb-10">
             <a href="/" class="text-3xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
-            <p class="text-sm text-slate-500 mt-2">Enter your email to get a magic link</p>
+            <p class="text-sm text-slate-500 mt-2">Sign in with your Google account</p>
         </div>
 
         <!-- Card -->
         <div class="bg-white border border-slate-200 rounded-xl p-8 shadow-lg">
-            <form id="loginForm">
-                <div class="mb-6">
-                    <label for="email" class="block text-xs font-bold uppercase tracking-widest text-slate-600 mb-2">Email</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        placeholder="you@example.com"
-                        required
-                        class="w-full px-4 py-3.5 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all font-['Manrope']"
-                    >
-                </div>
-                <button
-                    type="submit"
-                    id="submitBtn"
-                    class="w-full py-3.5 bg-primary text-white rounded-lg text-sm font-bold uppercase tracking-widest hover:bg-primary-dim transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    Send Magic Link
-                </button>
-            </form>
+            <button
+                type="button"
+                id="googleBtn"
+                class="w-full py-3.5 bg-primary text-white rounded-lg text-sm font-bold uppercase tracking-widest hover:bg-primary-dim transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+                <svg class="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81Z"/></svg>
+                Continue with Google
+            </button>
 
             <div id="message" class="mt-6 px-4 py-3 rounded-lg text-sm font-medium hidden"></div>
 
@@ -88,17 +76,18 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/supabase.js"></script>
     <script>
-        const form = document.getElementById('loginForm');
-        const submitBtn = document.getElementById('submitBtn');
+        const googleBtn = document.getElementById('googleBtn');
         const messageEl = document.getElementById('message');
 
         const urlParams = new URLSearchParams(window.location.search);
         const errorMsg = urlParams.get('error');
-        const redirectTo = urlParams.get('redirect') || '/members.html';
+        const redirectTo = urlParams.get('redirect') || '/broadcast/';
 
         if (errorMsg) {
             messageEl.className = 'mt-6 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200';
@@ -113,27 +102,25 @@
             }
         })();
 
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
+        const googleBtnHtml = googleBtn.innerHTML;
+        googleBtn.addEventListener('click', async () => {
+            googleBtn.disabled = true;
+            googleBtn.textContent = 'Signing in...';
 
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Sending...';
-
-            const { error } = await auth.sendMagicLink(email, redirectTo);
+            const { user, error } = await auth.signInWithGoogle();
 
             if (error) {
-                messageEl.className = 'mt-6 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200';
-                messageEl.textContent = error.message;
-                messageEl.classList.remove('hidden');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Send Magic Link';
-            } else {
-                messageEl.className = 'mt-6 px-4 py-3 rounded-lg text-sm font-medium bg-green-50 text-green-700 border border-green-200';
-                messageEl.textContent = 'Check your email for the magic link!';
-                messageEl.classList.remove('hidden');
-                submitBtn.textContent = 'Email Sent!';
+                if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+                    messageEl.className = 'mt-6 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700 border border-red-200';
+                    messageEl.textContent = error.message;
+                    messageEl.classList.remove('hidden');
+                }
+                googleBtn.disabled = false;
+                googleBtn.innerHTML = googleBtnHtml;
+            } else if (user) {
+                window.location.href = redirectTo;
             }
+            // No user and no error: the redirect fallback is navigating away.
         });
     </script>
 </body>

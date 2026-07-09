@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
@@ -181,9 +183,9 @@
 
     <script src="/js/config.js"></script>
     <script src="/js/api-config.js"></script>
+    <script src="/js/supabase.js"></script>
     <script>
-        const supabaseClient = window.LEXAYA_SUPABASE_CLIENT || window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { realtime: { transport: window.WebSocket } });
-        window.LEXAYA_SUPABASE_CLIENT = supabaseClient;
+        const supabaseClient = initSupabase();
 
         let currentUser = null;
         let currentSession = null;
@@ -191,10 +193,8 @@
         let media = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            currentUser = user;
-            currentSession = session;
+            currentUser = await window.LEXAYA_AUTH.getUser();
+            currentSession = await window.LEXAYA_AUTH.getSession();
 
             if (!currentUser) {
                 window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
@@ -208,8 +208,7 @@
         });
 
         async function authHeaders() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            currentSession = session;
+            currentSession = await window.LEXAYA_AUTH.getSession();
             return {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${currentSession.access_token}`,

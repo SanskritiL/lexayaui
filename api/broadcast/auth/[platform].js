@@ -1,6 +1,7 @@
 // Dynamic OAuth handler shared by the Cloud Run web API.
 
 const getClient = require('../../_supabase');
+const { verifyToken } = require('../../_firebase');
 const crypto = require('crypto');
 const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0';
 const INSTAGRAM_GRAPH_BASE = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
@@ -35,9 +36,7 @@ async function getUserState(supabase, state) {
   try {
     let raw = state;
     if (raw.startsWith('DEBUG:')) raw = raw.slice(6);
-    const { data: { user }, error } = await supabase.auth.getUser(raw);
-    if (error || !user) return null;
-    return { id: user.id, email: user.email };
+    return await verifyToken(raw);
   } catch (e) {}
   return null;
 }

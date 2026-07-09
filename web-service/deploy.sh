@@ -76,7 +76,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --min-instances 0 \
   --max-instances 10 \
   --timeout 300 \
-  --set-env-vars "NODE_ENV=production,META_GRAPH_VERSION=v25.0" \
+  --set-env-vars "NODE_ENV=production,META_GRAPH_VERSION=v25.0,FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-$PROJECT_ID}" \
   --set-secrets "$SECRET_ARG" \
   --quiet
 

@@ -418,6 +418,8 @@
         </div>
     </footer>
 
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
     <script src="js/supabase.js"></script>
@@ -427,7 +429,7 @@
             const authLink = document.getElementById('auth-link');
             if (user && authLink) {
                 authLink.textContent = 'Dashboard';
-                authLink.href = '/members.html';
+                authLink.href = '/broadcast/';
             }
         })();
     </script>
