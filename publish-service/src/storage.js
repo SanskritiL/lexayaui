@@ -100,6 +100,51 @@ async function createR2Upload({ userId, fileName, contentType, fileSizeBytes, fi
   };
 }
 
+async function verifyR2Upload({ userId, key, fileSizeBytes, contentType }) {
+  const bucket = process.env.R2_BUCKET_NAME;
+  if (!bucket) {
+    throw new Error('R2_BUCKET_NAME is required');
+  }
+
+  const objectKey = String(key || '');
+  if (!objectKey || !objectKey.startsWith(`${userId}/`)) {
+    const err = new Error('Invalid upload key');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const expectedSize = Number(fileSizeBytes);
+  if (!Number.isFinite(expectedSize) || expectedSize <= 0) {
+    const err = new Error('fileSizeBytes must be a positive number');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const result = await getR2Client().send(new HeadObjectCommand({ Bucket: bucket, Key: objectKey }));
+  const actualSize = Number(result.ContentLength || 0);
+  const actualType = String(result.ContentType || '').split(';')[0].trim().toLowerCase();
+  const expectedType = String(contentType || '').split(';')[0].trim().toLowerCase();
+
+  if (actualSize !== expectedSize) {
+    const err = new Error(`Upload verification failed: expected ${expectedSize} bytes, found ${actualSize}`);
+    err.statusCode = 409;
+    throw err;
+  }
+
+  if (expectedType && actualType && actualType !== expectedType) {
+    const err = new Error(`Upload verification failed: expected ${expectedType}, found ${actualType}`);
+    err.statusCode = 409;
+    throw err;
+  }
+
+  return {
+    ok: true,
+    key: objectKey,
+    size: actualSize,
+    contentType: result.ContentType || null,
+  };
+}
+
 async function getExistingObject({ bucket, key, size, contentType }) {
   try {
     const result = await getR2Client().send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
@@ -131,4 +176,4 @@ function getSafeExtension(fileName, contentType) {
   return '.mp4';
 }
 
-module.exports = { createR2Upload, MAX_UPLOAD_BYTES };
+module.exports = { createR2Upload, verifyR2Upload, MAX_UPLOAD_BYTES };

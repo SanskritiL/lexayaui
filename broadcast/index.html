@@ -381,8 +381,9 @@
             const summary = document.getElementById('accounts-summary');
             if (!list || !summary) return;
 
-            const expiredCount = accounts.filter(account => getAccountAuthStatus(account).needsReconnect && isAccountExpired(account)).length;
-            const expiringCount = accounts.filter(account => getAccountAuthStatus(account).needsReconnect && !isAccountExpired(account) && isAccountExpiringSoon(account)).length;
+            const accountStatuses = accounts.map(account => getAccountAuthStatus(account));
+            const expiredCount = accountStatuses.filter(status => status.className === 'expired').length;
+            const expiringCount = accountStatuses.filter(status => status.className === 'expiring').length;
             summary.textContent = expiredCount
                 ? `${accounts.length} connected · ${expiredCount} expired`
                 : expiringCount
@@ -713,19 +714,12 @@
             return String(name || 'A').trim().charAt(0).toUpperCase() || 'A';
         }
 
-        function isAccountExpired(account) {
-            const expiresAt = new Date(account?.token_expires_at || '').getTime();
-            return Number.isFinite(expiresAt) && expiresAt <= Date.now();
-        }
-
-        function isAccountExpiringSoon(account) {
-            const expiresAt = new Date(account?.token_expires_at || '').getTime();
-            return Number.isFinite(expiresAt) && expiresAt <= Date.now() + (24 * 60 * 60 * 1000);
-        }
-
         function getAccountAuthStatus(account) {
             const expiresAt = new Date(account?.token_expires_at || '').getTime();
             if (!Number.isFinite(expiresAt)) {
+                if (needsExpiringOAuth(account) && !canRefreshAccountForPublish(account)) {
+                    return { className: 'expired', label: 'Reconnect required', title: 'Authorization needs to be refreshed', needsReconnect: true };
+                }
                 return { className: '', label: 'Connected', title: 'No expiration date reported', needsReconnect: false };
             }
 
@@ -753,6 +747,10 @@
 
         function canRefreshAccountForPublish(account) {
             return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
+        }
+
+        function needsExpiringOAuth(account) {
+            return ['tiktok', 'youtube'].includes(account?.platform);
         }
 
         function dateKey(date) {

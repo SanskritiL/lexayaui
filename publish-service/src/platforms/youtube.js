@@ -89,7 +89,7 @@ async function getValidYouTubeAccessToken(account, supabase) {
   const hasValidExpiry = Number.isFinite(tokenExpiresAt);
   const refreshSkewMs = 5 * 60 * 1000;
 
-  if (!hasValidExpiry || tokenExpiresAt > Date.now() + refreshSkewMs) {
+  if (hasValidExpiry && tokenExpiresAt > Date.now() + refreshSkewMs) {
     return account.access_token;
   }
 

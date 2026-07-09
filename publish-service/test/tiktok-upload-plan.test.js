@@ -1,4 +1,7 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const os = require('node:os');
+const path = require('node:path');
 const test = require('node:test');
 const { ReadableStream } = require('node:stream/web');
 
@@ -60,6 +63,24 @@ test('reads exact chunk lengths from a stream without losing byte order', async 
   assert.equal((await source.read(3)).toString(), 'efg');
   assert.equal((await source.read(4)).toString(), 'hijk');
 });
+
+test('reads exact chunk lengths from a file without losing byte order', async (t) => {
+  const filePath = path.join(os.tmpdir(), `tiktok-upload-test-${Date.now()}`);
+  await fs.writeFile(filePath, 'abcdefghijk');
+  t.after(async () => {
+    await fs.unlink(filePath).catch(() => {});
+  });
+
+  const source = createChunkSource({ filePath });
+  t.after(async () => {
+    if (source.close) await source.close();
+  });
+
+  assert.equal((await source.read(4)).toString(), 'abcd');
+  assert.equal((await source.read(3)).toString(), 'efg');
+  assert.equal((await source.read(4)).toString(), 'hijk');
+}
+);
 
 test('retries TikTok upload server and request-id failures', () => {
   const requestIdError = JSON.stringify({ code: 50001, message: 'missing or invalid request id' });

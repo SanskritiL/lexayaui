@@ -3,6 +3,7 @@ const { publishToLinkedIn } = require('./platforms/linkedin');
 const { publishToTikTok } = require('./platforms/tiktok');
 const { publishToYouTube } = require('./platforms/youtube');
 const { publishToTwitter } = require('./platforms/twitter');
+const { publishToInstagram } = require('./platforms/instagram');
 
 const PROGRESS_UPDATE_MIN_INTERVAL_MS = Number(process.env.PROGRESS_UPDATE_MIN_INTERVAL_MS || 1500);
 const PROGRESS_UPDATE_MIN_PCT_DELTA = Number(process.env.PROGRESS_UPDATE_MIN_PCT_DELTA || 10);
@@ -166,6 +167,7 @@ async function publishPost(postId, platforms, userId, onProgress, fileBuffer) {
         case 'tiktok':     result = await publishToTikTok(post, account, supabase, p, fileBuffer); break;
         case 'twitter':    result = await publishToTwitter(post, account, p, fileBuffer); break;
         case 'youtube':    result = await publishToYouTube(post, account, supabase, p, fileBuffer); break;
+        case 'instagram':  result = await publishToInstagram(post, account, p, fileBuffer); break;
         default:           result = { status: 'error', error: 'Unknown platform' };
       }
       results[key] = { ...result, platform, account_id: account.id, account_name: account.account_name };
@@ -262,11 +264,15 @@ function findAccountForTarget(accounts, target) {
 }
 
 function isAccountAuthBlocked(account) {
-  if (!account?.token_expires_at) return false;
+  if (!account?.token_expires_at) return needsExpiringOAuth(account) && !canRefreshAccountForPublish(account);
   const expiresAt = new Date(account.token_expires_at).getTime();
-  if (!Number.isFinite(expiresAt)) return false;
+  if (!Number.isFinite(expiresAt)) return needsExpiringOAuth(account) && !canRefreshAccountForPublish(account);
   if (expiresAt > Date.now() + 2 * 60 * 1000) return false;
   return !canRefreshAccountForPublish(account);
+}
+
+function needsExpiringOAuth(account) {
+  return ['tiktok', 'youtube'].includes(account?.platform);
 }
 
 function canRefreshAccountForPublish(account) {

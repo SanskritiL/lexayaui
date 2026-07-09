@@ -4,7 +4,7 @@ const multer = require('multer');
 const { getClient } = require('./supabase');
 const { publishPost } = require('./publish');
 const { completeInstagram } = require('./platforms/instagram');
-const { createR2Upload } = require('./storage');
+const { createR2Upload, verifyR2Upload } = require('./storage');
 const { processScheduledPosts, verifySchedulerAuth } = require('./scheduler');
 
 const app = express();
@@ -102,6 +102,25 @@ app.post('/uploads/r2-url', async (req, res) => {
   }
 });
 
+app.post('/uploads/r2-verify', async (req, res) => {
+  try {
+    const user = await verifyPublishAuth(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    const verification = await verifyR2Upload({
+      userId: user.id,
+      key: req.body?.key,
+      fileSizeBytes: req.body?.fileSizeBytes,
+      contentType: req.body?.contentType,
+    });
+
+    res.json(verification);
+  } catch (err) {
+    console.error('[R2-VERIFY] Error:', err.message);
+    res.status(err.statusCode || 500).json({ error: err.message });
+  }
+});
+
 // ── Instagram completion (called from UI polling) ──
 app.post('/instagram-complete', async (req, res) => {
   try {
@@ -140,6 +159,17 @@ app.all('/broadcast/publish', async (req, res) => {
         fileSha256: req.body?.fileSha256,
       });
       return res.json(upload);
+    }
+
+    // POST /broadcast/publish?action=verify-upload
+    if (method === 'POST' && action === 'verify-upload') {
+      const verification = await verifyR2Upload({
+        userId: user.id,
+        key: req.body?.key,
+        fileSizeBytes: req.body?.fileSizeBytes,
+        contentType: req.body?.contentType,
+      });
+      return res.json(verification);
     }
 
     // GET /broadcast/publish?action=media

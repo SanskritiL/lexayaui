@@ -767,11 +767,15 @@
         }
 
         function isAccountAuthBlocked(account) {
-            if (!account?.token_expires_at) return false;
+            if (!account?.token_expires_at) return needsExpiringOAuth(account) && !canRefreshAccountForPublish(account);
             const expiresAt = new Date(account.token_expires_at).getTime();
-            if (!Number.isFinite(expiresAt)) return false;
+            if (!Number.isFinite(expiresAt)) return needsExpiringOAuth(account) && !canRefreshAccountForPublish(account);
             if (expiresAt > Date.now() + 2 * 60 * 1000) return false;
             return !canRefreshAccountForPublish(account);
+        }
+
+        function needsExpiringOAuth(account) {
+            return ['tiktok', 'youtube'].includes(account?.platform);
         }
 
         function escapeHtml(value) {
@@ -813,7 +817,7 @@
         }
 
         function updatePlatformCheckboxes() {
-            const platforms = ['tiktok', 'linkedin', 'youtube'];
+            const platforms = ['tiktok', 'instagram', 'linkedin', 'youtube'];
             const warning = document.getElementById('no-accounts-warning');
             const list = document.getElementById('channels-list');
             const selectedCountEl = document.getElementById('selected-channel-count');
@@ -1918,16 +1922,59 @@
             }
 
             const upload = await presignRes.json();
-            if (upload.existing) return upload;
+            if (upload.existing) {
+                await verifyUploadedMedia(upload.key, file, authToken);
+                return upload;
+            }
             if (!upload.uploadUrl) throw new Error('R2 upload URL was not returned.');
 
-            try {
-                await uploadFileWithProgress(upload.uploadUrl, file, onProgress);
-            } catch (err) {
-                throw new Error(`Media upload failed before publishing started: ${err.message || 'network error'}`);
+            const maxAttempts = 3;
+            let lastError = null;
+            for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+                try {
+                    await uploadFileWithProgress(upload.uploadUrl, file, onProgress);
+                    await verifyUploadedMedia(upload.key, file, authToken);
+                    return upload;
+                } catch (err) {
+                    lastError = err;
+                    if (attempt < maxAttempts) {
+                        if (typeof onProgress === 'function') onProgress(Math.max(2, Math.min(95, (attempt - 1) * 10)));
+                        await delay(750 * (2 ** (attempt - 1)));
+                    }
+                }
             }
 
-            return upload;
+            throw new Error(`Media upload failed before publishing started after ${maxAttempts} attempts: ${lastError?.message || 'network error'}`);
+        }
+
+        async function verifyUploadedMedia(key, file, authToken) {
+            if (!key) throw new Error('Upload key was not returned.');
+            const maxAttempts = 3;
+            let lastError = null;
+
+            for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+                try {
+                    const response = await fetch(API.r2Verify(), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                        body: JSON.stringify({
+                            key,
+                            fileSizeBytes: file.size,
+                            contentType: file.type,
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(await readPublishError(response));
+                    }
+                    return;
+                } catch (error) {
+                    lastError = error;
+                    if (attempt < maxAttempts) await delay(500 * attempt);
+                }
+            }
+
+            throw lastError || new Error('Upload verification failed');
         }
 
         function uploadFileWithProgress(url, file, onProgress) {
@@ -1962,6 +2009,10 @@
             return Array.from(new Uint8Array(hash))
                 .map(byte => byte.toString(16).padStart(2, '0'))
                 .join('');
+        }
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
 
         async function readPublishError(response) {

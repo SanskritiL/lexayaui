@@ -15,6 +15,7 @@ const PUBLISH_BASE_URL = window.LEXAYA_PUBLISH_BASE_URL ||
 
 const API = {
   r2Upload:           () => `${PUBLISH_BASE_URL}/broadcast/publish?action=upload`,
+  r2Verify:           () => `${PUBLISH_BASE_URL}/broadcast/publish?action=verify-upload`,
   reusableMedia:      () => `${PUBLISH_BASE_URL}/broadcast/publish?action=media`,
   publish:            () => `${PUBLISH_BASE_URL}/broadcast/publish`,
   schedule:           () => `${PUBLISH_BASE_URL}/broadcast/publish?action=schedule`,

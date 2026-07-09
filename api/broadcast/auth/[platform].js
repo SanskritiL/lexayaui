@@ -75,6 +75,36 @@ async function upsertAccount(supabase, data, userId, platform, options = {}) {
   return supabase.from('connected_accounts').insert(data);
 }
 
+async function getExistingRefreshToken(supabase, userId, platform, platformUserId) {
+  let query = supabase
+    .from('connected_accounts')
+    .select('refresh_token')
+    .eq('user_id', userId)
+    .eq('platform', platform);
+
+  if (platformUserId) {
+    query = query.eq('platform_user_id', platformUserId);
+  } else {
+    query = query.is('platform_user_id', null);
+  }
+
+  const { data: existing } = await query.maybeSingle();
+  if (existing?.refresh_token) return existing.refresh_token;
+
+  if (!platformUserId) return null;
+
+  const { data: legacyRows } = await supabase
+    .from('connected_accounts')
+    .select('refresh_token')
+    .eq('user_id', userId)
+    .eq('platform', platform)
+    .is('platform_user_id', null)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  return legacyRows?.[0]?.refresh_token || null;
+}
+
 async function resolveDbUserId(_supabase, userState) {
   return userState.id;
 }
@@ -993,6 +1023,13 @@ async function handleYouTube(req, res) {
             const channelThumbnail = channel.snippet.thumbnails?.default?.url;
             const subscriberCount = channel.statistics?.subscriberCount;
             const videoCount = channel.statistics?.videoCount;
+            const savedRefreshToken = refresh_token || await getExistingRefreshToken(supabase, userId, 'youtube', channelId);
+
+            if (!savedRefreshToken) {
+                return res.redirect('/broadcast/?error=' + encodeURIComponent(
+                    'YouTube did not return a refresh token. Remove Lexaya from your Google account access, then connect YouTube again.'
+                ));
+            }
 
             const { error: saveError } = await upsertAccount(supabase, {
                 user_id: userId,
@@ -1000,7 +1037,7 @@ async function handleYouTube(req, res) {
                 platform_user_id: channelId,
                 account_name: channelTitle,
                 access_token: access_token,
-                refresh_token: refresh_token,
+                refresh_token: savedRefreshToken,
                 token_expires_at: tokenExpiresAt,
                 scopes: ['youtube.upload', 'youtube.readonly'],
                 metadata: {
@@ -1011,7 +1048,7 @@ async function handleYouTube(req, res) {
                     subscribers_count: parseInt(subscriberCount) || 0,
                     video_count: parseInt(videoCount) || 0,
                 },
-            }, userId, 'youtube');
+            }, userId, 'youtube', { replaceLegacyWithoutProviderId: true });
 
             if (saveError) {
                 console.error('[YouTube] Save error:', saveError);
