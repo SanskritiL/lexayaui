@@ -98,6 +98,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-env-vars="YOUTUBE_CLIENT_SECRET=$(get_env_var YOUTUBE_CLIENT_SECRET)" \
   --set-env-vars="TIKTOK_CLIENT_KEY=$(get_env_var TIKTOK_CLIENT_KEY)" \
   --set-env-vars="TIKTOK_CLIENT_SECRET=$(get_env_var TIKTOK_CLIENT_SECRET)" \
+  --set-env-vars="INSTAGRAM_PUBLISHING_ENABLED=$(get_env_var INSTAGRAM_PUBLISHING_ENABLED)" \
   --quiet
 
 SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \

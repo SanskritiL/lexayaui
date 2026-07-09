@@ -7,11 +7,15 @@ const INSTAGRAM_GRAPH_BASE = `https://graph.instagram.com/${META_GRAPH_VERSION}`
 
 const INSTAGRAM_REQUESTED_SCOPES = [
     'instagram_business_basic',
+    'instagram_business_content_publish',
     'instagram_business_manage_comments',
     'instagram_business_manage_messages',
 ];
 
-const INSTAGRAM_REQUIRED_SCOPES = INSTAGRAM_REQUESTED_SCOPES;
+const INSTAGRAM_REQUIRED_SCOPES = [
+    'instagram_business_basic',
+    'instagram_business_content_publish',
+];
 
 function getPublicBaseUrl(req) {
     const forwardedHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim();

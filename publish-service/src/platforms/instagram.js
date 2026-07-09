@@ -1,5 +1,7 @@
-const FB_API_VERSION = 'v18.0';
-const FB_HOST = 'https://graph.facebook.com';
+// Connected accounts hold Instagram Login tokens, which only work against
+// graph.instagram.com (not graph.facebook.com).
+const FB_API_VERSION = process.env.META_GRAPH_VERSION || 'v25.0';
+const FB_HOST = 'https://graph.instagram.com';
 const RUPLOAD_HOST = 'https://rupload.facebook.com';
 
 async function publishToInstagram(post, account, onProgress, fileBuffer) {

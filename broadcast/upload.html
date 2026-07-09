@@ -1282,8 +1282,14 @@
             }
 
             const needsTikTok = selectedProviderNames.includes('tiktok');
+            const needsInstagram = selectedProviderNames.includes('instagram');
             const needsYouTube = selectedProviderNames.includes('youtube');
 
+            if (needsInstagram && !hasMedia && !isDraft) {
+                alert('Instagram requires an image or video.');
+                isSubmitting = false;
+                return;
+            }
             if (needsTikTok && (!hasMedia || selectedMediaType !== 'video') && !isDraft) {
                 alert('TikTok requires a video. Please upload a video or deselect TikTok.');
                 isSubmitting = false;
