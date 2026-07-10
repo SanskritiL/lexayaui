@@ -291,6 +291,7 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             const oauthResult = checkOAuthCallback();
+            if (oauthResult.success) window.LEXAYA_CACHE.invalidate('accounts');
             currentUser = await window.LEXAYA_AUTH.getUser();
             currentSession = await window.LEXAYA_AUTH.getSession();
 
@@ -301,9 +302,12 @@
 
             setupAddAccountMenu();
             await Promise.all([loadConnectedAccounts(), loadScheduledPosts(), loadPublishingHistory()]);
-            supabaseClient.channel(`history-${currentUser.id}`)
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `user_id=eq.${currentUser.id}` }, loadPublishingHistory)
-                .subscribe();
+            // Publishing happens on other pages, so refreshing when the user
+            // returns to this tab keeps history fresh without holding a
+            // realtime subscription open.
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) loadPublishingHistory();
+            });
 
             if (oauthResult.success) {
                 showSuccessBanner(oauthResult.platform);
@@ -351,6 +355,10 @@
         }
 
         async function connectPlatform(platform) {
+            if (platform === 'instagram' && window.LEXAYA_UI?.confirmInstagramBusiness) {
+                const proceed = await window.LEXAYA_UI.confirmInstagramBusiness();
+                if (!proceed) return;
+            }
             currentSession = await window.LEXAYA_AUTH.getSession();
             const state = currentSession?.access_token;
             if (!state) {
@@ -361,18 +369,11 @@
         }
 
         async function loadConnectedAccounts() {
-            const { data: accounts, error } = await supabaseClient
-                .from('connected_accounts')
-                .select('*')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                renderAccounts([]);
-                showToast('Could not load connected accounts', 'error');
-                return;
-            }
-            renderAccounts(accounts || []);
+            // Cached in localStorage (tokens never included) and invalidated
+            // on connect/disconnect, so most pageviews skip the DB.
+            const { accounts, error } = await window.LEXAYA_DATA.getConnectedAccounts(currentUser.id);
+            if (error) showToast('Could not load connected accounts', 'error');
+            renderAccounts(accounts);
         }
 
         function renderAccounts(accounts) {
@@ -451,6 +452,7 @@
                 return;
             }
             showToast(`${PLATFORM_NAMES[platform] || platform} disconnected`);
+            window.LEXAYA_CACHE.invalidate('accounts');
             await loadConnectedAccounts();
         }
 

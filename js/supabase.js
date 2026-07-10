@@ -114,6 +114,7 @@ const auth = {
 
     // Sign out
     async signOut() {
+        window.LEXAYA_CACHE.clear();
         await initFirebase().auth().signOut();
         window.location.href = '/';
         return { error: null };
@@ -131,6 +132,74 @@ const auth = {
 };
 
 window.LEXAYA_AUTH = auth;
+
+// localStorage cache for read-mostly queries, to avoid re-hitting the
+// database on every pageview. Keys are namespaced per user; entries expire
+// by TTL and are invalidated explicitly after writes. Never cache tokens or
+// other secrets here — localStorage is plaintext and survives the session.
+const LEXAYA_CACHE_PREFIX = 'lexaya:cache:';
+window.LEXAYA_CACHE = {
+    async get(name, ttlMs, fetcher) {
+        const user = await auth.getUser();
+        const key = user ? `${LEXAYA_CACHE_PREFIX}${user.id}:${name}` : null;
+        if (key) {
+            try {
+                const entry = JSON.parse(localStorage.getItem(key) || 'null');
+                if (entry && Date.now() - entry.t < ttlMs) return entry.v;
+            } catch (error) { /* corrupted entry — fall through to refetch */ }
+        }
+        const value = await fetcher();
+        if (key && value !== undefined) {
+            try {
+                localStorage.setItem(key, JSON.stringify({ t: Date.now(), v: value }));
+            } catch (error) { /* storage full or blocked — caching is best-effort */ }
+        }
+        return value;
+    },
+    invalidate(name) {
+        const suffix = `:${name}`;
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(LEXAYA_CACHE_PREFIX) && key.endsWith(suffix)) {
+                localStorage.removeItem(key);
+            }
+        }
+    },
+    clear() {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(LEXAYA_CACHE_PREFIX)) localStorage.removeItem(key);
+        }
+    },
+};
+
+// Shared cached reads. All pages must consume the same shape so the cache
+// stays interchangeable between them.
+window.LEXAYA_DATA = {
+    ACCOUNTS_CACHE_TTL: 10 * 60 * 1000,
+    async getConnectedAccounts(userId, { fresh = false } = {}) {
+        if (fresh) window.LEXAYA_CACHE.invalidate('accounts');
+        let errorMessage = null;
+        const accounts = await window.LEXAYA_CACHE.get('accounts', this.ACCOUNTS_CACHE_TTL, async () => {
+            const { data, error } = await initSupabase()
+                .from('connected_accounts')
+                .select('id, platform, account_name, token_expires_at, metadata, created_at, refresh_token')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
+            if (error) {
+                errorMessage = error.message;
+                return undefined; // errors are not cached
+            }
+            // Reduce refresh_token to a boolean before anything is cached:
+            // credentials must never reach localStorage.
+            return (data || []).map(({ refresh_token, ...account }) => ({
+                ...account,
+                has_refresh_token: Boolean(refresh_token),
+            }));
+        });
+        return { accounts: accounts || [], error: errorMessage };
+    },
+};
 
 // Database functions for leads
 const db = {

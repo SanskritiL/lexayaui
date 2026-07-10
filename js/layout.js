@@ -255,7 +255,8 @@
             }).join('');
         };
 
-        const load = async () => {
+        const ACTIVITY_TTL = 5 * 60 * 1000;
+        const fetchActivity = async () => {
             const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
             const { data, error } = await supabaseClient
                 .from('posts')
@@ -265,7 +266,13 @@
                 .neq('status', 'draft')
                 .order('updated_at', { ascending: false })
                 .limit(30);
-            activityPosts = error ? [] : (data || []);
+            return error ? [] : (data || []);
+        };
+        const load = async ({ fresh = false } = {}) => {
+            if (fresh) window.LEXAYA_CACHE?.invalidate('activity');
+            activityPosts = window.LEXAYA_CACHE
+                ? await window.LEXAYA_CACHE.get('activity', ACTIVITY_TTL, fetchActivity)
+                : await fetchActivity();
             render();
         };
 
@@ -274,6 +281,7 @@
             const willOpen = popover.hidden;
             popover.hidden = !willOpen;
             button.setAttribute('aria-expanded', String(willOpen));
+            if (willOpen) load({ fresh: true });
         });
         popover.addEventListener('click', event => event.stopPropagation());
         document.addEventListener('click', () => {
@@ -285,10 +293,9 @@
             render();
         });
 
+        // One fetch for the unread badge, then refetch on open — no standing
+        // realtime subscription for a click-triggered popover.
         load();
-        supabaseClient.channel(`activity-${user.id}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'posts', filter: `user_id=eq.${user.id}` }, load)
-            .subscribe();
     }
 
     function summarizePostActivity(post) {
@@ -331,6 +338,52 @@
         `;
         document.head.appendChild(style);
     }
+
+    // Shown before starting the Instagram OAuth flow: personal accounts pass
+    // Meta's login but fail the long-lived token exchange, so warn up front.
+    window.LEXAYA_UI = window.LEXAYA_UI || {};
+    window.LEXAYA_UI.confirmInstagramBusiness = function() {
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'ig-business-overlay';
+            overlay.innerHTML = `
+                <div class="ig-business-modal" role="dialog" aria-modal="true" aria-labelledby="ig-business-title">
+                    <span class="material-symbols-outlined ig-business-icon">storefront</span>
+                    <h3 id="ig-business-title">Instagram Professional account required</h3>
+                    <p>Your Instagram must be a <strong>Business or Creator</strong> account to connect. Personal accounts can't authorize publishing or DM automation.</p>
+                    <p class="ig-business-hint">To switch: Instagram app &rarr; Settings &rarr; Account type and tools &rarr; Switch to professional account.</p>
+                    <div class="ig-business-actions">
+                        <button type="button" data-action="cancel">Cancel</button>
+                        <button type="button" data-action="continue" class="primary">My account is professional &mdash; continue</button>
+                    </div>
+                </div>`;
+            const close = (result) => { overlay.remove(); resolve(result); };
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) return close(false);
+                const action = event.target.closest('[data-action]')?.dataset.action;
+                if (action) close(action === 'continue');
+            });
+            if (!document.getElementById('ig-business-styles')) {
+                const style = document.createElement('style');
+                style.id = 'ig-business-styles';
+                style.textContent = `
+                    .ig-business-overlay{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:rgba(17,24,39,.5);padding:16px}
+                    .ig-business-modal{width:100%;max-width:420px;background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(17,24,39,.24);padding:24px;font-family:Manrope,sans-serif;color:#2f3332}
+                    .ig-business-icon{width:42px;height:42px;border-radius:12px;background:#eef5ff;color:#005bc2;display:flex;align-items:center;justify-content:center;font-size:24px}
+                    .ig-business-modal h3{margin:14px 0 0;font-size:16px;font-weight:800}
+                    .ig-business-modal p{margin:10px 0 0;font-size:13px;line-height:1.5;color:#5c605e}
+                    .ig-business-hint{background:#fbfbfa;border:1px solid #eef0ee;border-radius:10px;padding:10px 12px}
+                    .ig-business-actions{margin-top:20px;display:flex;justify-content:flex-end;gap:10px}
+                    .ig-business-actions button{border:1px solid #e0e3e0;background:#fff;color:#5c605e;font:700 12px Manrope,sans-serif;padding:9px 14px;border-radius:10px;cursor:pointer}
+                    .ig-business-actions button:hover{background:#f7fbff;border-color:#b8d5ff;color:#005bc2}
+                    .ig-business-actions button.primary{background:#005bc2;border-color:#005bc2;color:#fff}
+                    .ig-business-actions button.primary:hover{background:#004a9e}
+                `;
+                document.head.appendChild(style);
+            }
+            document.body.appendChild(overlay);
+        });
+    };
 
     window.handleLogout = function() {
         if (!window.LEXAYA_AUTH) {

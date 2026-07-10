@@ -87,7 +87,12 @@ async function handler(req, res) {
         }
     }
 
-    return res.status(200).json({ accounts: updatedAccounts });
+    // Strip credentials before responding: the browser (and its localStorage
+    // cache) only needs display data, never access/refresh tokens. Same shape
+    // as LEXAYA_DATA.getConnectedAccounts so the frontend cache stays valid.
+    const safeAccounts = updatedAccounts.map(({ id, platform, account_name, token_expires_at, metadata, created_at, refresh_token }) =>
+        ({ id, platform, account_name, token_expires_at, metadata, created_at, has_refresh_token: Boolean(refresh_token) }));
+    return res.status(200).json({ accounts: safeAccounts });
 }
 
 module.exports = handler;

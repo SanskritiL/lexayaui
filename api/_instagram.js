@@ -362,28 +362,55 @@ async function handleWebhook(req, res, supabase) {
     commentEventCount: events.length,
   });
 
+  // Meta batches comment events, so cache lookups per delivery: one indexed
+  // account query per unique IG account id and one rules query per user,
+  // instead of refetching every Instagram account for every comment.
+  const accountsByEventId = new Map();
+  const rulesByUserId = new Map();
+
+  const loadAccountsFor = async (igAccountId) => {
+    const eventAccountId = String(igAccountId);
+    if (!accountsByEventId.has(eventAccountId)) {
+      if (!/^\d+$/.test(eventAccountId)) {
+        accountsByEventId.set(eventAccountId, { data: [], error: null });
+      } else {
+        const { data, error } = await supabase
+          .from('connected_accounts')
+          .select('user_id, platform_user_id, access_token, metadata')
+          .eq('platform', 'instagram')
+          .or([
+            `platform_user_id.eq.${eventAccountId}`,
+            `metadata->>ig_user_id.eq.${eventAccountId}`,
+            `metadata->>instagram_user_id.eq.${eventAccountId}`,
+            `metadata->>facebook_page_id.eq.${eventAccountId}`,
+          ].join(','));
+        accountsByEventId.set(eventAccountId, { data: data || [], error: error || null });
+      }
+    }
+    return accountsByEventId.get(eventAccountId);
+  };
+
+  const loadRulesFor = async (userId) => {
+    if (!rulesByUserId.has(userId)) {
+      const { data, error } = await supabase
+        .from('automation_rules')
+        .select('id, trigger_scope, trigger_post_ids, trigger_keywords, exclude_keywords, dm_template, variables')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .eq('trigger_type', 'comment_keyword');
+      rulesByUserId.set(userId, { data: data || [], error: error || null });
+    }
+    return rulesByUserId.get(userId);
+  };
+
   for (const event of events) {
     const eventRef = diagnosticRef(event.commentId);
-    const { data: allAccounts, error: accountError } = await supabase
-      .from('connected_accounts')
-      .select('*')
-      .eq('platform', 'instagram');
+    const { data: accounts, error: accountError } = await loadAccountsFor(event.igAccountId);
 
-    const accounts = (allAccounts || []).filter(account => {
-      const metadata = account.metadata || {};
-      const eventAccountId = String(event.igAccountId);
-      return [
-        account.platform_user_id,
-        metadata.ig_user_id,
-        metadata.instagram_user_id,
-        metadata.facebook_page_id,
-      ].some(value => value != null && String(value) === eventAccountId);
-    });
-
-    if (accountError || !accounts?.length) {
+    if (accountError || !accounts.length) {
       webhookLog(requestId, 'account_match_failed', {
         eventRef,
-        candidateCount: allAccounts?.length || 0,
+        matchedCount: accounts.length,
         error: accountError?.message || null,
       }, 'warn');
       results.push({ commentId: event.commentId, status: 'skipped', reason: 'No connected account matched webhook event' });
@@ -404,12 +431,7 @@ async function handleWebhook(req, res, supabase) {
         continue;
       }
 
-      const { data: rules, error: rulesError } = await supabase
-        .from('automation_rules')
-        .select('*')
-        .eq('user_id', account.user_id)
-        .eq('is_active', true)
-        .eq('trigger_type', 'comment_keyword');
+      const { data: rules, error: rulesError } = await loadRulesFor(account.user_id);
 
       if (rulesError) {
         webhookLog(requestId, 'rules_load_failed', { eventRef, error: rulesError.message }, 'error');

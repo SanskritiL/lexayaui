@@ -647,12 +647,9 @@
 
         async function loadConnectedAccounts() {
             if (!currentUser) return;
-            const { data: accounts, error } = await supabaseClient
-                .from('connected_accounts')
-                .select('*')
-                .eq('user_id', currentUser.id);
-            if (error) console.warn('Could not load accounts:', error.message);
-            connectedAccounts = accounts || [];
+            const { accounts, error } = await window.LEXAYA_DATA.getConnectedAccounts(currentUser.id);
+            if (error) console.warn('Could not load accounts:', error);
+            connectedAccounts = accounts;
             updatePlatformCheckboxes();
         }
 
@@ -762,7 +759,7 @@
         }
 
         function canRefreshAccountForPublish(account) {
-            return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
+            return Boolean(account?.has_refresh_token && ['tiktok', 'youtube'].includes(account.platform));
         }
 
         function isAccountAuthBlocked(account) {
