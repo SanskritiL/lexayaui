@@ -747,7 +747,7 @@
         }
 
         function canRefreshAccountForPublish(account) {
-            return Boolean(account?.refresh_token && ['tiktok', 'youtube'].includes(account.platform));
+            return Boolean(account?.has_refresh_token && ['tiktok', 'youtube'].includes(account.platform));
         }
 
         function needsExpiringOAuth(account) {

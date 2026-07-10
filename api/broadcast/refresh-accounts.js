@@ -50,7 +50,7 @@ async function handler(req, res) {
                 //     updatedMetadata = await refreshInstagram(account, updatedMetadata);
                 //     break;
                 case 'tiktok':
-                    updatedMetadata = await refreshTikTok(account, updatedMetadata);
+                    ({ metadata: updatedMetadata, tokenPatch } = await refreshTikTok(account, updatedMetadata));
                     break;
                 case 'twitter':
                     updatedMetadata = await refreshTwitter(account, updatedMetadata);
@@ -155,10 +155,23 @@ async function refreshInstagram(account, metadata) {
 }
 
 async function refreshTikTok(account, metadata) {
-    const accessToken = account.access_token;
-    if (!accessToken) return metadata;
+    let accessToken = account.access_token;
+    const tokenPatch = {};
+    if (!accessToken) return { metadata, tokenPatch };
 
     try {
+        const tokenExpiresAt = new Date(account.token_expires_at).getTime();
+        const shouldRefreshToken = !Number.isFinite(tokenExpiresAt) || tokenExpiresAt <= Date.now() + (5 * 60 * 1000);
+
+        if (shouldRefreshToken && account.refresh_token) {
+            const refreshed = await refreshTikTokAccessToken(account.refresh_token);
+            accessToken = refreshed.access_token;
+            tokenPatch.access_token = refreshed.access_token;
+            // TikTok rotates the refresh token on every refresh; keep the newest one.
+            tokenPatch.refresh_token = refreshed.refresh_token || account.refresh_token;
+            tokenPatch.token_expires_at = new Date(Date.now() + (Number(refreshed.expires_in) * 1000)).toISOString();
+        }
+
         const scopes = new Set(account.scopes || []);
         const fields = ['open_id', 'union_id', 'avatar_url', 'display_name'];
 
@@ -197,7 +210,44 @@ async function refreshTikTok(account, metadata) {
         console.log('[RefreshAccounts] TikTok error:', err.message);
     }
 
-    return metadata;
+    return { metadata, tokenPatch };
+}
+
+async function refreshTikTokAccessToken(refreshToken) {
+    const clientKey = process.env.TIKTOK_CLIENT_KEY;
+    const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+
+    if (!clientKey || !clientSecret || !refreshToken) {
+        throw new Error('TikTok token refresh is not configured');
+    }
+
+    const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            client_key: clientKey,
+            client_secret: clientSecret,
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken,
+        }),
+    });
+
+    const responseText = await response.text();
+    let data;
+    try {
+        data = responseText ? JSON.parse(responseText) : {};
+    } catch (err) {
+        throw new Error('TikTok token refresh returned invalid JSON');
+    }
+
+    if (!response.ok || !data.access_token || !Number.isFinite(Number(data.expires_in))) {
+        const errorCode = data.error?.code || data.error || data.code || `HTTP_${response.status}`;
+        const errorMessage = data.error?.message || data.error_description || data.message || 'TikTok token refresh failed';
+        console.log('[RefreshAccounts] TikTok token refresh failed:', errorCode, errorMessage);
+        throw new Error('TikTok token expired. Please reconnect your TikTok account.');
+    }
+
+    return data;
 }
 
 async function refreshTwitter(account, metadata) {
