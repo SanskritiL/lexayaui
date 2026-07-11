@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Post — Lexaya Studio</title>
+    <title>Create Post — Lexaya</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -607,7 +607,6 @@
         let videoThumbnailBlob = null;
         const SCHEDULING_ENABLED = true;
         const SCHEDULE_TIMEZONE = 'America/Chicago';
-        const ADMIN_EMAILS = CONFIG.ADMIN_EMAILS || [];
 
         let lastPublishState = { postId: null, failedPlatforms: [], platformResults: {} };
 
@@ -622,6 +621,12 @@
             currentUser = await window.LEXAYA_AUTH.getUser();
             if (!currentUser) {
                 window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+            }
+
+            // Publishing is admin-only; everyone else uses DM automation.
+            if (!window.LEXAYA_AUTH.isAdmin?.(currentUser)) {
+                window.location.replace('/broadcast/automations.html');
                 return;
             }
 

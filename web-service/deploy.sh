@@ -12,6 +12,24 @@ if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "(unset)" ]; then
   exit 1
 fi
 
+# Publishing authorization fails closed, so an empty ADMIN_EMAILS would deploy a
+# service that rejects every publish — including the owner's. Fail here instead.
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ADMIN_EMAILS="${ADMIN_EMAILS:-}"
+if [ -z "$ADMIN_EMAILS" ]; then
+  for env_file in "$ROOT_DIR/.env.local" "$ROOT_DIR/.env"; do
+    if [ -f "$env_file" ]; then
+      ADMIN_EMAILS="$(grep -E '^(export[[:space:]]+)?ADMIN_EMAILS=' "$env_file" 2>/dev/null | tail -n1 | cut -d'=' -f2- | tr -d '"'"'"'' || true)"
+      [ -n "$ADMIN_EMAILS" ] && break
+    fi
+  done
+fi
+if [ -z "$ADMIN_EMAILS" ]; then
+  echo "ADMIN_EMAILS is not set. Publishing would be rejected for every account." >&2
+  echo "Set it in .env.local (comma-separated) or export it, then re-run." >&2
+  exit 1
+fi
+
 gcloud config set project "$PROJECT_ID" >/dev/null
 gcloud services enable \
   artifactregistry.googleapis.com \
@@ -77,6 +95,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --max-instances 10 \
   --timeout 300 \
   --set-env-vars "NODE_ENV=production,META_GRAPH_VERSION=v25.0,FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-$PROJECT_ID}" \
+  --set-env-vars "^##^ADMIN_EMAILS=${ADMIN_EMAILS}" \
   --set-secrets "$SECRET_ARG" \
   --quiet
 

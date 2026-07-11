@@ -1,9 +1,9 @@
-// Lexaya Studio Layout - Shared sidebar, header, mobile nav
+// Lexaya Layout - Shared sidebar, header, mobile nav
 (function() {
     'use strict';
 
     const LAYOUT_CONFIG = {
-        siteName: 'Lexaya Studio',
+        siteName: 'Lexaya',
         mode: 'Editorial Mode',
         navItems: [
             { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/broadcast/' },
@@ -19,6 +19,7 @@
     let currentUser = null;
     let supabaseClient = null;
     let activePage = '';
+    let isAdminUser = false;
 
     function init() {
         const script = document.getElementById('layout-config');
@@ -40,6 +41,7 @@
 
         window.LEXAYA_AUTH.getUser().then((user) => {
             currentUser = user;
+            isAdminUser = Boolean(window.LEXAYA_AUTH.isAdmin?.(user));
             renderLayout(user);
         });
     }
@@ -60,7 +62,7 @@
 
         moveContent();
         setupAuthButtons();
-        if (user) setupActivityBell(user);
+        if (user && isAdminUser) setupActivityBell(user);
     }
 
     function moveContent() {
@@ -94,10 +96,11 @@
                     `).join('')}
                 </nav>
                 <div class="mt-auto pt-10 border-t border-outline-variant/10">
+                    ${isAdminUser ? `
                     <button onclick="window.location.href='/broadcast/upload.html'" class="mx-6 mb-8 py-4 px-6 rounded-md bg-gradient-to-br from-primary to-primary-container text-white font-bold flex items-center justify-center gap-3 active:scale-95 transition-transform w-[calc(100%-3rem)]">
                         <span class="material-symbols-outlined text-[20px]">add</span>
                         <span>Create Post</span>
-                    </button>
+                    </button>` : ''}
                     <div class="space-y-1">
                         <a class="flex items-center gap-4 text-on-surface-variant px-4 py-3 mx-4 hover:translate-x-1 transition-transform duration-400 font-medium" href="#">
                             <span class="material-symbols-outlined">settings</span>
@@ -141,7 +144,7 @@
                 <h1 class="text-headline-lg mt-1">${pageTitle}</h1>
             </div>
             <div class="flex items-center gap-6">
-                ${user ? `
+                ${user && isAdminUser ? `
                 <div class="activity-bell-wrap" id="activity-bell-wrap">
                     <button type="button" class="activity-bell-button" id="activity-bell-button" aria-label="Recent publishing activity" aria-expanded="false">
                         <span class="material-symbols-outlined">notifications</span>
@@ -192,9 +195,15 @@
     }
 
     function renderMobileNav() {
+        // Non-admins have no Create Post page; their FAB opens DM automations.
+        const bottomNavItems = isAdminUser
+            ? LAYOUT_CONFIG.bottomNavItems
+            : LAYOUT_CONFIG.bottomNavItems.map(item => item.isFab
+                ? { ...item, icon: 'forum', href: '/broadcast/automations.html' }
+                : item);
         return `
         <nav class="md:hidden fixed bottom-0 left-0 right-0 glass z-50 px-6 py-4 flex justify-around items-center rounded-t-3xl ambient-shadow">
-            ${LAYOUT_CONFIG.bottomNavItems.map(item => {
+            ${bottomNavItems.map(item => {
                 if (item.isFab) {
                     return `
                     <div class="relative -top-8">

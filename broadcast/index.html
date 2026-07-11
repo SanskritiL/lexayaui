@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Lexaya Studio</title>
+    <title>Dashboard — Lexaya</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -225,7 +225,7 @@
                 </div>
             </section>
 
-            <section class="panel ambient-shadow">
+            <section class="panel ambient-shadow" id="calendar-panel">
                 <div class="panel-header">
                     <div>
                         <h2 class="panel-title" id="calendar-title">Calendar</h2>
@@ -287,6 +287,7 @@
         let currentUser = null;
         let currentSession = null;
         let scheduledPosts = [];
+        let isAdmin = false;
         const SCHEDULING_ENABLED = false;
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -300,14 +301,22 @@
                 return;
             }
 
+            isAdmin = Boolean(window.LEXAYA_AUTH.isAdmin?.(currentUser));
+            if (!isAdmin) applyDmOnlyDashboard();
+
             setupAddAccountMenu();
-            await Promise.all([loadConnectedAccounts(), loadScheduledPosts(), loadPublishingHistory()]);
+            await Promise.all([
+                loadConnectedAccounts(),
+                ...(isAdmin ? [loadScheduledPosts(), loadPublishingHistory()] : []),
+            ]);
             // Publishing happens on other pages, so refreshing when the user
             // returns to this tab keeps history fresh without holding a
             // realtime subscription open.
-            document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) loadPublishingHistory();
-            });
+            if (isAdmin) {
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) loadPublishingHistory();
+                });
+            }
 
             if (oauthResult.success) {
                 showSuccessBanner(oauthResult.platform);
@@ -315,6 +324,17 @@
             }
             if (oauthResult.error) showToast(oauthResult.error, 'error');
         });
+
+        // Publishing is admin-only: non-admins get an Instagram-DM-automation
+        // dashboard — no calendar, no publishing history, Instagram connect only.
+        function applyDmOnlyDashboard() {
+            document.getElementById('calendar-panel')?.remove();
+            document.getElementById('publishing-history')?.remove();
+            document.querySelector('.dashboard-grid')?.style.setProperty('grid-template-columns', '1fr');
+            document.querySelectorAll('#add-account-menu [data-platform]').forEach(option => {
+                if (option.dataset.platform !== 'instagram') option.remove();
+            });
+        }
 
         function setupAddAccountMenu() {
             const button = document.getElementById('add-account-btn');
@@ -394,7 +414,7 @@
                     <div class="empty-state">
                         <span class="material-symbols-outlined">add_link</span>
                         <p class="font-extrabold text-on-surface mb-1">No accounts connected</p>
-                        <p class="text-sm">Add YouTube, LinkedIn, Instagram, or TikTok from the button above.</p>
+                        <p class="text-sm">${isAdmin ? 'Add YouTube, LinkedIn, Instagram, or TikTok from the button above.' : 'Connect your Instagram Business account to start DM automation.'}</p>
                     </div>
                 `;
                 return;

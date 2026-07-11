@@ -73,6 +73,14 @@ get_deployed_env_var() {
 gcloud config set project "$PROJECT_ID" >/dev/null 2>&1
 echo -e "${GREEN}[✓]${NC} Project: $PROJECT_ID"
 
+# Publishing authorization fails closed, so an empty ADMIN_EMAILS would deploy a
+# service that rejects every publish — including the owner's. Fail here instead.
+if [ -z "$(get_env_var ADMIN_EMAILS)" ]; then
+  echo -e "${RED}ADMIN_EMAILS is not set. Publishing would be rejected for every account.${NC}" >&2
+  echo -e "${RED}Set it in .env.local (comma-separated) or export it, then re-run.${NC}" >&2
+  exit 1
+fi
+
 echo "Enabling required APIs..."
 gcloud services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com --quiet >/dev/null 2>&1 || true
 
@@ -100,6 +108,7 @@ gcloud run deploy "$SERVICE_NAME" \
   --set-env-vars="TIKTOK_CLIENT_KEY=$(get_env_var TIKTOK_CLIENT_KEY)" \
   --set-env-vars="TIKTOK_CLIENT_SECRET=$(get_env_var TIKTOK_CLIENT_SECRET)" \
   --set-env-vars="INSTAGRAM_PUBLISHING_ENABLED=$(get_env_var INSTAGRAM_PUBLISHING_ENABLED)" \
+  --set-env-vars="^##^ADMIN_EMAILS=$(get_env_var ADMIN_EMAILS)" \
   --quiet
 
 SERVICE_URL=$(gcloud run services describe "$SERVICE_NAME" \

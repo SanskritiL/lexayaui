@@ -21,7 +21,7 @@ window.CONFIG = {
     APP_BASE_URL: window.LEXAYA_CONFIG?.APP_BASE_URL || 'https://lexaya.io',
     API_BASE_URL: window.LEXAYA_CONFIG?.API_BASE_URL ?? '',
     PUBLISH_BASE_URL: window.LEXAYA_CONFIG?.PUBLISH_BASE_URL || 'https://publish-service-266355090145.us-central1.run.app',
-    ADMIN_EMAILS: window.LEXAYA_CONFIG?.ADMIN_EMAILS || ['sanslamsal6@gmail.com'],
+    ADMIN_EMAILS: window.LEXAYA_CONFIG?.ADMIN_EMAILS || ['sanslamsal16@gmail.com'],
     PRODUCTS: {
         freeDigital: window.LEXAYA_CONFIG?.PRODUCTS?.freeDigital || 'price_1SgEPNA1WPL5LnBtS2DTcsDz',
         regularDigital: window.LEXAYA_CONFIG?.PRODUCTS?.regularDigital || 'price_1SgDWdA1WPL5LnBtIYjfgFIx',

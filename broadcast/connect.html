@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Channel Dashboard — Lexaya Studio</title>
+    <title>Channel Dashboard — Lexaya</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -234,7 +234,6 @@
 
         let connectedAccounts = [];
         let currentUser = null;
-        const ADMIN_EMAILS = CONFIG.ADMIN_EMAILS || [];
         let currentSession = null;
 
         // The legacy cache key stored full account rows, tokens included —
@@ -261,6 +260,17 @@
             if (!currentUser) {
                 document.getElementById('connect-main')?.style.setProperty('display', 'none');
                 return;
+            }
+
+            // Publishing platforms are admin-only; non-admins only connect
+            // Instagram for DM automation.
+            if (!window.LEXAYA_AUTH.isAdmin?.(currentUser)) {
+                ['linkedin', 'tiktok', 'youtube'].forEach(platform => {
+                    document.getElementById(`${platform}-card`)?.remove();
+                });
+                document.querySelector('.btn-create-post')?.remove();
+                const toolbarCopy = document.querySelector('.channels-toolbar p');
+                if (toolbarCopy) toolbarCopy.textContent = 'Connect Instagram to power your DM automations.';
             }
 
             // If OAuth just completed, force fresh data
@@ -463,6 +473,7 @@
                 const accounts = connectedAccounts.filter(a => a.platform === platform);
                 const cardEl = document.getElementById(`${platform}-card`);
                 const bodyEl = document.getElementById(`${platform}-body`);
+                if (!cardEl || !bodyEl) return; // card removed for non-admins
                 const headerEl = cardEl.querySelector('.card-header');
                 let countPill = headerEl.querySelector('.account-count-pill');
                 if (!countPill) {

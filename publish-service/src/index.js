@@ -7,6 +7,7 @@ const { publishPost } = require('./publish');
 const { completeInstagram } = require('./platforms/instagram');
 const { createR2Upload, verifyR2Upload } = require('./storage');
 const { processScheduledPosts, verifySchedulerAuth } = require('./scheduler');
+const { isAdminEmail, ADMIN_EMAILS } = require('./admin');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -19,11 +20,35 @@ const upload = multer({
 app.use(cors({ origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'] }));
 app.use(express.json({ limit: '10mb' }));
 
+// Every user-facing route on this service publishes; the DM-automation product
+// is served entirely by the web API. So authorize once here instead of per
+// route — a new endpoint then cannot ship ungated by omission. The scheduler
+// routes run as the system under CRON_SECRET and carry no end user.
+const SYSTEM_PATHS = new Set(['/scheduler/process', '/broadcast/scheduler/process']);
+
+app.use(async (req, res, next) => {
+  if (SYSTEM_PATHS.has(req.path)) return next();
+  if (req.method === 'OPTIONS' || req.method === 'HEAD') return next();
+
+  try {
+    const user = await verifyPublishAuth(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+    if (!isAdminEmail(user.email)) {
+      console.warn(`[AUTH] Non-admin blocked from publishing: userId=${user.id}`);
+      return res.status(403).json({ error: 'Publishing is not enabled for this account.' });
+    }
+
+    req.publishUser = user;
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+});
+
 // ── Health ──
-app.post('/health', async (req, res) => {
-  const user = await verifyPublishAuth(req);
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  res.json({ status: 'ok', service: 'lexaya-publish-service', userId: user.id, timestamp: new Date().toISOString() });
+app.post('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'lexaya-publish-service', userId: req.publishUser.id, timestamp: new Date().toISOString() });
 });
 
 app.head('/health', (req, res) => res.status(200).end());
@@ -31,8 +56,7 @@ app.head('/health', (req, res) => res.status(200).end());
 // ── Publish: post to platforms ──
 app.post('/publish', async (req, res) => {
   try {
-    const user = await verifyPublishAuth(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.publishUser;
 
     const { postId, platforms } = req.body;
     if (!postId || !platforms || !Array.isArray(platforms)) {
@@ -54,8 +78,7 @@ app.post('/publish', async (req, res) => {
 // ── Publish with file (multipart upload) ──
 async function handlePublishWithFile(req, res) {
   try {
-    const user = await verifyPublishAuth(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.publishUser;
 
     const { postId, platforms: platformsStr } = req.body;
     const fileBuffer = req.file?.buffer;
@@ -85,8 +108,7 @@ app.post('/with-file', upload.single('file'), handlePublishWithFile);
 // ── Direct media upload: return a presigned R2 PUT URL ──
 app.post('/uploads/r2-url', async (req, res) => {
   try {
-    const user = await verifyPublishAuth(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.publishUser;
 
     const upload = await createR2Upload({
       userId: user.id,
@@ -105,8 +127,7 @@ app.post('/uploads/r2-url', async (req, res) => {
 
 app.post('/uploads/r2-verify', async (req, res) => {
   try {
-    const user = await verifyPublishAuth(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.publishUser;
 
     const verification = await verifyR2Upload({
       userId: user.id,
@@ -125,8 +146,7 @@ app.post('/uploads/r2-verify', async (req, res) => {
 // ── Instagram completion (called from UI polling) ──
 app.post('/instagram-complete', async (req, res) => {
   try {
-    const user = await verifyPublishAuth(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.publishUser;
 
     const { postId, resultKey } = req.body || {};
     if (!postId) return res.status(400).json({ error: 'postId required' });
@@ -144,8 +164,7 @@ app.post('/instagram-complete', async (req, res) => {
 // POST /broadcast/publish?action=instagram-complete → complete Instagram
 app.all('/broadcast/publish', async (req, res) => {
   try {
-    const user = await verifyPublishAuth(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const user = req.publishUser;
 
     const action = req.query.action;
     const method = req.method;
@@ -349,6 +368,11 @@ if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`[SERVER] Lexaya publish service running on port ${PORT}`);
     console.log(`[SERVER] Health: http://localhost:${PORT}/health`);
+    if (ADMIN_EMAILS.length === 0) {
+      console.error('[SERVER] ADMIN_EMAILS is not set — every publish request will be rejected with 403.');
+    } else {
+      console.log(`[SERVER] Publishing restricted to ${ADMIN_EMAILS.length} admin account(s)`);
+    }
   });
 }
 

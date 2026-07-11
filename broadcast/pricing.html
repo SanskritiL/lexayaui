@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Broadcast Pro - Lexaya</title>
+    <title>Lexaya Pro — Lexaya</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
@@ -19,7 +19,7 @@
         <!-- Header -->
         <header class="header">
             <a href="/" class="logo">← lexaya.io</a>
-            <h1>Broadcast Pro</h1>
+            <h1>Lexaya Pro</h1>
             <p class="tagline">Post to all your platforms in one click</p>
         </header>
 
@@ -27,7 +27,7 @@
         <main class="pricing-main">
             <div class="pricing-card">
                 <div class="pricing-header">
-                    <h2>Broadcast Pro</h2>
+                    <h2>Lexaya Pro</h2>
                     <div class="price">
                         <span class="amount">$2.99</span>
                         <span class="period">one-time</span>
@@ -97,7 +97,7 @@
     <script>
         const supabaseClient = initSupabase();
 
-        // Stripe Price ID for Broadcast Pro ($2.99 one-time)
+        // Stripe Price ID for Lexaya Pro ($2.99 one-time)
         const BROADCAST_PRICE_ID = CONFIG.PRODUCTS.broadcastPro;
 
         let currentUser = null;
@@ -131,7 +131,7 @@
             btn.textContent = 'Loading...';
 
             try {
-                if (!BROADCAST_PRICE_ID) throw new Error('Broadcast Pro price ID is not configured.');
+                if (!BROADCAST_PRICE_ID) throw new Error('Lexaya Pro price ID is not configured.');
                 const response = await fetch('/api/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },

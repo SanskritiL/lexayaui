@@ -2,7 +2,12 @@
 
 const getClient = require('../../_supabase');
 const { verifyToken } = require('../../_firebase');
+const { isAdminEmail } = require('../../_admin');
 const crypto = require('crypto');
+
+// Instagram is absent: it powers DM automation, so any signed-in user may
+// connect it. The rest exist only to publish, which is admin-only.
+const PUBLISH_ONLY_PLATFORMS = new Set(['linkedin', 'tiktok', 'twitter', 'threads', 'youtube']);
 const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0';
 const INSTAGRAM_GRAPH_BASE = `https://graph.instagram.com/${META_GRAPH_VERSION}`;
 
@@ -112,10 +117,44 @@ async function resolveDbUserId(_supabase, userState) {
   return userState.id;
 }
 
+// The OAuth `state` carries the caller's Firebase ID token on both legs, so it
+// is the only identity available here — there is no Authorization header on the
+// provider's callback.
+async function resolveStateUser(state) {
+    if (!state) return null;
+
+    let token = String(state);
+    if (token.startsWith('DEBUG:')) token = token.slice(6);
+
+    // Twitter round-trips its state as base64 JSON wrapping the user token.
+    try {
+        const parsed = JSON.parse(Buffer.from(token, 'base64url').toString());
+        if (parsed?.userToken) token = String(parsed.userToken);
+    } catch (_) {}
+
+    try {
+        return await verifyToken(token);
+    } catch (_) {
+        return null;
+    }
+}
+
 module.exports = async function handler(req, res) {
     const { platform } = req.query;
 
     console.log(`========== ${platform?.toUpperCase()} OAUTH START ==========`);
+
+    // Gate before the redirect leg and again on the callback leg, so a non-admin
+    // cannot skip the UI and drive either one directly.
+    if (PUBLISH_ONLY_PLATFORMS.has(platform)) {
+        const stateUser = await resolveStateUser(req.query.state);
+        if (!stateUser || !isAdminEmail(stateUser.email)) {
+            console.warn(`[AUTH] Non-admin blocked from connecting ${platform}`);
+            return res.redirect('/broadcast/?error=' + encodeURIComponent(
+                'Publishing platforms are not enabled for this account.'
+            ));
+        }
+    }
 
     switch (platform) {
         case 'linkedin':

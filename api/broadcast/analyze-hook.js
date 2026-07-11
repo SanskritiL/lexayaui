@@ -4,6 +4,7 @@
 
 const getClient = require('../_supabase');
 const { verifyToken } = require('../_firebase');
+const { isAdminEmail } = require('../_admin');
 
 // Viral hook examples for RAG-style comparison (included in prompt)
 const VIRAL_HOOK_EXAMPLES = `
@@ -85,6 +86,10 @@ module.exports = async function handler(req, res) {
     if (!user) {
         console.log('[AUTH] User verification failed');
         return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (!isAdminEmail(user.email)) {
+        console.warn('[AUTH] Non-admin blocked from hook analysis:', user.id);
+        return res.status(403).json({ error: 'Publishing is not enabled for this account.' });
     }
     console.log('[AUTH] User verified:', user.id);
 

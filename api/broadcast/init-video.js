@@ -4,6 +4,7 @@
 
 const getClient = require('../_supabase');
 const { verifyToken } = require('../_firebase');
+const { isAdminEmail } = require('../_admin');
 
 module.exports = async function handler(req, res) {
     console.log('========== INIT VIDEO API ==========');
@@ -32,6 +33,10 @@ module.exports = async function handler(req, res) {
     if (!user) {
         console.log('[AUTH] Verification failed');
         return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (!isAdminEmail(user.email)) {
+        console.warn('[AUTH] Non-admin blocked from video upload init:', user.id);
+        return res.status(403).json({ error: 'Publishing is not enabled for this account.' });
     }
     console.log('[AUTH] User verified:', user.id);
 

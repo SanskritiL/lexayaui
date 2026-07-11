@@ -120,6 +120,14 @@ const auth = {
         return { error: null };
     },
 
+    // Publishing (multi-platform posting, scheduling, history) is admin-only.
+    // Everyone else gets the Instagram DM automation product.
+    isAdmin(user) {
+        const email = String(user?.email || '').toLowerCase();
+        return Boolean(email) && (CONFIG.ADMIN_EMAILS || [])
+            .some(adminEmail => String(adminEmail).toLowerCase() === email);
+    },
+
     // Listen to auth changes
     onAuthStateChange(callback) {
         initFirebase().auth().onAuthStateChanged((user) => {
