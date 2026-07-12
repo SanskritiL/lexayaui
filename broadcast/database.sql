@@ -117,6 +117,36 @@ CREATE TRIGGER update_posts_updated_at
 CREATE POLICY "Service role full access to connected_accounts" ON connected_accounts
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
+-- Keep OAuth credentials out of the browser.
+--
+-- RLS decides which ROWS a user sees, not which COLUMNS, so "view own connected
+-- accounts" would otherwise hand the browser a live Instagram access_token —
+-- and any XSS on a dashboard page could exfiltrate it. The app never needs the
+-- tokens client-side: every platform call is proxied through the API, which
+-- reads them with the service key. So revoke the columns outright.
+--
+-- The UI only needs to know *whether* a refresh token exists (to show the
+-- reconnect prompt), which this generated column answers without exposing it.
+ALTER TABLE connected_accounts
+    ADD COLUMN IF NOT EXISTS has_refresh_token BOOLEAN
+    GENERATED ALWAYS AS (refresh_token IS NOT NULL) STORED;
+
+-- Column grants sit in front of RLS. service_role is a separate role and keeps
+-- full access, so the API and publish service still read the tokens.
+--
+-- A column-level REVOKE cannot subtract from a table-level grant, and Supabase
+-- ships GRANT ALL ON ALL TABLES TO anon, authenticated. So drop the table-wide
+-- SELECT first, then grant back only the columns the browser may see.
+REVOKE SELECT ON connected_accounts FROM anon, authenticated;
+GRANT SELECT (
+    id, user_id, platform, platform_user_id, account_name,
+    token_expires_at, scopes, metadata, created_at, updated_at, has_refresh_token
+) ON connected_accounts TO anon, authenticated;
+
+-- The browser never writes connected accounts — OAuth runs server-side under
+-- the service key. It only needs DELETE, to disconnect an account it owns.
+REVOKE INSERT, UPDATE ON connected_accounts FROM anon, authenticated;
+
 CREATE POLICY "Service role full access to posts" ON posts
     FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
@@ -154,5 +184,42 @@ CREATE POLICY "Service role full access to subscriptions" ON subscriptions
 -- Trigger for updated_at
 CREATE TRIGGER update_subscriptions_updated_at
     BEFORE UPDATE ON subscriptions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- 10. Beta access requests
+--
+-- While the Meta app is in development mode, Instagram OAuth only works for
+-- accounts added as testers in the Meta developer console. So we collect the
+-- Instagram username at sign-up and add them by hand. Drop this table once the
+-- app clears Meta review and the OAuth flow is open to everyone.
+CREATE TABLE IF NOT EXISTS beta_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id TEXT NOT NULL,
+    email TEXT NOT NULL,
+    instagram_username TEXT NOT NULL,
+    -- pending: awaiting a tester invite in the Meta console
+    -- invited: invite sent, user must accept it in Instagram settings
+    -- active:  accepted, OAuth works for them
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'invited', 'active')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+    -- One request per account; re-submitting updates the username.
+    UNIQUE(user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_beta_requests_status ON beta_requests(status);
+
+ALTER TABLE beta_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own beta request" ON beta_requests
+    FOR SELECT USING (auth.jwt() ->> 'sub' = user_id);
+
+CREATE POLICY "Service role full access to beta requests" ON beta_requests
+    FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
+
+CREATE TRIGGER update_beta_requests_updated_at
+    BEFORE UPDATE ON beta_requests
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

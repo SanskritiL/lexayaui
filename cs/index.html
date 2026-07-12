@@ -450,26 +450,17 @@
     <script src="/js/config.js"></script>
     <script>
         async function checkout(productKey) {
-            const priceId = CONFIG.PRODUCTS[productKey];
-
-            if (!priceId) {
-                alert('Product not found');
-                return;
-            }
-
-            // Redirect to download page with session ID after purchase
-            const successUrl = window.location.origin + '/cs/download.html?session_id={CHECKOUT_SESSION_ID}';
+            // The server owns the productKey -> price mapping; sending a price
+            // from here would let anyone pick which price they pay.
+            const successUrl = '/cs/download.html?session_id={CHECKOUT_SESSION_ID}';
 
             try {
                 const response = await fetch('/api/create-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        priceId: priceId,
                         productKey: productKey,
-                        successUrl: successUrl,
-                        userEmail: null,
-                        userId: null
+                        successUrl: successUrl
                     })
                 });
 

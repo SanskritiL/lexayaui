@@ -7,6 +7,7 @@ const analyzeHookHandler = require('../../api/broadcast/analyze-hook');
 const initVideoHandler = require('../../api/broadcast/init-video');
 const refreshAccountsHandler = require('../../api/broadcast/refresh-accounts');
 const checkoutHandler = require('../../api/create-checkout');
+const betaHandler = require('../../api/beta');
 const stripeWebhookHandler = require('../../api/webhook');
 const downloadHandler = require('../../api/download');
 const ensureClaimsHandler = require('../../api/auth/ensure-claims');
@@ -59,6 +60,7 @@ app.all('/api/broadcast/analyze-hook', analyzeHookHandler);
 app.all('/api/broadcast/init-video', initVideoHandler);
 app.all('/api/broadcast/refresh-accounts', refreshAccountsHandler);
 app.all('/api/create-checkout', checkoutHandler);
+app.all('/api/beta', betaHandler);
 app.all('/api/download', downloadHandler);
 app.all('/api/auth/ensure-claims', ensureClaimsHandler);
 

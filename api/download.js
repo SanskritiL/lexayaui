@@ -2,7 +2,6 @@
 // Query params:
 //   - session_id: for paid downloads (verifies Stripe purchase)
 //   - resource: for free downloads (requires auth)
-//   - test=true: test mode for paid downloads
 
 const getClient = require('./_supabase');
 const { verifyToken } = require('./_firebase');
@@ -47,13 +46,14 @@ module.exports = async (req, res) => {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const { session_id, resource, test } = req.query;
+    const { session_id, resource } = req.query;
 
-    // Route to appropriate handler
+    // Route to appropriate handler. There is deliberately no test bypass: any
+    // path that hands out a paid file must prove the purchase first.
     if (resource) {
         return handleFreeDownload(req, res, resource);
-    } else if (session_id || test) {
-        return handlePaidDownload(req, res, session_id, test);
+    } else if (session_id) {
+        return handlePaidDownload(req, res, session_id);
     } else {
         return res.status(400).json({ error: 'Either session_id or resource parameter required' });
     }
@@ -110,27 +110,8 @@ async function handleFreeDownload(req, res, resource) {
 }
 
 // Handle paid downloads (verifies Stripe purchase)
-async function handlePaidDownload(req, res, session_id, test) {
+async function handlePaidDownload(req, res, session_id) {
     try {
-        // TEST MODE
-        if (test === 'true') {
-            const testFilePath = PRODUCT_FILES['regularDigital'];
-            const { data: signedUrl, error: urlError } = await supabase
-                .storage
-                .from('resources')
-                .createSignedUrl(testFilePath, 7200);
-
-            if (urlError) {
-                return res.status(500).json({ error: 'Storage error: ' + urlError.message });
-            }
-
-            return res.status(200).json({
-                downloadUrl: signedUrl.signedUrl,
-                expiresIn: '2 hours',
-                testMode: true
-            });
-        }
-
         if (!session_id) {
             return res.status(400).json({ error: 'Session ID required' });
         }

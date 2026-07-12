@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const getClient = require('./_supabase');
 const { verifyToken } = require('./_firebase');
+const { requireCapability } = require('./_entitlements');
 
 const GRAPH_VERSION = process.env.META_GRAPH_VERSION || 'v25.0';
 const GRAPH_BASE = `https://graph.instagram.com/${GRAPH_VERSION}`;
@@ -38,6 +39,15 @@ async function requireUser(req, res, supabase) {
     res.status(401).json({ error: 'Invalid token' });
     return null;
   }
+  return user;
+}
+
+// Every user-facing Instagram route serves the DM-automation product, which is
+// on both paid plans. Responds 402 and returns null when the user has neither.
+async function requireSubscriber(req, res, supabase) {
+  const user = await requireUser(req, res, supabase);
+  if (!user) return null;
+  if (!await requireCapability(req, res, user, 'dm_automation', supabase)) return null;
   return user;
 }
 
@@ -231,7 +241,7 @@ function extractCommentEvents(payload) {
 }
 
 async function handleMedia(req, res, supabase) {
-  const user = await requireUser(req, res, supabase);
+  const user = await requireSubscriber(req, res, supabase);
   if (!user) return;
 
   const account = await getInstagramAccount(supabase, user.id, req.query.account_id);
@@ -248,7 +258,7 @@ async function handleMedia(req, res, supabase) {
 }
 
 async function handleRules(req, res, supabase) {
-  const user = await requireUser(req, res, supabase);
+  const user = await requireSubscriber(req, res, supabase);
   if (!user) return;
 
   if (req.method === 'GET') {
@@ -306,7 +316,7 @@ async function handleRules(req, res, supabase) {
 }
 
 async function handleLogs(req, res, supabase) {
-  const user = await requireUser(req, res, supabase);
+  const user = await requireSubscriber(req, res, supabase);
   if (!user) return;
 
   const { data, error } = await supabase

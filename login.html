@@ -80,6 +80,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/config.js"></script>
+    <script src="js/api-config.js"></script>
     <script src="js/supabase.js"></script>
     <script>
         const googleBtn = document.getElementById('googleBtn');
@@ -95,6 +96,9 @@
             messageEl.classList.remove('hidden');
         }
 
+        // Sign-in lands wherever they were headed. Payment is what unlocks the
+        // dashboard, and the Instagram username is collected after checkout —
+        // both are enforced by the pages themselves, not here.
         (async () => {
             const user = await auth.getUser();
             if (user) {

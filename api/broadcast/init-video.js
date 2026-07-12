@@ -4,7 +4,7 @@
 
 const getClient = require('../_supabase');
 const { verifyToken } = require('../_firebase');
-const { isAdminEmail } = require('../_admin');
+const { requireCapability } = require('../_entitlements');
 
 module.exports = async function handler(req, res) {
     console.log('========== INIT VIDEO API ==========');
@@ -34,9 +34,10 @@ module.exports = async function handler(req, res) {
         console.log('[AUTH] Verification failed');
         return res.status(401).json({ error: 'Unauthorized' });
     }
-    if (!isAdminEmail(user.email)) {
-        console.warn('[AUTH] Non-admin blocked from video upload init:', user.id);
-        return res.status(403).json({ error: 'Publishing is not enabled for this account.' });
+    // Publishing is the Lexaya Pro tier (admins included).
+    if (!await requireCapability(req, res, user, 'multi_platform_publishing', supabase)) {
+        console.warn('[AUTH] Non-Pro blocked from video upload init:', user.id);
+        return;
     }
     console.log('[AUTH] User verified:', user.id);
 

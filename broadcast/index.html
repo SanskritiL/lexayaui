@@ -274,6 +274,7 @@
     <script src="/js/config.js"></script>
     <script src="/js/api-config.js"></script>
     <script src="/js/supabase.js"></script>
+    <script src="/js/entitlements.js"></script>
     <script>
         const supabaseClient = initSupabase();
 
@@ -287,7 +288,8 @@
         let currentUser = null;
         let currentSession = null;
         let scheduledPosts = [];
-        let isAdmin = false;
+        // Lexaya Pro (or admin). Get Lexaya sees the DM-automation dashboard.
+        let canPublish = false;
         const SCHEDULING_ENABLED = false;
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -301,18 +303,21 @@
                 return;
             }
 
-            isAdmin = Boolean(window.LEXAYA_AUTH.isAdmin?.(currentUser));
-            if (!isAdmin) applyDmOnlyDashboard();
+            // The dashboard is a paid feature. Both plans qualify; no plan does not.
+            if (await window.LEXAYA_ENTITLEMENTS.gate(currentUser, 'dm_automation')) return;
+
+            canPublish = await window.LEXAYA_ENTITLEMENTS.can(currentUser, 'multi_platform_publishing');
+            if (!canPublish) applyDmOnlyDashboard();
 
             setupAddAccountMenu();
             await Promise.all([
                 loadConnectedAccounts(),
-                ...(isAdmin ? [loadScheduledPosts(), loadPublishingHistory()] : []),
+                ...(canPublish ? [loadScheduledPosts(), loadPublishingHistory()] : []),
             ]);
             // Publishing happens on other pages, so refreshing when the user
             // returns to this tab keeps history fresh without holding a
             // realtime subscription open.
-            if (isAdmin) {
+            if (canPublish) {
                 document.addEventListener('visibilitychange', () => {
                     if (!document.hidden) loadPublishingHistory();
                 });
@@ -371,7 +376,7 @@
 
         function getAuthApiBase() {
             if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
-            return CONFIG.API_BASE_URL || '';
+            return window.LEXAYA_RESOLVED_API_BASE ?? CONFIG.API_BASE_URL ?? '';
         }
 
         async function connectPlatform(platform) {
@@ -414,7 +419,7 @@
                     <div class="empty-state">
                         <span class="material-symbols-outlined">add_link</span>
                         <p class="font-extrabold text-on-surface mb-1">No accounts connected</p>
-                        <p class="text-sm">${isAdmin ? 'Add YouTube, LinkedIn, Instagram, or TikTok from the button above.' : 'Connect your Instagram Business account to start DM automation.'}</p>
+                        <p class="text-sm">${canPublish ? 'Add YouTube, LinkedIn, Instagram, or TikTok from the button above.' : 'Connect your Instagram Business account to start DM automation.'}</p>
                     </div>
                 `;
                 return;

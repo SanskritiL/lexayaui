@@ -184,6 +184,7 @@
     <script src="/js/config.js"></script>
     <script src="/js/api-config.js"></script>
     <script src="/js/supabase.js"></script>
+    <script src="/js/entitlements.js"></script>
     <script>
         const supabaseClient = initSupabase();
 
@@ -200,6 +201,9 @@
                 window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
                 return;
             }
+
+            // DM automation is on both plans, so this only stops the unsubscribed.
+            if (await window.LEXAYA_ENTITLEMENTS.gate(currentUser, 'dm_automation')) return;
 
             document.getElementById('rule-form').addEventListener('submit', saveRule);
             document.getElementById('reset-form').addEventListener('click', resetForm);

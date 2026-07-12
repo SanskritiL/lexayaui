@@ -7,7 +7,8 @@ const { publishPost } = require('./publish');
 const { completeInstagram } = require('./platforms/instagram');
 const { createR2Upload, verifyR2Upload } = require('./storage');
 const { processScheduledPosts, verifySchedulerAuth } = require('./scheduler');
-const { isAdminEmail, ADMIN_EMAILS } = require('./admin');
+const { ADMIN_EMAILS } = require('./admin');
+const { canPublish } = require('./entitlements');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -34,9 +35,13 @@ app.use(async (req, res, next) => {
     const user = await verifyPublishAuth(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-    if (!isAdminEmail(user.email)) {
-      console.warn(`[AUTH] Non-admin blocked from publishing: userId=${user.id}`);
-      return res.status(403).json({ error: 'Publishing is not enabled for this account.' });
+    // Publishing is Lexaya Pro. Get Lexaya (DM automation) never reaches here.
+    if (!await canPublish(user)) {
+      console.warn(`[AUTH] Non-Pro blocked from publishing: userId=${user.id}`);
+      return res.status(402).json({
+        error: 'Publishing requires Lexaya Pro.',
+        upgradeUrl: '/broadcast/pricing.html',
+      });
     }
 
     req.publishUser = user;
@@ -369,9 +374,9 @@ if (require.main === module) {
     console.log(`[SERVER] Lexaya publish service running on port ${PORT}`);
     console.log(`[SERVER] Health: http://localhost:${PORT}/health`);
     if (ADMIN_EMAILS.length === 0) {
-      console.error('[SERVER] ADMIN_EMAILS is not set — every publish request will be rejected with 403.');
+      console.warn('[SERVER] ADMIN_EMAILS is not set — only Lexaya Pro subscribers can publish.');
     } else {
-      console.log(`[SERVER] Publishing restricted to ${ADMIN_EMAILS.length} admin account(s)`);
+      console.log(`[SERVER] Publishing open to Lexaya Pro subscribers and ${ADMIN_EMAILS.length} admin account(s)`);
     }
   });
 }

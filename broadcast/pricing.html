@@ -1,261 +1,252 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="light" lang="en">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lexaya Pro — Lexaya</title>
+    <title>Pricing — Lexaya</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="/broadcast/style.css">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2563eb",
+                        "primary-dim": "#1d4ed8",
+                        "on-primary": "#ffffff",
+                        "surface": "#ffffff",
+                        "on-surface": "#0f172a"
+                    },
+                    fontFamily: { "headline": ["Manrope"], "body": ["Manrope"], "label": ["Manrope"] },
+                    borderRadius: { DEFAULT: "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }
+                }
+            }
+        }
+    </script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="/js/config.js"></script>
+    <script src="/js/api-config.js"></script>
 </head>
-<body>
-    <div class="container">
-        <!-- Header -->
-        <header class="header">
-            <a href="/" class="logo">← lexaya.io</a>
-            <h1>Lexaya Pro</h1>
-            <p class="tagline">Post to all your platforms in one click</p>
-        </header>
+<body class="bg-surface font-body text-on-surface antialiased">
 
-        <!-- Pricing Card -->
-        <main class="pricing-main">
-            <div class="pricing-card">
-                <div class="pricing-header">
-                    <h2>Lexaya Pro</h2>
-                    <div class="price">
-                        <span class="amount">$2.99</span>
-                        <span class="period">one-time</span>
-                    </div>
+    <nav class="w-full top-0 sticky bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
+        <div class="flex justify-between items-center px-6 md:px-12 py-6 max-w-[1200px] mx-auto">
+            <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <button id="signout-btn" class="hidden font-['Manrope'] tracking-tight text-sm uppercase font-semibold text-slate-500 hover:text-slate-900 transition-colors bg-transparent border-0 cursor-pointer">Sign out</button>
+        </div>
+    </nav>
+
+    <main class="max-w-[1000px] mx-auto px-6 md:px-12 py-16 md:py-24">
+
+        <div class="text-center mb-12">
+            <span class="inline-block text-[10px] font-bold tracking-[0.2em] uppercase text-white bg-primary px-3 py-1 rounded-full mb-5">Private beta</span>
+            <h1 class="text-4xl md:text-6xl font-extrabold tracking-tighter text-slate-900 mb-4">Two ways to run Lexaya.</h1>
+            <p class="text-lg text-slate-500 max-w-xl mx-auto leading-relaxed">Start with the DMs. Add publishing when you want it.</p>
+        </div>
+
+        <!-- Shown when the user landed here from a page they haven't paid for -->
+        <div id="upgrade-banner" class="hidden max-w-3xl mx-auto mb-6 bg-amber-50 border border-amber-300 text-amber-900 px-5 py-4 rounded-xl text-center"></div>
+
+        <!-- Set while the Meta app is in development mode. Remove after review. -->
+        <div class="max-w-3xl mx-auto mb-10 bg-blue-50 border border-blue-200 text-blue-900 px-5 py-4 rounded-xl text-center leading-relaxed">
+            <strong class="font-bold">Instagram is still reviewing Lexaya.</strong>
+            After you subscribe we'll ask for your Instagram username and approve it by hand —
+            usually within a day. Instagram won't let you connect until that approval lands.
+        </div>
+
+        <div id="login-required" class="hidden max-w-3xl mx-auto mb-10 text-center">
+            <p class="text-slate-500 mb-4">Sign in to choose a plan.</p>
+            <a href="/login.html?redirect=/broadcast/pricing.html" class="inline-block px-10 py-4 bg-primary text-white rounded-md text-sm font-bold uppercase tracking-widest hover:bg-primary-dim transition-all shadow-lg shadow-primary/20 no-underline">
+                Sign in
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+            <!-- Get Lexaya -->
+            <div class="p-8 bg-white border border-slate-200 rounded-xl flex flex-col h-full">
+                <h2 class="text-xl font-bold tracking-tight text-slate-900">Get Lexaya</h2>
+                <p class="text-slate-500 mt-1">Instagram DM automation</p>
+                <div class="mt-6 mb-8">
+                    <span class="text-5xl font-extrabold tracking-tighter text-slate-900">$7.99</span>
+                    <span class="text-slate-500 text-lg">/mo</span>
                 </div>
-
-                <ul class="features-list">
-                    <li>Post to TikTok, Instagram, LinkedIn, and X</li>
-                    <li>Upload once, publish everywhere</li>
-                    <li>Schedule posts for later</li>
-                    <li>Track your posting calendar</li>
-                    <li>Post history and analytics</li>
-                    <li>Cancel anytime</li>
+                <ul class="space-y-3 text-slate-600 flex-1 list-none p-0 m-0">
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Auto-DM everyone who comments your keyword</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Public reply on the comment, private reply in DMs</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Target a specific post or reel</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Keyword and exclude-keyword rules</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Delivery logs for every DM sent</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Cancel anytime</span></li>
                 </ul>
-
-                <div id="auth-section">
-                    <!-- Login required state -->
-                    <div id="login-required" style="display: none;">
-                        <p style="color: var(--text-light); margin-bottom: 1rem;">Login to subscribe</p>
-                        <a href="/login.html?redirect=/broadcast/pricing.html" class="btn btn-primary" style="width: 100%;">
-                            Login with Email
-                        </a>
-                    </div>
-
-                    <!-- Subscribe button -->
-                    <div id="subscribe-section" style="display: none;">
-                        <button id="subscribe-btn" class="btn btn-primary" style="width: 100%;">
-                            Subscribe Now
-                        </button>
-                        <p style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.75rem; text-align: center;">
-                            Cancel anytime. No questions asked.
-                        </p>
-                    </div>
-
-                    <!-- Already subscribed -->
-                    <div id="subscribed-section" style="display: none;">
-                        <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: 8px; text-align: center;">
-                            <strong>You're subscribed!</strong>
-                        </div>
-                        <a href="./" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-                            Go to Dashboard
-                        </a>
-                    </div>
-                </div>
+                <div class="mt-8" data-action="dm"></div>
             </div>
 
-            <!-- FAQ -->
-            <section class="faq-section">
-                <h3>Questions?</h3>
-                <div class="faq-item">
-                    <strong>Can I cancel anytime?</strong>
-                    <p>Yes, cancel with one click. No questions asked.</p>
+            <!-- Lexaya Pro -->
+            <div class="relative p-8 bg-white border-2 border-primary rounded-xl shadow-xl shadow-primary/10 flex flex-col h-full">
+                <span class="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-widest text-white bg-primary px-3 py-1 rounded-full whitespace-nowrap">Most popular</span>
+                <h2 class="text-xl font-bold tracking-tight text-slate-900">Lexaya Pro</h2>
+                <p class="text-slate-500 mt-1">DM automation + post everywhere</p>
+                <div class="mt-6 mb-8">
+                    <span class="text-5xl font-extrabold tracking-tighter text-slate-900">$25</span>
+                    <span class="text-slate-500 text-lg">/mo</span>
                 </div>
-                <div class="faq-item">
-                    <strong>Which platforms are supported?</strong>
-                    <p>TikTok, Instagram Reels, LinkedIn, and Threads.</p>
+                <ul class="space-y-3 text-slate-600 flex-1 list-none p-0 m-0">
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span class="font-semibold text-slate-900">Everything in Get Lexaya</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Post to Instagram, TikTok, YouTube, and LinkedIn</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Upload once, publish everywhere</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Schedule posts for later</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Posting calendar and history</span></li>
+                    <li class="flex gap-3"><span class="material-symbols-outlined text-primary text-[18px] mt-0.5">check</span><span>Cancel anytime</span></li>
+                </ul>
+                <div class="mt-8" data-action="pro"></div>
+            </div>
+        </div>
+
+        <section class="mt-20 pt-12 border-t border-slate-100">
+            <h3 class="text-2xl font-bold tracking-tighter text-slate-900 text-center mb-8">Questions?</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+                <div class="p-6 bg-white border border-slate-200 rounded-xl">
+                    <strong class="block text-slate-900 mb-1">What's the difference?</strong>
+                    <p class="text-slate-500 leading-relaxed m-0">Get Lexaya automates your Instagram DMs. Lexaya Pro does that <em>and</em> publishes your posts to every platform from one upload.</p>
                 </div>
-                <div class="faq-item">
-                    <strong>Is my data secure?</strong>
-                    <p>Yes. We use official OAuth APIs and never store your passwords.</p>
+                <div class="p-6 bg-white border border-slate-200 rounded-xl">
+                    <strong class="block text-slate-900 mb-1">Why do you need my Instagram username?</strong>
+                    <p class="text-slate-500 leading-relaxed m-0">While Instagram reviews our app, only accounts we've approved can connect. We ask for your username right after checkout and approve it, usually within a day.</p>
                 </div>
-            </section>
-        </main>
-    </div>
+                <div class="p-6 bg-white border border-slate-200 rounded-xl">
+                    <strong class="block text-slate-900 mb-1">Can I upgrade later?</strong>
+                    <p class="text-slate-500 leading-relaxed m-0">Yes. Start on Get Lexaya and move to Pro whenever you want to post everywhere.</p>
+                </div>
+                <div class="p-6 bg-white border border-slate-200 rounded-xl">
+                    <strong class="block text-slate-900 mb-1">Can I cancel anytime?</strong>
+                    <p class="text-slate-500 leading-relaxed m-0">Yes, cancel with one click. No questions asked.</p>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <script src="/js/supabase.js"></script>
+    <script src="/js/entitlements.js"></script>
     <script>
-        const supabaseClient = initSupabase();
+        initSupabase();
 
-        // Stripe Price ID for Lexaya Pro ($2.99 one-time)
-        const BROADCAST_PRICE_ID = CONFIG.PRODUCTS.broadcastPro;
+        const PLAN_RANK = { none: 0, dm: 1, pro: 2 };
+        const BTN_PRIMARY = "w-full px-8 py-4 bg-primary text-white rounded-md text-sm font-bold uppercase tracking-widest hover:bg-primary-dim transition-all shadow-lg shadow-primary/20 border-0 cursor-pointer no-underline block text-center";
+        const BTN_SECONDARY = "w-full px-8 py-4 bg-slate-100 text-slate-900 rounded-md text-sm font-bold uppercase tracking-widest hover:bg-slate-200 transition-all border-0 cursor-pointer no-underline block text-center";
 
         let currentUser = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
+            showUpgradeReason();
+
             currentUser = await window.LEXAYA_AUTH.getUser();
             if (!currentUser) {
-                document.getElementById('login-required').style.display = 'block';
+                document.getElementById('login-required').classList.remove('hidden');
+                renderActions('none', { signedIn: false });
                 return;
             }
 
-            // Check if already subscribed
-            const { data: subscription } = await supabaseClient
-                .from('subscriptions')
-                .select('*')
-                .eq('customer_email', currentUser.email)
-                .eq('product_key', 'broadcast')
-                .eq('status', 'active')
-                .single();
+            const signout = document.getElementById('signout-btn');
+            signout.classList.remove('hidden');
+            signout.addEventListener('click', () => window.LEXAYA_AUTH.signOut());
 
-            if (subscription) {
-                document.getElementById('subscribed-section').style.display = 'block';
-            } else {
-                document.getElementById('subscribe-section').style.display = 'block';
-            }
+            // Fresh read: the user may have just returned from Stripe.
+            const tier = await window.LEXAYA_ENTITLEMENTS.getTier(currentUser, { fresh: true });
+            renderActions(tier, { signedIn: true });
         });
 
-        document.getElementById('subscribe-btn')?.addEventListener('click', async () => {
-            const btn = document.getElementById('subscribe-btn');
+        // The gate in entitlements.js sends users here with ?upgrade=<capability>.
+        function showUpgradeReason() {
+            const capability = new URLSearchParams(window.location.search).get('upgrade');
+            const banner = document.getElementById('upgrade-banner');
+
+            if (capability === 'multi_platform_publishing') {
+                banner.textContent = 'Posting to every platform is part of Lexaya Pro.';
+            } else if (capability === 'dm_automation') {
+                banner.textContent = 'Subscribe to use the Lexaya dashboard.';
+            } else {
+                return;
+            }
+            banner.classList.remove('hidden');
+        }
+
+        // Each card shows the one action that makes sense for the current tier:
+        // subscribe, upgrade, or "you're already on this plan".
+        function renderActions(tier, { signedIn }) {
+            const rank = PLAN_RANK[tier] ?? 0;
+
+            document.querySelectorAll('[data-action]').forEach(slot => {
+                const plan = slot.dataset.action;
+                const planRank = PLAN_RANK[plan];
+
+                if (!signedIn) {
+                    slot.innerHTML = `<a href="/login.html?redirect=/broadcast/pricing.html" class="${BTN_PRIMARY}">Sign in to subscribe</a>`;
+                    return;
+                }
+
+                if (rank === planRank) {
+                    slot.innerHTML = `
+                        <div class="mb-3 px-4 py-3 rounded-md bg-green-50 text-green-800 font-semibold text-center border border-green-200">Your current plan</div>
+                        <a href="/broadcast/" class="${BTN_SECONDARY}">Go to dashboard</a>`;
+                    return;
+                }
+
+                if (rank > planRank) {
+                    slot.innerHTML = `<div class="text-slate-400 text-sm text-center py-4">Included in your plan</div>`;
+                    return;
+                }
+
+                const label = rank === 0 ? 'Subscribe' : 'Upgrade to Pro';
+                slot.innerHTML = `<button class="${BTN_PRIMARY}" data-checkout="${plan}">${label}</button>`;
+            });
+        }
+
+        document.addEventListener('click', async (event) => {
+            const btn = event.target.closest('[data-checkout]');
+            if (!btn) return;
+
+            const planKey = btn.dataset.checkout;
+            const original = btn.textContent;
             btn.disabled = true;
-            btn.textContent = 'Loading...';
+            btn.textContent = 'Loading…';
 
             try {
-                if (!BROADCAST_PRICE_ID) throw new Error('Lexaya Pro price ID is not configured.');
-                const response = await fetch('/api/create-checkout', {
+                const session = await window.LEXAYA_AUTH.getSession();
+                if (!session) throw new Error('Sign in first');
+
+                // Only the plan key goes over the wire — the server owns the price.
+                // Paid users land on the beta page, which collects the Instagram
+                // username we need in order to approve them.
+                const response = await fetch(API.createCheckout(), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`,
+                    },
                     body: JSON.stringify({
-                        priceId: BROADCAST_PRICE_ID,
-                        userEmail: currentUser.email,
-                        userId: currentUser.id,
-                        productKey: 'broadcast',
-                        mode: 'payment',
-                        successUrl: window.location.origin + '/broadcast/connect.html?subscribed=true'
+                        productKey: planKey,
+                        successUrl: '/broadcast/beta.html?subscribed=1',
                     })
                 });
 
                 const data = await response.json();
+                if (!data.url) throw new Error(data.error || 'Could not start checkout');
 
-                if (data.url) {
-                    window.location.href = data.url;
-                } else {
-                    throw new Error(data.error || 'Failed to create checkout');
-                }
+                // The tier changes on the other side of Stripe.
+                window.LEXAYA_CACHE.invalidate('tier');
+                window.location.href = data.url;
             } catch (error) {
                 alert('Error: ' + error.message);
                 btn.disabled = false;
-                btn.textContent = 'Subscribe Now';
+                btn.textContent = original;
             }
         });
     </script>
-
-    <style>
-        .pricing-main {
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .pricing-card {
-            background: white;
-            border: 2px solid var(--yak-pink, #f8d7da);
-            border-radius: 20px;
-            padding: 2rem;
-            text-align: center;
-            box-shadow: 0 4px 20px rgba(212, 131, 143, 0.1);
-        }
-
-        .pricing-header h2 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            font-family: 'Quicksand', sans-serif;
-            color: var(--yak-dark, #6d4c5c);
-        }
-
-        .price {
-            margin-bottom: 1.5rem;
-        }
-
-        .price .amount {
-            font-size: 3rem;
-            font-weight: 700;
-            color: var(--yak-accent, #d4838f);
-            font-family: 'Quicksand', sans-serif;
-        }
-
-        .price .period {
-            font-size: 1.25rem;
-            color: var(--text-light);
-        }
-
-        .features-list {
-            list-style: none;
-            padding: 0;
-            margin: 0 0 2rem 0;
-            text-align: left;
-        }
-
-        .features-list li {
-            padding: 0.75rem 0;
-            border-bottom: 1px solid var(--yak-pink, #f8d7da);
-            padding-left: 1.5rem;
-            position: relative;
-        }
-
-        .features-list li::before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: var(--yak-success, #7cb87c);
-            font-weight: bold;
-        }
-
-        .faq-section {
-            margin-top: 3rem;
-            padding-top: 2rem;
-            border-top: 2px solid var(--yak-pink, #f8d7da);
-        }
-
-        .faq-section h3 {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            font-family: 'Quicksand', sans-serif;
-            color: var(--yak-dark, #6d4c5c);
-        }
-
-        .faq-item {
-            margin-bottom: 1.5rem;
-            background: white;
-            padding: 1rem;
-            border-radius: 12px;
-            border: 1px solid var(--yak-pink, #f8d7da);
-        }
-
-        .faq-item strong {
-            display: block;
-            margin-bottom: 0.25rem;
-            color: var(--yak-dark, #6d4c5c);
-        }
-
-        .faq-item p {
-            color: var(--text-light);
-            margin: 0;
-        }
-
-        #subscribed-section > div {
-            background: linear-gradient(135deg, #dcfce7, #bbf7d0) !important;
-            border: 2px solid var(--yak-success, #7cb87c) !important;
-        }
-    </style>
 </body>
 </html>

@@ -228,7 +228,9 @@
     </div>
 
     <script src="/js/config.js"></script>
+    <script src="/js/api-config.js"></script>
     <script src="/js/supabase.js"></script>
+    <script src="/js/entitlements.js"></script>
     <script>
         const supabaseClient = initSupabase();
 
@@ -262,15 +264,36 @@
                 return;
             }
 
-            // Publishing platforms are admin-only; non-admins only connect
-            // Instagram for DM automation.
-            if (!window.LEXAYA_AUTH.isAdmin?.(currentUser)) {
+            // Connecting accounts is a paid feature.
+            if (await window.LEXAYA_ENTITLEMENTS.gate(currentUser, 'dm_automation')) return;
+
+            // Instagram won't authorize anyone we haven't approved as a tester.
+            // No username on file means we can't approve them at all, so send
+            // them to give us one rather than fail at the consent screen.
+            const betaRequest = await fetchBetaRequest();
+            if (betaRequest && !betaRequest.instagram_username && betaRequest.status !== 'active') {
+                window.location.replace('/broadcast/beta.html?next=' + encodeURIComponent(window.location.pathname));
+                return;
+            }
+            // Approval is still in flight — say so, rather than letting them hit
+            // an opaque error on Instagram's consent screen.
+            if (betaRequest && betaRequest.status !== 'active') {
+                showApprovalNotice(betaRequest.status);
+            }
+
+            // The publishing platforms are Lexaya Pro. On Get Lexaya, Instagram
+            // is the only account worth connecting, since DM automation is all
+            // that plan can drive.
+            if (!await window.LEXAYA_ENTITLEMENTS.can(currentUser, 'multi_platform_publishing')) {
                 ['linkedin', 'tiktok', 'youtube'].forEach(platform => {
                     document.getElementById(`${platform}-card`)?.remove();
                 });
                 document.querySelector('.btn-create-post')?.remove();
                 const toolbarCopy = document.querySelector('.channels-toolbar p');
-                if (toolbarCopy) toolbarCopy.textContent = 'Connect Instagram to power your DM automations.';
+                if (toolbarCopy) {
+                    toolbarCopy.innerHTML = 'Connect Instagram to power your DM automations. ' +
+                        '<a href="/broadcast/pricing.html">Upgrade to Lexaya Pro</a> to post everywhere.';
+                }
             }
 
             // If OAuth just completed, force fresh data
@@ -305,7 +328,7 @@
         async function refreshAccountStats() {
             const token = currentSession?.access_token;
             try {
-                const response = await fetch('/api/broadcast/refresh-accounts', {
+                const response = await fetch(API.refreshAccounts(), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -532,7 +555,41 @@
         }
         function getAuthApiBase() {
             if (window.LEXAYA_API_BASE_URL !== undefined) return window.LEXAYA_API_BASE_URL;
-            return CONFIG.API_BASE_URL || '';
+            return window.LEXAYA_RESOLVED_API_BASE ?? CONFIG.API_BASE_URL ?? '';
+        }
+
+        // Where this account stands in beta approval, or null if we couldn't tell
+        // (in which case nothing is blocked — the check is never a hard gate).
+        async function fetchBetaRequest() {
+            try {
+                const response = await fetch(API.beta(), {
+                    headers: { 'Authorization': `Bearer ${currentSession.access_token}` },
+                });
+                const { request } = await response.json();
+                return request || { instagram_username: null, status: 'pending' };
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function showApprovalNotice(status) {
+            const notices = {
+                pending: {
+                    text: "We're approving your Instagram username. Until that's done, Instagram will refuse the connection below.",
+                    action: 'Check approval status',
+                },
+                invited: {
+                    text: 'Instagram sent you a tester invite. Accept it under Settings → Website permissions → Tester invites, then connect below.',
+                    action: 'See the steps',
+                },
+            };
+            const notice = notices[status];
+            if (!notice) return;
+
+            const banner = document.createElement('div');
+            banner.style.cssText = 'margin: 0 0 1rem; padding: 0.9rem 1.1rem; border-radius: 12px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; font-size: 0.85rem; line-height: 1.5;';
+            banner.innerHTML = `${notice.text} <a href="/broadcast/beta.html" style="color:#1d4ed8;font-weight:700;">${notice.action}</a>`;
+            document.getElementById('connect-main')?.prepend(banner);
         }
         function getAuthUrl(platform, state) {
             return `${getAuthApiBase()}/api/broadcast/auth/${platform}?state=${encodeURIComponent(state)}`;

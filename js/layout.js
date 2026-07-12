@@ -19,7 +19,8 @@
     let currentUser = null;
     let supabaseClient = null;
     let activePage = '';
-    let isAdminUser = false;
+    // Lexaya Pro (or admin). Get Lexaya gets the DM-automation nav only.
+    let canPublish = false;
 
     function init() {
         const script = document.getElementById('layout-config');
@@ -39,9 +40,9 @@
             return;
         }
 
-        window.LEXAYA_AUTH.getUser().then((user) => {
+        window.LEXAYA_AUTH.getUser().then(async (user) => {
             currentUser = user;
-            isAdminUser = Boolean(window.LEXAYA_AUTH.isAdmin?.(user));
+            canPublish = await window.LEXAYA_ENTITLEMENTS.can(user, 'multi_platform_publishing');
             renderLayout(user);
         });
     }
@@ -62,7 +63,7 @@
 
         moveContent();
         setupAuthButtons();
-        if (user && isAdminUser) setupActivityBell(user);
+        if (user && canPublish) setupActivityBell(user);
     }
 
     function moveContent() {
@@ -96,11 +97,15 @@
                     `).join('')}
                 </nav>
                 <div class="mt-auto pt-10 border-t border-outline-variant/10">
-                    ${isAdminUser ? `
+                    ${canPublish ? `
                     <button onclick="window.location.href='/broadcast/upload.html'" class="mx-6 mb-8 py-4 px-6 rounded-md bg-gradient-to-br from-primary to-primary-container text-white font-bold flex items-center justify-center gap-3 active:scale-95 transition-transform w-[calc(100%-3rem)]">
                         <span class="material-symbols-outlined text-[20px]">add</span>
                         <span>Create Post</span>
-                    </button>` : ''}
+                    </button>` : `
+                    <a href="/broadcast/pricing.html" class="mx-6 mb-8 py-4 px-6 rounded-md border border-primary/30 text-primary font-bold flex items-center justify-center gap-3 active:scale-95 transition-transform w-[calc(100%-3rem)] no-underline">
+                        <span class="material-symbols-outlined text-[20px]">rocket_launch</span>
+                        <span>Post everywhere with Pro</span>
+                    </a>`}
                     <div class="space-y-1">
                         <a class="flex items-center gap-4 text-on-surface-variant px-4 py-3 mx-4 hover:translate-x-1 transition-transform duration-400 font-medium" href="#">
                             <span class="material-symbols-outlined">settings</span>
@@ -144,7 +149,7 @@
                 <h1 class="text-headline-lg mt-1">${pageTitle}</h1>
             </div>
             <div class="flex items-center gap-6">
-                ${user && isAdminUser ? `
+                ${user && canPublish ? `
                 <div class="activity-bell-wrap" id="activity-bell-wrap">
                     <button type="button" class="activity-bell-button" id="activity-bell-button" aria-label="Recent publishing activity" aria-expanded="false">
                         <span class="material-symbols-outlined">notifications</span>
@@ -195,8 +200,8 @@
     }
 
     function renderMobileNav() {
-        // Non-admins have no Create Post page; their FAB opens DM automations.
-        const bottomNavItems = isAdminUser
+        // Get Lexaya has no Create Post page; its FAB opens DM automations.
+        const bottomNavItems = canPublish
             ? LAYOUT_CONFIG.bottomNavItems
             : LAYOUT_CONFIG.bottomNavItems.map(item => item.isFab
                 ? { ...item, icon: 'forum', href: '/broadcast/automations.html' }

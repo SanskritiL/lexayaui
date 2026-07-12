@@ -594,6 +594,7 @@
     <script src="/js/config.js"></script>
     <script src="/js/api-config.js"></script>
     <script src="/js/supabase.js"></script>
+    <script src="/js/entitlements.js"></script>
     <script src="/js/layout.js"></script>
     <script>
         const supabaseClient = initSupabase();
@@ -624,11 +625,8 @@
                 return;
             }
 
-            // Publishing is admin-only; everyone else uses DM automation.
-            if (!window.LEXAYA_AUTH.isAdmin?.(currentUser)) {
-                window.location.replace('/broadcast/automations.html');
-                return;
-            }
+            // Publishing is Lexaya Pro; Get Lexaya covers DM automation only.
+            if (await window.LEXAYA_ENTITLEMENTS.gate(currentUser, 'multi_platform_publishing')) return;
 
             // The layout moves content into #page-content, wait for it
             await waitForContent();

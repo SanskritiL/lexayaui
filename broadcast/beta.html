@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beta access — Lexaya</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2563eb",
+                        "primary-dim": "#1d4ed8",
+                        "on-primary": "#ffffff",
+                        "surface": "#ffffff",
+                        "on-surface": "#0f172a"
+                    },
+                    fontFamily: { "body": ["Manrope"] },
+                    borderRadius: { DEFAULT: "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased min-h-screen flex items-center justify-center p-6">
+    <div class="w-full max-w-[520px]">
+        <div class="text-center mb-8">
+            <a href="/" class="text-3xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <div class="mt-3">
+                <span class="inline-block text-[10px] font-bold tracking-[0.2em] uppercase text-white bg-primary px-3 py-1 rounded-full">Private beta</span>
+            </div>
+        </div>
+
+        <!-- Ask for the username -->
+        <div id="request-card" class="bg-white border border-slate-200 rounded-xl p-8 shadow-lg" style="display: none;">
+            <div id="subscribed-note" class="hidden mb-6 px-4 py-3 rounded-lg bg-green-50 text-green-800 border border-green-200 text-sm font-medium">
+                You're subscribed. One last step before you can connect Instagram.
+            </div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-900 mb-3">What's your Instagram username?</h1>
+            <p class="text-slate-500 leading-relaxed mb-3">
+                Lexaya is in private beta while Instagram reviews our app. Until that review
+                clears, Instagram only lets accounts we've <strong class="text-slate-700">approved</strong> connect.
+            </p>
+            <p class="text-slate-500 leading-relaxed mb-6">
+                Give us your username and we'll approve it by hand — usually within a day.
+                You won't be able to connect Instagram or run an automation until it's approved.
+            </p>
+
+            <form id="beta-form">
+                <label for="instagram_username" class="block text-sm font-semibold text-slate-900 mb-2">
+                    Your Instagram username
+                </label>
+                <div class="flex items-center border border-slate-300 rounded-lg focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all overflow-hidden">
+                    <span class="pl-4 pr-1 text-slate-400 select-none">@</span>
+                    <input
+                        type="text"
+                        id="instagram_username"
+                        name="instagram_username"
+                        placeholder="yourbusiness"
+                        autocomplete="off"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        required
+                        class="flex-1 py-3.5 pr-4 border-0 focus:ring-0 text-slate-900 placeholder:text-slate-300"
+                    >
+                </div>
+                <p class="text-xs text-slate-400 mt-2">
+                    The Instagram professional account you want to automate. A profile link works too.
+                </p>
+
+                <div id="message" class="mt-5 px-4 py-3 rounded-lg text-sm font-medium hidden"></div>
+
+                <button
+                    type="submit"
+                    id="submit-btn"
+                    class="mt-6 w-full py-3.5 bg-primary text-white rounded-lg text-sm font-bold uppercase tracking-widest hover:bg-primary-dim transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Submit for approval
+                </button>
+            </form>
+        </div>
+
+        <!-- Already submitted — shows where they are in the approval process -->
+        <div id="pending-card" class="bg-white border border-slate-200 rounded-xl p-8 shadow-lg" style="display: none;">
+            <div class="text-center">
+                <span id="status-icon" class="material-symbols-outlined text-primary text-[40px]">hourglass_top</span>
+                <h1 id="status-title" class="text-2xl font-bold tracking-tight text-slate-900 mt-3 mb-3"></h1>
+                <p id="status-blurb" class="text-slate-500 leading-relaxed"></p>
+            </div>
+
+            <!-- The three steps between subscribing and a live automation -->
+            <ol class="mt-8 space-y-1 list-none p-0 m-0">
+                <li id="step-review" class="flex gap-4 p-4 rounded-lg">
+                    <span class="step-mark material-symbols-outlined text-[22px] flex-shrink-0"></span>
+                    <div>
+                        <strong class="block text-slate-900">We approve your username</strong>
+                        <span class="text-sm text-slate-500 leading-relaxed">We add <strong id="pending-username" class="text-slate-700"></strong> to Lexaya's tester list in the Meta developer console. Usually within a day; we'll email you.</span>
+                    </div>
+                </li>
+                <li id="step-invite" class="flex gap-4 p-4 rounded-lg">
+                    <span class="step-mark material-symbols-outlined text-[22px] flex-shrink-0"></span>
+                    <div>
+                        <strong class="block text-slate-900">You accept Instagram's invite</strong>
+                        <span class="text-sm text-slate-500 leading-relaxed">Instagram emails you a tester invite. Accept it in the app under <span class="font-semibold text-slate-700">Settings → Website permissions → Tester invites</span>. Instagram won't authorize Lexaya until you do.</span>
+                    </div>
+                </li>
+                <li id="step-connect" class="flex gap-4 p-4 rounded-lg">
+                    <span class="step-mark material-symbols-outlined text-[22px] flex-shrink-0"></span>
+                    <div>
+                        <strong class="block text-slate-900">Connect Instagram and go live</strong>
+                        <span class="text-sm text-slate-500 leading-relaxed">Link your account, pick a post and a keyword, and the automation starts replying and DMing.</span>
+                    </div>
+                </li>
+            </ol>
+
+            <p class="mt-6 text-xs text-slate-400 leading-relaxed text-center">
+                Once Instagram finishes reviewing Lexaya, this approval step disappears for everyone —
+                your automations keep running either way.
+            </p>
+
+            <div class="mt-7 flex flex-col gap-3">
+                <a id="status-cta" href="/broadcast/" class="block text-center px-8 py-3.5 bg-primary text-white rounded-lg text-sm font-bold uppercase tracking-widest hover:bg-primary-dim transition-all no-underline">
+                    Go to dashboard
+                </a>
+                <button id="edit-btn" class="text-xs uppercase tracking-widest text-slate-400 hover:text-primary transition-colors bg-transparent border-0 cursor-pointer">
+                    Change my username
+                </button>
+            </div>
+        </div>
+
+        <div class="mt-6 text-center">
+            <a href="/" class="inline-flex items-center gap-2 text-xs uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">
+                <span class="material-symbols-outlined text-sm">arrow_back</span>
+                Back to home
+            </a>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/js/config.js"></script>
+    <script src="/js/api-config.js"></script>
+    <script src="/js/supabase.js"></script>
+    <script src="/js/entitlements.js"></script>
+    <script>
+        initSupabase();
+
+        const requestCard = document.getElementById('request-card');
+        const pendingCard = document.getElementById('pending-card');
+        const messageEl = document.getElementById('message');
+        const submitBtn = document.getElementById('submit-btn');
+
+        const params = new URLSearchParams(window.location.search);
+        // Where to send them once they're done here.
+        const next = params.get('next') || '/broadcast/';
+        // Stripe just sent them back, so they have paid even if the webhook has
+        // not written the subscription row yet.
+        const justSubscribed = params.get('subscribed') === '1';
+        let session = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            session = await window.LEXAYA_AUTH.getSession();
+            if (!session) {
+                window.location.href = '/login.html?redirect=' + encodeURIComponent(window.location.pathname);
+                return;
+            }
+
+            const user = await window.LEXAYA_AUTH.getUser();
+
+            if (justSubscribed) {
+                document.getElementById('subscribed-note').classList.remove('hidden');
+                // The tier changed on Stripe's side; drop the stale cached value.
+                window.LEXAYA_CACHE.invalidate('tier');
+            } else if (await window.LEXAYA_ENTITLEMENTS.gate(user, 'dm_automation')) {
+                // Username collection is for paying users. Everyone else pays first.
+                return;
+            }
+
+            const existing = await fetchRequest();
+            if (existing?.instagram_username) {
+                showStatus(existing.instagram_username, existing.status);
+            } else {
+                requestCard.style.display = 'block';
+            }
+        });
+
+        async function fetchRequest() {
+            try {
+                const response = await fetch(API.beta(), {
+                    headers: { 'Authorization': `Bearer ${session.access_token}` },
+                });
+                const data = await response.json();
+                return data.request;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        // How the account reads at each stage of approval. The steps below the
+        // blurb are always the same three; only which one is "current" moves.
+        const STATUS_COPY = {
+            pending: {
+                icon: 'hourglass_top',
+                title: 'Waiting on approval.',
+                blurb: "We're approving your username by hand — usually within a day. Here's what happens next.",
+                cta: { label: 'Go to dashboard', href: '/broadcast/' },
+                done: [],
+                current: 'step-review',
+            },
+            invited: {
+                icon: 'mark_email_unread',
+                title: 'Approved — check your Instagram.',
+                blurb: "We've added you as a tester. Instagram has sent an invite that you need to accept before you can connect.",
+                cta: { label: 'I accepted — connect Instagram', href: '/broadcast/connect.html' },
+                done: ['step-review'],
+                current: 'step-invite',
+            },
+            active: {
+                icon: 'check_circle',
+                title: "You're approved.",
+                blurb: 'Instagram will let you connect now. Link your account and set up your first automation.',
+                cta: { label: 'Connect Instagram', href: '/broadcast/connect.html' },
+                done: ['step-review', 'step-invite'],
+                current: 'step-connect',
+            },
+        };
+
+        function showStatus(username, status) {
+            const state = STATUS_COPY[status] || STATUS_COPY.pending;
+
+            document.getElementById('pending-username').textContent = '@' + username;
+            document.getElementById('status-icon').textContent = state.icon;
+            document.getElementById('status-title').textContent = state.title;
+            document.getElementById('status-blurb').textContent = state.blurb;
+
+            const cta = document.getElementById('status-cta');
+            cta.textContent = state.cta.label;
+            cta.href = state.cta.href;
+
+            ['step-review', 'step-invite', 'step-connect'].forEach(id => {
+                const step = document.getElementById(id);
+                const mark = step.querySelector('.step-mark');
+
+                if (state.done.includes(id)) {
+                    step.className = 'flex gap-4 p-4 rounded-lg opacity-60';
+                    mark.textContent = 'check_circle';
+                    mark.className = 'step-mark material-symbols-outlined text-[22px] flex-shrink-0 text-green-600';
+                } else if (id === state.current) {
+                    step.className = 'flex gap-4 p-4 rounded-lg bg-blue-50 border border-blue-200';
+                    mark.textContent = 'radio_button_checked';
+                    mark.className = 'step-mark material-symbols-outlined text-[22px] flex-shrink-0 text-primary';
+                } else {
+                    step.className = 'flex gap-4 p-4 rounded-lg opacity-50';
+                    mark.textContent = 'radio_button_unchecked';
+                    mark.className = 'step-mark material-symbols-outlined text-[22px] flex-shrink-0 text-slate-400';
+                }
+            });
+
+            requestCard.style.display = 'none';
+            pendingCard.style.display = 'block';
+        }
+
+        function showMessage(text, isError) {
+            messageEl.textContent = text;
+            messageEl.className = isError
+                ? 'mt-5 px-4 py-3 rounded-lg text-sm font-medium bg-red-50 text-red-700'
+                : 'mt-5 px-4 py-3 rounded-lg text-sm font-medium bg-green-50 text-green-700';
+            messageEl.classList.remove('hidden');
+        }
+
+        document.getElementById('beta-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const username = document.getElementById('instagram_username').value;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending…';
+            messageEl.classList.add('hidden');
+
+            try {
+                const response = await fetch(API.beta(), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${session.access_token}`,
+                    },
+                    body: JSON.stringify({ instagram_username: username }),
+                });
+
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Could not save your username');
+
+                showStatus(data.request.instagram_username, data.request.status);
+            } catch (error) {
+                showMessage(error.message, true);
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Request beta access';
+            }
+        });
+
+        document.getElementById('edit-btn').addEventListener('click', () => {
+            pendingCard.style.display = 'none';
+            requestCard.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Update my username';
+        });
+    </script>
+</body>
+</html>

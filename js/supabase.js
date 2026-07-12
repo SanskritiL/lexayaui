@@ -41,7 +41,8 @@ async function ensureAuthClaims(user) {
     try {
         const { claims } = await user.getIdTokenResult();
         if (claims.role === 'authenticated') return;
-        const response = await fetch(`${CONFIG.API_BASE_URL || ''}/api/auth/ensure-claims`, {
+        const apiBase = window.LEXAYA_RESOLVED_API_BASE ?? CONFIG.API_BASE_URL ?? '';
+        const response = await fetch(`${apiBase}/api/auth/ensure-claims`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${await user.getIdToken()}` },
         });
@@ -189,21 +190,20 @@ window.LEXAYA_DATA = {
         if (fresh) window.LEXAYA_CACHE.invalidate('accounts');
         let errorMessage = null;
         const accounts = await window.LEXAYA_CACHE.get('accounts', this.ACCOUNTS_CACHE_TTL, async () => {
+            // Never select access_token or refresh_token. The database revokes
+            // those columns from the browser's role, so asking for them fails
+            // the whole query — and the app has no use for them here anyway.
+            // has_refresh_token is a generated boolean that stands in for it.
             const { data, error } = await initSupabase()
                 .from('connected_accounts')
-                .select('id, platform, account_name, token_expires_at, metadata, created_at, refresh_token')
+                .select('id, platform, account_name, token_expires_at, metadata, created_at, has_refresh_token')
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false });
             if (error) {
                 errorMessage = error.message;
                 return undefined; // errors are not cached
             }
-            // Reduce refresh_token to a boolean before anything is cached:
-            // credentials must never reach localStorage.
-            return (data || []).map(({ refresh_token, ...account }) => ({
-                ...account,
-                has_refresh_token: Boolean(refresh_token),
-            }));
+            return data || [];
         });
         return { accounts: accounts || [], error: errorMessage };
     },

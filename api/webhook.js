@@ -3,11 +3,29 @@
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const getClient = require('./_supabase');
+const { itemForPriceId, normalizeProductKey } = require('./_plans');
 
 const supabase = getClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 );
+
+// What a session actually bought, resolved from the price Stripe charged rather
+// than from session.metadata — metadata originates in the browser, and granting
+// access on it would let a caller pay for the cheap plan and claim the dear one.
+async function resolvePurchasedProductKey(session) {
+    try {
+        const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { limit: 1 });
+        const priceId = lineItems.data[0]?.price?.id;
+        const item = itemForPriceId(priceId);
+        if (item) return item.productKey;
+        console.error('Paid price is not in the catalog, refusing to grant access:', priceId);
+        return null;
+    } catch (err) {
+        console.error('Could not resolve line items for session:', session.id, err.message);
+        return null;
+    }
+}
 
 // Disable body parsing for webhook signature verification
 module.exports.config = {
@@ -52,6 +70,13 @@ module.exports = async (req, res) => {
         case 'checkout.session.completed':
             const session = event.data.object;
 
+            // Derived from the price paid, not from browser-supplied metadata.
+            const purchasedProductKey = await resolvePurchasedProductKey(session);
+            if (!purchasedProductKey) {
+                console.error('Unrecognized purchase, no access granted:', session.id);
+                break;
+            }
+
             // Check if this is a subscription or one-time payment
             if (session.mode === 'subscription') {
                 // Handle subscription checkout
@@ -62,7 +87,7 @@ module.exports = async (req, res) => {
                         customer_email: session.customer_details?.email || session.customer_email,
                         stripe_customer_id: session.customer,
                         stripe_subscription_id: session.subscription,
-                        product_key: session.metadata?.productKey || 'broadcast',
+                        product_key: purchasedProductKey,
                         status: 'active',
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
@@ -71,13 +96,13 @@ module.exports = async (req, res) => {
                 if (subError) {
                     console.error('Error saving subscription:', subError);
                 } else {
-                    console.log('Subscription saved:', session.customer_details?.email, session.metadata?.productKey);
+                    console.log('Subscription saved:', session.customer_details?.email, purchasedProductKey);
                 }
             } else {
                 // Save one-time purchase to Supabase
                 const customerEmail = session.customer_details?.email || session.customer_email;
-                const productKey = session.metadata?.productKey || 'unknown';
-                const userId = session.metadata?.userId || null;
+                const productKey = purchasedProductKey;
+                const userId = session.metadata?.userId === 'guest' ? null : (session.metadata?.userId || null);
 
                 const { error } = await supabase
                     .from('purchases')
@@ -125,14 +150,15 @@ module.exports = async (req, res) => {
             const createdSub = event.data.object;
             console.log('Subscription created:', createdSub.id);
 
-            // Only insert if not already exists (upsert)
+            // metadata here is the subscription_data we set in create-checkout,
+            // so it reflects the plan the server priced — not a client value.
             await supabase
                 .from('subscriptions')
                 .upsert([{
                     customer_email: createdSub.customer_email || createdSub.metadata?.email,
                     stripe_customer_id: createdSub.customer,
                     stripe_subscription_id: createdSub.id,
-                    product_key: createdSub.metadata?.productKey || 'broadcast',
+                    product_key: normalizeProductKey(createdSub.metadata?.productKey || 'broadcast'),
                     status: createdSub.status,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
