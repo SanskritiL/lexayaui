@@ -141,6 +141,27 @@
         .badge.active { background: #d1fae5; color: #065f46; }
         .badge.trialing { background: #dbeafe; color: #1e40af; }
         .badge.canceled { background: #fee2e2; color: #991b1b; }
+        .badge.pending { background: #fef3c7; color: #92400e; }
+        .badge.invited { background: #dbeafe; color: #1e40af; }
+
+        .beta-actions { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+        .beta-btn {
+            padding: 0.3rem 0.7rem;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: var(--text);
+        }
+        .beta-btn:hover:not(:disabled) { background: #f3f4f6; }
+        .beta-btn.current {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+            cursor: default;
+        }
+        .beta-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .auth-wall {
             display: flex;
@@ -203,6 +224,79 @@
                     <div class="value" id="connected-accounts">-</div>
                     <div class="subtext">Social platforms linked</div>
                 </div>
+            </div>
+
+            <!-- Beta Access Requests -->
+            <div class="section">
+                <h2>Beta Access Requests</h2>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem;">
+                    Move people through approval. <strong>Pending</strong> → add them as a tester in the
+                    <a href="https://developers.facebook.com/apps/" target="_blank">Meta developer console</a>, then set
+                    <strong>Invited</strong>. Once they accept Instagram's tester invite, set <strong>Active</strong>.
+                </p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Instagram</th>
+                            <th>Account email</th>
+                            <th>Requested</th>
+                            <th>Status</th>
+                            <th>Set status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="beta-table">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Access Codes -->
+            <div class="section">
+                <h2>Access Codes</h2>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 1rem;">
+                    Give free access without Stripe. Redeeming a code unlocks the plan on that account.
+                    Share the link <code style="background:#f3f4f6;padding:0.1rem 0.3rem;border-radius:4px;">/broadcast/redeem.html</code>
+                    (or <code style="background:#f3f4f6;padding:0.1rem 0.3rem;border-radius:4px;">?code=THECODE</code> to pre-fill it).
+                </p>
+
+                <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1.25rem;">
+                    <div>
+                        <label style="display:block;font-size:0.75rem;color:var(--text-light);margin-bottom:0.25rem;">Code (blank = random)</label>
+                        <input id="code-input" type="text" placeholder="FRIENDS2026" style="padding:0.5rem 0.7rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;text-transform:uppercase;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.75rem;color:var(--text-light);margin-bottom:0.25rem;">Plan</label>
+                        <select id="code-tier" style="padding:0.5rem 0.7rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;">
+                            <option value="dm">Get Lexaya (dm)</option>
+                            <option value="pro">Lexaya Pro (pro)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.75rem;color:var(--text-light);margin-bottom:0.25rem;">Max uses (blank = ∞)</label>
+                        <input id="code-max" type="number" min="1" placeholder="∞" style="width:110px;padding:0.5rem 0.7rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.75rem;color:var(--text-light);margin-bottom:0.25rem;">Expires (blank = never)</label>
+                        <input id="code-expires" type="date" style="padding:0.5rem 0.7rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.85rem;">
+                    </div>
+                    <button class="refresh-btn" onclick="createAccessCode()">Create code</button>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>Plan</th>
+                            <th>Uses</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="codes-table">
+                        <tr><td colspan="6" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
             </div>
 
             <!-- Free Tier Limits -->
@@ -286,6 +380,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
     <script src="/js/config.js"></script>
+    <script src="/js/api-config.js"></script>
     <script src="/js/supabase.js"></script>
     <script>
         const supabase = initSupabase();
@@ -312,6 +407,8 @@
 
             await Promise.all([
                 loadStats(),
+                loadBetaRequests(),
+                loadAccessCodes(),
                 loadSubscriptions(),
                 loadRecentPosts()
             ]);
@@ -394,6 +491,134 @@
             bar.className = 'fill';
             if (percent > 80) bar.classList.add('danger');
             else if (percent > 50) bar.classList.add('warning');
+        }
+
+        // The beta_requests and access_codes tables have row-level security, so
+        // the browser's anon key can't touch them. These calls go through the
+        // API, which checks the admin's Firebase token and uses the service role.
+        async function adminApi(options = {}) {
+            const session = await window.LEXAYA_AUTH.getSession();
+            if (!session) throw new Error('Not signed in');
+            const response = await fetch(options.url || API.beta(), {
+                method: options.method || 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+                body: options.body ? JSON.stringify(options.body) : undefined,
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Request failed');
+            return data;
+        }
+
+        const BETA_STATUSES = ['pending', 'invited', 'active'];
+
+        async function loadBetaRequests() {
+            const tbody = document.getElementById('beta-table');
+            try {
+                const { requests } = await adminApi({ url: API.beta() + '?all=1' });
+
+                if (!requests || requests.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5">No beta requests yet</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = requests.map(r => {
+                    const buttons = BETA_STATUSES.map(s => {
+                        const current = s === r.status;
+                        return `<button class="beta-btn ${current ? 'current' : ''}"
+                            ${current ? 'disabled' : ''}
+                            onclick="setBetaStatus('${r.id}', '${s}')">${s}</button>`;
+                    }).join('');
+                    return `
+                        <tr id="beta-row-${r.id}">
+                            <td><strong>@${r.instagram_username}</strong></td>
+                            <td>${r.email}</td>
+                            <td>${new Date(r.created_at).toLocaleDateString()}</td>
+                            <td><span class="badge ${r.status}">${r.status}</span></td>
+                            <td><div class="beta-actions">${buttons}</div></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="5" style="color: var(--danger);">Couldn't load: ${error.message}</td></tr>`;
+            }
+        }
+
+        async function setBetaStatus(id, status) {
+            const row = document.getElementById('beta-row-' + id);
+            row?.querySelectorAll('.beta-btn').forEach(b => (b.disabled = true));
+            try {
+                await adminApi({ method: 'PATCH', body: { id, status } });
+                await loadBetaRequests();
+            } catch (error) {
+                alert('Could not update status: ' + error.message);
+                row?.querySelectorAll('.beta-btn').forEach(b => (b.disabled = false));
+            }
+        }
+
+        async function loadAccessCodes() {
+            const tbody = document.getElementById('codes-table');
+            try {
+                const { codes } = await adminApi({ url: API.accessCodes() });
+
+                if (!codes || codes.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6">No codes yet — create one above</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = codes.map(c => {
+                    const uses = c.max_uses == null ? `${c.uses} / ∞` : `${c.uses} / ${c.max_uses}`;
+                    const expires = c.expires_at ? new Date(c.expires_at).toLocaleDateString() : 'Never';
+                    const expired = c.expires_at && new Date(c.expires_at) < new Date();
+                    const usedUp = c.max_uses != null && c.uses >= c.max_uses;
+                    let statusLabel = c.active ? 'active' : 'disabled';
+                    if (c.active && expired) statusLabel = 'expired';
+                    else if (c.active && usedUp) statusLabel = 'used up';
+                    const badgeClass = statusLabel === 'active' ? 'active' : 'canceled';
+                    return `
+                        <tr>
+                            <td><strong style="font-family:monospace;">${c.code}</strong></td>
+                            <td>${c.tier === 'pro' ? 'Lexaya Pro' : 'Get Lexaya'}</td>
+                            <td>${uses}</td>
+                            <td>${expires}</td>
+                            <td><span class="badge ${badgeClass}">${statusLabel}</span></td>
+                            <td><button class="beta-btn" onclick="toggleAccessCode('${c.code}', ${!c.active})">${c.active ? 'Disable' : 'Enable'}</button></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                tbody.innerHTML = `<tr><td colspan="6" style="color: var(--danger);">Couldn't load: ${error.message}</td></tr>`;
+            }
+        }
+
+        async function createAccessCode() {
+            const body = {
+                code: document.getElementById('code-input').value,
+                tier: document.getElementById('code-tier').value,
+                max_uses: document.getElementById('code-max').value,
+                expires_at: document.getElementById('code-expires').value,
+            };
+            try {
+                const { code } = await adminApi({ url: API.accessCodes(), method: 'POST', body });
+                document.getElementById('code-input').value = '';
+                document.getElementById('code-max').value = '';
+                document.getElementById('code-expires').value = '';
+                await loadAccessCodes();
+                alert(`Created code: ${code.code}\nShare: /broadcast/redeem.html?code=${code.code}`);
+            } catch (error) {
+                alert('Could not create code: ' + error.message);
+            }
+        }
+
+        async function toggleAccessCode(code, active) {
+            try {
+                await adminApi({ url: API.accessCodes(), method: 'PATCH', body: { code, active } });
+                await loadAccessCodes();
+            } catch (error) {
+                alert('Could not update code: ' + error.message);
+            }
         }
 
         async function loadSubscriptions() {

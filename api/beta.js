@@ -28,7 +28,7 @@ function normalizeInstagramUsername(input) {
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -41,6 +41,18 @@ module.exports = async (req, res) => {
     const supabase = getSupabase();
 
     if (req.method === 'GET') {
+        // Admin review queue: every request, newest first, so we can move
+        // people through pending -> invited -> active by hand.
+        if (req.query.all === '1') {
+            if (!isAdminEmail(user.email)) return res.status(403).json({ error: 'Forbidden' });
+            const { data, error } = await supabase
+                .from('beta_requests')
+                .select('id, user_id, email, instagram_username, status, created_at, updated_at')
+                .order('created_at', { ascending: false });
+            if (error) return res.status(500).json({ error: error.message });
+            return res.status(200).json({ requests: data || [] });
+        }
+
         // Admins are already testers on their own app, so they never wait.
         if (isAdminEmail(user.email)) {
             return res.status(200).json({ request: { status: 'active', instagram_username: null } });
@@ -80,6 +92,31 @@ module.exports = async (req, res) => {
         if (error) return res.status(500).json({ error: error.message });
 
         console.log('[Beta] access requested:', user.email, '->', instagramUsername);
+        return res.status(200).json({ request: data });
+    }
+
+    if (req.method === 'PATCH') {
+        // Move someone through approval. Admin-only: this is what decides
+        // whether the app tells a user they can connect Instagram yet.
+        if (!isAdminEmail(user.email)) return res.status(403).json({ error: 'Forbidden' });
+
+        const { id, status } = req.body || {};
+        if (!id) return res.status(400).json({ error: 'Request id is required' });
+        if (!['pending', 'invited', 'active'].includes(status)) {
+            return res.status(400).json({ error: 'status must be pending, invited or active' });
+        }
+
+        const { data, error } = await supabase
+            .from('beta_requests')
+            .update({ status, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select('id, user_id, email, instagram_username, status, created_at, updated_at')
+            .maybeSingle();
+
+        if (error) return res.status(500).json({ error: error.message });
+        if (!data) return res.status(404).json({ error: 'Request not found' });
+
+        console.log('[Beta] status set by', user.email, '->', data.instagram_username, '=', status);
         return res.status(200).json({ request: data });
     }
 
