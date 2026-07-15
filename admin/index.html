@@ -383,7 +383,9 @@
     <script src="/js/api-config.js"></script>
     <script src="/js/supabase.js"></script>
     <script>
-        const supabase = initSupabase();
+        // Named to avoid colliding with the Supabase CDN's global `supabase`,
+        // which otherwise throws "Identifier 'supabase' has already been declared".
+        const supabaseClient = initSupabase();
 
         // Admin emails that can access this page
         const ADMIN_EMAILS = CONFIG.ADMIN_EMAILS || [];
@@ -419,7 +421,7 @@
 
         async function loadStats() {
             // Get subscription counts
-            const { data: subs, count: subCount } = await supabase
+            const { data: subs, count: subCount } = await supabaseClient
                 .from('subscriptions')
                 .select('*', { count: 'exact' });
 
@@ -431,7 +433,7 @@
                 trialSubs > 0 ? `${trialSubs} on trial` : 'Paid subscribers';
 
             // Get posts count
-            const { count: postCount } = await supabase
+            const { count: postCount } = await supabaseClient
                 .from('posts')
                 .select('*', { count: 'exact', head: true });
 
@@ -439,7 +441,7 @@
 
             // Get today's posts
             const today = new Date().toISOString().split('T')[0];
-            const { count: todayPosts } = await supabase
+            const { count: todayPosts } = await supabaseClient
                 .from('posts')
                 .select('*', { count: 'exact', head: true })
                 .gte('created_at', today);
@@ -447,7 +449,7 @@
             document.getElementById('posts-today').textContent = `${todayPosts || 0} today`;
 
             // Get connected accounts count
-            const { count: accountCount } = await supabase
+            const { count: accountCount } = await supabaseClient
                 .from('connected_accounts')
                 .select('*', { count: 'exact', head: true });
 
@@ -465,7 +467,7 @@
             updateBar('mau-bar', mauPercent);
 
             // Estimate storage (rough: count videos * avg size)
-            const { count: videoCount } = await supabase
+            const { count: videoCount } = await supabaseClient
                 .from('posts')
                 .select('*', { count: 'exact', head: true })
                 .not('video_url', 'is', null);
@@ -622,7 +624,7 @@
         }
 
         async function loadSubscriptions() {
-            const { data: subs } = await supabase
+            const { data: subs } = await supabaseClient
                 .from('subscriptions')
                 .select('*')
                 .order('created_at', { ascending: false })
@@ -645,7 +647,7 @@
         }
 
         async function loadRecentPosts() {
-            const { data: posts } = await supabase
+            const { data: posts } = await supabaseClient
                 .from('posts')
                 .select('*')
                 .order('created_at', { ascending: false })
