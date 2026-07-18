@@ -394,11 +394,26 @@ async function handleInstagram(req, res) {
         }, tokenResponse.ok ? 'log' : 'warn');
 
         if (!tokenResponse.ok || tokenData.error) {
+            const failureMessage = tokenData.error_message || tokenData.error?.message || '';
+
+            // An authorization code is single-use. When the callback is delivered
+            // twice for the same code (browser back-navigation, or a link-preview
+            // prefetch in Instagram's in-app browser), the first request completes
+            // the connection and the second one lands here with "code has been
+            // used". That is a benign duplicate, not a failure, so send the user to
+            // their accounts rather than an alarming error.
+            if (/authorization code has been used/i.test(failureMessage)) {
+                instagramAuthLog(requestId, 'token_exchange_duplicate_code', { redirectUri }, 'log');
+                return res.redirect('/broadcast/?platform=instagram&info=' + encodeURIComponent(
+                    'Instagram connection already processed. Check your connected accounts.'
+                ));
+            }
+
             instagramAuthLog(requestId, 'token_exchange_failed', {
                 redirectUri,
                 responsePreview: typeof tokenData === 'object' ? JSON.stringify(tokenData).slice(0, 500) : String(tokenData).slice(0, 500),
             }, 'warn');
-            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + (tokenData.error?.message || JSON.stringify(tokenData))));
+            return res.redirect('/broadcast/?error=' + encodeURIComponent('Token exchange failed: ' + (failureMessage || JSON.stringify(tokenData))));
         }
 
         const shortLivedToken = tokenData.access_token;
@@ -492,11 +507,43 @@ async function handleInstagram(req, res) {
             return res.redirect('/broadcast/?error=Failed to save account');
         }
 
+        await subscribeInstagramWebhooks(accessToken, requestId);
+
         return res.redirect('/broadcast/?success=true&platform=instagram&accounts=1');
 
     } catch (error) {
         console.error('Instagram OAuth Error:', error);
         return res.redirect(`/broadcast/?error=${encodeURIComponent(error.message)}`);
+    }
+}
+
+// Enrolls the connected account for webhook delivery. Without this, Meta never
+// sends comment or message events for the account and every automation is silent.
+// Non-fatal: a connection that isn't subscribed is still usable and can be
+// re-subscribed later, so failures are logged rather than surfaced to the user.
+async function subscribeInstagramWebhooks(accessToken, requestId) {
+    try {
+        const response = await fetch(`${INSTAGRAM_GRAPH_BASE}/me/subscribed_apps`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                subscribed_fields: 'comments,messages',
+                access_token: accessToken,
+            }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.error || !data.success) {
+            instagramAuthLog(requestId, 'webhook_subscribe_failed', {
+                status: response.status,
+                error: data.error?.message || null,
+            }, 'warn');
+            return false;
+        }
+        instagramAuthLog(requestId, 'webhook_subscribe_succeeded');
+        return true;
+    } catch (error) {
+        instagramAuthLog(requestId, 'webhook_subscribe_failed', { error: error.message }, 'warn');
+        return false;
     }
 }
 

@@ -290,11 +290,11 @@
         let scheduledPosts = [];
         // Lexaya Pro (or admin). Get Lexaya sees the DM-automation dashboard.
         let canPublish = false;
-        const SCHEDULING_ENABLED = false;
+        const SCHEDULING_ENABLED = true;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const oauthResult = checkOAuthCallback();
-            if (oauthResult.success) window.LEXAYA_CACHE.invalidate('accounts');
+            if (oauthResult.success || oauthResult.info) window.LEXAYA_CACHE.invalidate('accounts');
             currentUser = await window.LEXAYA_AUTH.getUser();
             currentSession = await window.LEXAYA_AUTH.getSession();
 
@@ -328,6 +328,7 @@
                 await resumeRetryAfterReconnect(oauthResult.platform);
             }
             if (oauthResult.error) showToast(oauthResult.error, 'error');
+            if (oauthResult.info) showToast(oauthResult.info, 'success');
         });
 
         // Publishing is admin-only: non-admins get an Instagram-DM-automation
@@ -361,7 +362,8 @@
             const success = params.get('success');
             const platform = params.get('platform');
             const error = params.get('error');
-            const result = { success: false, platform: null, error: null };
+            const info = params.get('info');
+            const result = { success: false, platform: null, error: null, info: null };
 
             if (success === 'true' && platform) {
                 result.success = true;
@@ -369,6 +371,9 @@
                 window.history.replaceState({}, '', window.location.pathname);
             } else if (error) {
                 result.error = `Connection failed: ${error}`;
+                window.history.replaceState({}, '', window.location.pathname);
+            } else if (info) {
+                result.info = info;
                 window.history.replaceState({}, '', window.location.pathname);
             }
             return result;
