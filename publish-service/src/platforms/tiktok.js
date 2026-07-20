@@ -7,6 +7,24 @@ const TIKTOK_MAX_FINAL_CHUNK_SIZE = 128_000_000;
 const TIKTOK_MAX_CHUNKS = 1000;
 const TIKTOK_CHUNK_MAX_ATTEMPTS = 4;
 const TIKTOK_PREFER_PULL_FROM_URL = process.env.TIKTOK_PREFER_PULL_FROM_URL === 'true';
+const TIKTOK_STATUS_POLL_MAX_ATTEMPTS = Number(process.env.TIKTOK_STATUS_POLL_MAX_ATTEMPTS || 10);
+const TIKTOK_STATUS_POLL_INTERVAL_MS = Number(process.env.TIKTOK_STATUS_POLL_INTERVAL_MS || 3000);
+
+const TIKTOK_SETTLED_STATUSES = new Set(['SEND_TO_USER_INBOX', 'PUBLISH_COMPLETE']);
+
+// TikTok only reports transcode rejections here — accepting the bytes says nothing
+// about whether the video survived processing.
+const TIKTOK_FAIL_REASONS = {
+  file_format_check_failed: 'TikTok rejected the video format. Try re-exporting as an MP4 (H.264 video, AAC audio).',
+  duration_check_failed: 'TikTok rejected the video length. It must be between 3 seconds and 10 minutes.',
+  frame_rate_check_failed: 'TikTok rejected the video frame rate. Try re-exporting at a constant 30fps.',
+  picture_size_check_failed: 'TikTok rejected the video dimensions. Try a 1080x1920 export.',
+  video_pull_failed: 'TikTok could not download the video from the media URL.',
+  auth_removed: 'TikTok access was revoked. Please reconnect your TikTok account.',
+  spam_risk_too_many_posts: 'TikTok blocked this post: too many posts in the last 24 hours.',
+  spam_risk_user_banned_from_posting: 'TikTok has blocked this account from posting.',
+  spam_risk: 'TikTok flagged this post as spam and blocked it.',
+};
 
 async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) {
   const p = onProgress || (async () => {});
@@ -38,11 +56,8 @@ async function publishToTikTok(post, account, supabase, onProgress, fileBuffer) 
       return await uploadFileToTikTok(accessToken, media, p);
     }
 
-    return {
-      status: 'success',
-      publish_id: initData.data?.publish_id,
-      note: 'Video sent to TikTok inbox. Open TikTok app to post.',
-    };
+    await p('finalizing', 'Waiting for TikTok to import the video...');
+    return await confirmTikTokPublish(accessToken, initData.data?.publish_id, p);
   }
 
   if (fileBuffer) {
@@ -116,11 +131,83 @@ async function uploadFileToTikTok(accessToken, media, onProgress) {
   }
 
   await p('finalizing', 'Finalizing with TikTok...');
+  return await confirmTikTokPublish(accessToken, publishId, p);
+}
+
+// Uploading the bytes only means TikTok received them. Processing happens afterwards
+// and can still reject the video, so wait for a settled status before claiming success.
+async function confirmTikTokPublish(accessToken, publishId, onProgress) {
+  const p = onProgress || (async () => {});
+  if (!publishId) throw new Error('TikTok did not return a publish id');
+
+  let lastStatus = null;
+
+  for (let attempt = 1; attempt <= TIKTOK_STATUS_POLL_MAX_ATTEMPTS; attempt += 1) {
+    const result = await fetchTikTokPublishStatus(accessToken, publishId);
+
+    if (result?.status) {
+      lastStatus = result.status;
+
+      if (TIKTOK_SETTLED_STATUSES.has(result.status)) {
+        return {
+          status: 'success',
+          publish_id: publishId,
+          note: 'Video sent to TikTok inbox. Open TikTok app to post.',
+        };
+      }
+
+      if (result.status === 'FAILED') {
+        console.error('[TIKTOK] Publish failed during processing', {
+          publishId,
+          failReason: result.failReason,
+        });
+        throw new Error(describeTikTokFailReason(result.failReason));
+      }
+    }
+
+    if (attempt < TIKTOK_STATUS_POLL_MAX_ATTEMPTS) {
+      await p('finalizing', 'Waiting for TikTok to finish processing the video...');
+      await delay(TIKTOK_STATUS_POLL_INTERVAL_MS);
+    }
+  }
+
+  console.warn('[TIKTOK] Gave up waiting for processing to settle', { publishId, lastStatus });
   return {
-    status: 'success',
+    status: 'pending',
     publish_id: publishId,
-    note: 'Video sent to TikTok inbox. Open TikTok app to post.',
+    note: 'TikTok is still processing the video. Check your TikTok inbox shortly.',
   };
+}
+
+async function fetchTikTokPublishStatus(accessToken, publishId) {
+  try {
+    const response = await fetch('https://open.tiktokapis.com/v2/post/publish/status/fetch/', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json; charset=UTF-8' },
+      body: JSON.stringify({ publish_id: publishId }),
+    });
+
+    const body = await response.text();
+    const data = body ? JSON.parse(body) : {};
+    if (data.error?.code && data.error.code !== 'ok') {
+      console.warn('[TIKTOK] Status check returned an error', { code: data.error.code });
+      return null;
+    }
+
+    return { status: data.data?.status || null, failReason: data.data?.fail_reason || null };
+  } catch (error) {
+    // A flaky status check should not fail an upload that may well have succeeded.
+    console.warn('[TIKTOK] Status check failed', { error: error?.message || 'Unknown error' });
+    return null;
+  }
+}
+
+function describeTikTokFailReason(failReason) {
+  const known = TIKTOK_FAIL_REASONS[String(failReason || '').toLowerCase()];
+  if (known) return known;
+  return failReason
+    ? `TikTok could not process the video (${failReason}).`
+    : 'TikTok could not process the video.';
 }
 
 async function uploadTikTokChunk({ uploadUrl, chunk, contentType, contentRange, chunkNumber, isLastChunk }) {
@@ -406,6 +493,9 @@ module.exports = {
     isRetryableTikTokUploadFailure,
     readTikTokUploadErrorCode,
     refreshTikTokAccessToken,
+    confirmTikTokPublish,
+    describeTikTokFailReason,
+    TIKTOK_SETTLED_STATUSES,
     TIKTOK_MIN_CHUNK_SIZE,
     TIKTOK_MAX_CHUNK_SIZE,
     TIKTOK_MAX_FINAL_CHUNK_SIZE,
