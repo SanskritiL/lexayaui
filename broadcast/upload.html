@@ -252,26 +252,6 @@
         }
         .stage-text-in { animation: fade-slide-in 0.2s ease-out; }
 
-        /* Viral score ring */
-        .viral-score-ring { width: 120px; height: 120px; margin: 0 auto; position: relative; }
-        .viral-score-ring svg { transform: rotate(-90deg); width: 100%; height: 100%; }
-        .score-bg { fill: none; stroke: #e0e3e0; stroke-width: 8; }
-        .score-progress {
-            fill: none; stroke: #005bc2; stroke-width: 8;
-            stroke-linecap: round; stroke-dasharray: 283; stroke-dashoffset: 283;
-            transition: stroke-dashoffset 1s ease-out, stroke 0.3s;
-        }
-        .score-value {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 2rem; font-weight: 700;
-            color: #005bc2; transition: color 0.3s;
-        }
-
-        .similar-hook-card {
-            padding: 0.75rem; background: #f3f4f2;
-            border-radius: 0.5rem; border: 1px solid #afb3b0;
-        }
         .compose-grid {
             display: grid;
             grid-template-columns: minmax(0, 1.08fr) minmax(340px, 0.92fr);
@@ -367,10 +347,6 @@
                     <p id="video-info" class="text-sm text-on-surface-variant flex-1"></p>
                     <button type="button" id="remove-media" class="text-sm font-semibold text-error hover:underline">Remove</button>
                 </div>
-                <button type="button" id="analyze-hook-btn" class="mt-4 px-6 py-3 bg-surface-container-lowest border border-outline-variant rounded-xl text-sm font-bold text-primary hover:bg-surface-container transition-all flex items-center gap-3 active:scale-95">
-                    <span class="material-symbols-outlined text-lg">auto_awesome</span>
-                    Analyze Hook
-                </button>
             </div>
 
             <div id="image-preview-container" style="display: none;" class="mt-6">
@@ -525,72 +501,6 @@
         </div>
     </div>
 
-    <!-- Hook Analysis Modal -->
-    <div id="hook-analysis-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-card modal-anim" style="max-width: 520px;">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-lg font-bold text-on-surface">Hook Analysis</h2>
-                <button id="close-analysis-modal" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-container transition-all">
-                    <span class="material-symbols-outlined text-lg">close</span>
-                </button>
-            </div>
-
-            <!-- Viral Score -->
-            <div class="text-center mb-8">
-                <div class="viral-score-ring">
-                    <svg>
-                        <circle class="score-bg" cx="60" cy="60" r="45"></circle>
-                        <circle class="score-progress" id="score-circle" cx="60" cy="60" r="45"></circle>
-                    </svg>
-                    <div class="score-value" id="viral-score-value">--</div>
-                </div>
-                <p class="text-xs text-on-surface-variant mt-3" id="score-label">Analyzing...</p>
-            </div>
-
-            <!-- Extracted Text -->
-            <div class="bg-surface-container rounded-xl p-4 mb-6">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">Extracted Text</h3>
-                <p class="text-sm font-medium text-on-surface" id="extracted-text-display"><em>Detecting text...</em></p>
-            </div>
-
-            <!-- Strengths / Weaknesses -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                <div class="bg-surface-container rounded-xl p-4">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-green-600 mb-3 flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">check_circle</span> Strengths
-                    </h3>
-                    <ul id="strengths-list" class="space-y-2 text-xs text-on-surface-variant"></ul>
-                </div>
-                <div class="bg-surface-container rounded-xl p-4">
-                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-600 mb-3 flex items-center gap-2">
-                        <span class="material-symbols-outlined text-sm">warning</span> Weaknesses
-                    </h3>
-                    <ul id="weaknesses-list" class="space-y-2 text-xs text-on-surface-variant"></ul>
-                </div>
-            </div>
-
-            <!-- Suggestions -->
-            <div class="bg-surface-container rounded-xl p-4 mb-6">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-primary mb-3 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">lightbulb</span> Suggestions
-                </h3>
-                <ul id="suggestions-list" class="space-y-2 text-xs text-on-surface-variant"></ul>
-            </div>
-
-            <!-- Similar Hooks -->
-            <div id="similar-hooks-section" style="display: none;">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-red-600 mb-3 flex items-center gap-2">
-                    <span class="material-symbols-outlined text-sm">trending_up</span> Similar Hooks
-                </h3>
-                <div id="similar-hooks-grid" class="space-y-3"></div>
-            </div>
-
-            <div class="mt-6 text-center">
-                <button id="close-analysis-btn" class="px-8 py-3 rounded-xl bg-surface-container text-sm font-bold text-on-surface hover:bg-surface-container-high transition-all">Close</button>
-            </div>
-        </div>
-    </div>
-
     <script src="/js/config.js"></script>
     <script src="/js/api-config.js"></script>
     <script src="/js/supabase.js"></script>
@@ -605,7 +515,6 @@
         let connectedAccounts = [];
         let reusableMedia = [];
         let currentUser = null;
-        let videoThumbnailBlob = null;
         const SCHEDULING_ENABLED = true;
         const SCHEDULE_TIMEZONE = 'America/Chicago';
 
@@ -1010,17 +919,6 @@
 
             document.getElementById('retry-failed-btn')?.addEventListener('click', retryFailedPlatforms);
 
-            document.getElementById('close-analysis-modal')?.addEventListener('click', () => {
-                document.getElementById('hook-analysis-modal').style.display = 'none';
-            });
-            document.getElementById('close-analysis-btn')?.addEventListener('click', () => {
-                document.getElementById('hook-analysis-modal').style.display = 'none';
-            });
-            document.getElementById('hook-analysis-modal')?.addEventListener('click', (e) => {
-                if (e.target.id === 'hook-analysis-modal') document.getElementById('hook-analysis-modal').style.display = 'none';
-            });
-
-            document.getElementById('analyze-hook-btn')?.addEventListener('click', analyzeHook);
         }
 
         function handleReusableMediaSelect(e) {
@@ -1119,7 +1017,6 @@
                 vp.src = URL.createObjectURL(file);
                 vpc.style.display = 'block';
                 document.getElementById('video-info').textContent = `Size: ${sizeMB.toFixed(2)} MB`;
-                vp.onloadeddata = () => generateThumbnail(vp);
             }
 
             updatePlatformCheckboxes();
@@ -1129,7 +1026,6 @@
             selectedFile = null;
             selectedReusableMedia = item;
             selectedMediaType = item.metadata?.media_type || inferMediaTypeFromContentType(item.metadata?.content_type) || 'video';
-            videoThumbnailBlob = null;
 
             const isImage = selectedMediaType === 'image';
             const isVideo = selectedMediaType === 'video';
@@ -1169,7 +1065,6 @@
             selectedFile = null;
             selectedReusableMedia = null;
             selectedMediaType = null;
-            videoThumbnailBlob = null;
 
             const mediaInput = document.getElementById('media-input');
             if (mediaInput) mediaInput.value = '';
@@ -1187,19 +1082,6 @@
             document.getElementById('image-preview').src = '';
 
             updatePlatformCheckboxes();
-        }
-
-        async function generateThumbnail(videoElement) {
-            const seekTime = Math.min(1, videoElement.duration * 0.1);
-            videoElement.currentTime = seekTime;
-            videoElement.onseeked = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = videoElement.videoWidth;
-                canvas.height = videoElement.videoHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob((blob) => { videoThumbnailBlob = blob; }, 'image/jpeg', 0.8);
-            };
         }
 
         function updatePublishButton() {
@@ -2137,118 +2019,6 @@
             const successCount = entries.filter(([_, result]) => result.status === 'success').length;
             const status = successCount === totalPlatforms ? 'published' : successCount > 0 ? 'partial' : 'failed';
             completePublishingModal(status, successCount, totalPlatforms, postId, mergedResults);
-        }
-
-        let analysisInProgress = false;
-
-        async function analyzeHook() {
-            if (analysisInProgress) return;
-            if (!videoThumbnailBlob) { alert('Please wait for the video to load, then try again.'); return; }
-
-            analysisInProgress = true;
-            const btn = document.getElementById('analyze-hook-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="mini-spinner inline-block mr-2"></div> Analyzing...';
-
-            showAnalysisLoading();
-
-            try {
-                const base64 = await blobToBase64(videoThumbnailBlob);
-                const session = await window.LEXAYA_AUTH.getSession();
-                const authToken = session?.access_token;
-                const response = await fetch(API.analyzeHook(), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-                    body: JSON.stringify({ frameBase64: base64 })
-                });
-                if (!response.ok) { const err = await response.json(); throw new Error(err.error || 'Analysis failed'); }
-                const result = await response.json();
-                showAnalysisResult(result);
-            } catch (error) {
-                showAnalysisError(error.message);
-            } finally {
-                analysisInProgress = false;
-                btn.disabled = false;
-                btn.innerHTML = '<span class="material-symbols-outlined text-lg align-text-bottom">auto_awesome</span> Analyze Hook';
-            }
-        }
-
-        function blobToBase64(blob) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-        }
-
-        function showAnalysisLoading() {
-            document.getElementById('viral-score-value').textContent = '--';
-            document.getElementById('score-circle').style.strokeDashoffset = '283';
-            document.getElementById('score-label').textContent = 'Analyzing...';
-            document.getElementById('extracted-text-display').innerHTML = '<em>Detecting text...</em>';
-            document.getElementById('strengths-list').innerHTML = '<li class="text-on-surface-variant">Analyzing...</li>';
-            document.getElementById('weaknesses-list').innerHTML = '<li class="text-on-surface-variant">Analyzing...</li>';
-            document.getElementById('suggestions-list').innerHTML = '<li class="text-on-surface-variant">Generating suggestions...</li>';
-            document.getElementById('similar-hooks-section').style.display = 'none';
-            document.getElementById('hook-analysis-modal').style.display = 'flex';
-        }
-
-        function showAnalysisResult(result) {
-            const scoreValue = document.getElementById('viral-score-value');
-            const scoreCircle = document.getElementById('score-circle');
-            const scoreLabel = document.getElementById('score-label');
-
-            scoreValue.textContent = result.viral_score;
-            scoreLabel.textContent = 'Viral Score';
-            const offset = 283 - (283 * result.viral_score / 100);
-            scoreCircle.style.strokeDashoffset = offset;
-
-            if (result.viral_score >= 70) { scoreCircle.style.stroke = '#16a34a'; scoreValue.style.color = '#16a34a'; }
-            else if (result.viral_score >= 40) { scoreCircle.style.stroke = '#f59e0b'; scoreValue.style.color = '#f59e0b'; }
-            else { scoreCircle.style.stroke = '#ef4444'; scoreValue.style.color = '#ef4444'; }
-
-            const textDisplay = document.getElementById('extracted-text-display');
-            if (result.extracted_text && result.extracted_text.trim()) textDisplay.innerHTML = `"${result.extracted_text}"`;
-            else textDisplay.innerHTML = '<em>No text detected in hook</em>';
-
-            document.getElementById('strengths-list').innerHTML = (result.analysis?.strengths || []).map(s => `<li class="text-on-surface-variant">${s}</li>`).join('') || '<li class="text-on-surface-variant">--</li>';
-            document.getElementById('weaknesses-list').innerHTML = (result.analysis?.weaknesses || []).map(w => `<li class="text-on-surface-variant">${w}</li>`).join('') || '<li class="text-on-surface-variant">--</li>';
-            document.getElementById('suggestions-list').innerHTML = (result.suggestions || []).map(s => `<li class="text-on-surface-variant">${s}</li>`).join('') || '<li class="text-on-surface-variant">No suggestions</li>';
-
-            const hooksSection = document.getElementById('similar-hooks-section');
-            const hooksGrid = document.getElementById('similar-hooks-grid');
-            if (result.similar_hooks && result.similar_hooks.length > 0) {
-                hooksSection.style.display = 'block';
-                hooksGrid.innerHTML = result.similar_hooks.map(hook => `
-                    <div class="similar-hook-card">
-                        <p class="text-sm font-medium text-on-surface mb-2">"${hook.hook_text}"</p>
-                        <div class="flex gap-2 items-center">
-                            <span class="text-[10px] font-bold uppercase px-2 py-1 rounded bg-surface-container text-on-surface-variant">${hook.category}</span>
-                            <span class="text-xs text-on-surface-variant">${formatViews(hook.avg_views)}</span>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                hooksSection.style.display = 'none';
-            }
-        }
-
-        function showAnalysisError(message) {
-            document.getElementById('viral-score-value').textContent = '!';
-            document.getElementById('viral-score-value').style.color = '#ef4444';
-            document.getElementById('score-label').textContent = 'Analysis failed';
-            document.getElementById('extracted-text-display').innerHTML = `<em style="color: #ef4444;">${message}</em>`;
-            document.getElementById('strengths-list').innerHTML = '';
-            document.getElementById('weaknesses-list').innerHTML = '';
-            document.getElementById('suggestions-list').innerHTML = '<li class="text-on-surface-variant">Please try again later</li>';
-        }
-
-        function formatViews(views) {
-            if (!views) return '';
-            if (views >= 1000000) return (views / 1000000).toFixed(1) + 'M avg views';
-            if (views >= 1000) return (views / 1000).toFixed(0) + 'K avg views';
-            return views + ' avg views';
         }
 
         function launchConfetti() {

@@ -26,7 +26,6 @@ const API = {
   instagramMedia:     () => `${BASE_URL}/api/instagram/media`,
   instagramRules:     () => `${BASE_URL}/api/instagram/rules`,
   instagramLogs:      () => `${BASE_URL}/api/instagram/logs`,
-  analyzeHook:        () => `${BASE_URL}/api/broadcast/analyze-hook`,
   beta:               () => `${BASE_URL}/api/beta`,
   redeem:             () => `${BASE_URL}/api/redeem`,
   accessCodes:        () => `${BASE_URL}/api/access-codes`,

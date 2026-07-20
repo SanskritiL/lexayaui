@@ -3,7 +3,6 @@ const cors = require('cors');
 
 const instagramHandler = require('../../api/instagram/[resource]');
 const authHandler = require('../../api/broadcast/auth/[platform]');
-const analyzeHookHandler = require('../../api/broadcast/analyze-hook');
 const initVideoHandler = require('../../api/broadcast/init-video');
 const refreshAccountsHandler = require('../../api/broadcast/refresh-accounts');
 const checkoutHandler = require('../../api/create-checkout');
@@ -58,7 +57,6 @@ app.all('/api/broadcast/auth/:platform', (req, res) => {
   return authHandler(req, res);
 });
 
-app.all('/api/broadcast/analyze-hook', analyzeHookHandler);
 app.all('/api/broadcast/init-video', initVideoHandler);
 app.all('/api/broadcast/refresh-accounts', refreshAccountsHandler);
 app.all('/api/create-checkout', checkoutHandler);

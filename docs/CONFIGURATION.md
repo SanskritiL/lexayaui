@@ -28,7 +28,6 @@ Stored in `.env.local` locally and in Secret Manager/Cloud Run in production.
 | `APP_BASE_URL` | Stripe fallback redirects | Public app URL. |
 | `STRIPE_SECRET_KEY` | checkout | Secret key. |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhooks | Used with raw request body. |
-| `GOOGLE_API_KEY` | AI hook analysis | Optional. |
 | `CRON_SECRET` | scheduler | Shared bearer token for Cloud Scheduler. |
 | `R2_*` | media uploads | Cloudflare R2 credentials and public base URL. |
 | `INSTAGRAM_APP_ID` | Instagram OAuth/webhooks | App ID. |
