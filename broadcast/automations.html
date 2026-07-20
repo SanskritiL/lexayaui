@@ -245,12 +245,17 @@
         async function loadAccounts() {
             const select = document.getElementById('account-select');
             const help = document.getElementById('account-help');
+            // A failed request and a genuinely empty list need different copy:
+            // telling someone to connect an account they already connected sends
+            // them chasing the wrong problem.
+            let loadFailed = false;
             try {
                 const response = await fetch(API.instagramAccounts(), { headers: await authHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Could not load Instagram accounts');
                 accounts = data.accounts || [];
             } catch (error) {
+                loadFailed = true;
                 accounts = [];
                 console.error('[Instagram Automations] Account load failed:', error);
             }
@@ -261,11 +266,13 @@
 
             select.innerHTML = accounts.length
                 ? accounts.map(account => `<option value="${escapeHtml(account.id)}">${escapeHtml(accountLabel(account))}</option>`).join('')
-                : '<option value="">No Instagram account connected</option>';
+                : `<option value="">${loadFailed ? 'Could not load accounts' : 'No Instagram account connected'}</option>`;
             select.value = selectedAccountId;
             select.disabled = accounts.length < 2;
 
-            if (!accounts.length) {
+            if (loadFailed) {
+                help.textContent = 'Could not reach your Instagram accounts. Reload the page (this is usually a stale cached script); if it persists, check the console.';
+            } else if (!accounts.length) {
                 help.innerHTML = '<a href="/broadcast/connect.html" style="color:#005bc2;font-weight:800;">Connect an Instagram account</a> to build automations.';
             } else if (accounts.length === 1) {
                 help.textContent = 'Replies and DMs are sent from this account.';
@@ -294,9 +301,9 @@
             if (!selectedAccountId) {
                 media = [];
                 mediaCursor = null;
-                picker.innerHTML = '<p class="help">Connect an Instagram account to choose a post.</p>';
+                picker.innerHTML = '<p class="help">Choose an Instagram account first.</p>';
                 loadMoreBtn.style.display = 'none';
-                summary.textContent = 'No Instagram account connected';
+                summary.textContent = 'No account selected';
                 return;
             }
 
