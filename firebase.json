@@ -4,6 +4,13 @@
     "cleanUrls": true,
     "trailingSlash": false,
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "//": "Assets are unversioned, so a cached api-config.js can outlive the deploy that added an endpoint it must have. Hosting does not honour If-None-Match here (it answers 200, not 304), so this re-downloads these small files on each load — worth it to never serve stale app code. Revisit if assets get build-hashed. cleanUrls serves pages extensionless, so this has to be a catch-all rather than **/*.html.",
+        "source": "**",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ],
     "rewrites": [
       {
         "source": "/api/**",
