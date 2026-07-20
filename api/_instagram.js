@@ -51,6 +51,17 @@ async function requireSubscriber(req, res, supabase) {
   return user;
 }
 
+async function listInstagramAccounts(supabase, userId) {
+  const { data, error } = await supabase
+    .from('connected_accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('platform', 'instagram')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
 async function getInstagramAccount(supabase, userId, accountId) {
   let query = supabase
     .from('connected_accounts')
@@ -64,6 +75,21 @@ async function getInstagramAccount(supabase, userId, accountId) {
   const { data, error } = await query.limit(1);
   if (error) throw error;
   return data?.[0] || null;
+}
+
+// Access tokens live in the same row as the display fields, so never hand a
+// connected_accounts record to the browser without stripping them first.
+function publicAccount(account) {
+  if (!account) return null;
+  const metadata = account.metadata || {};
+  return {
+    id: account.id,
+    platform_user_id: account.platform_user_id,
+    account_name: account.account_name,
+    username: metadata.username || metadata.display_name || account.account_name || null,
+    profile_picture: metadata.profile_picture || metadata.avatar_url || null,
+    created_at: account.created_at,
+  };
 }
 
 async function graphFetch(path, params = {}, options = {}) {
@@ -84,7 +110,24 @@ async function graphFetch(path, params = {}, options = {}) {
   return data;
 }
 
-function normalizeRuleInput(body, userId) {
+// Resolves the connected account a rule targets, defaulting to the only
+// Instagram account when the user has exactly one. Throws when the choice is
+// missing or names an account the user does not own.
+async function resolveRuleAccount(supabase, userId, requestedId) {
+  const accounts = await listInstagramAccounts(supabase, userId);
+  if (!accounts.length) throw new Error('Connect an Instagram Business account first');
+
+  if (!requestedId) {
+    if (accounts.length === 1) return accounts[0];
+    throw new Error('Choose which Instagram account this rule runs on');
+  }
+
+  const account = accounts.find(item => item.id === requestedId);
+  if (!account) throw new Error('That Instagram account is not connected to your workspace');
+  return account;
+}
+
+function normalizeRuleInput(body, userId, connectedAccountId) {
   const variables = body.variables && typeof body.variables === 'object' && !Array.isArray(body.variables)
     ? body.variables
     : {};
@@ -110,6 +153,7 @@ function normalizeRuleInput(body, userId) {
 
   return {
     user_id: userId,
+    connected_account_id: connectedAccountId,
     name: body.name.trim(),
     trigger_type: 'comment_keyword',
     trigger_keywords: triggerKeywords.map(keyword => keyword.toLowerCase()),
@@ -147,6 +191,13 @@ function commentTextMatches(rule, text) {
 function ruleMatchesPost(rule, mediaId) {
   if (rule.trigger_scope !== 'specific') return false;
   return (rule.trigger_post_ids || []).includes(mediaId);
+}
+
+// Rules created before accounts were selectable have no account id; those stay
+// eligible for every account the user owns.
+function ruleMatchesAccount(rule, accountId) {
+  if (!rule.connected_account_id) return true;
+  return rule.connected_account_id === accountId;
 }
 
 async function sendPublicReply(commentId, message, accessToken) {
@@ -240,6 +291,18 @@ function extractCommentEvents(payload) {
   return events;
 }
 
+async function handleAccounts(req, res, supabase) {
+  const user = await requireSubscriber(req, res, supabase);
+  if (!user) return;
+
+  const accounts = await listInstagramAccounts(supabase, user.id);
+  return res.status(200).json({ accounts: accounts.map(publicAccount) });
+}
+
+// The picker shows a few posts at a time and pages with `after`, so the default
+// limit is deliberately small rather than a full 25-post pull.
+const MEDIA_PAGE_SIZE = 3;
+
 async function handleMedia(req, res, supabase) {
   const user = await requireSubscriber(req, res, supabase);
   if (!user) return;
@@ -247,14 +310,23 @@ async function handleMedia(req, res, supabase) {
   const account = await getInstagramAccount(supabase, user.id, req.query.account_id);
   if (!account) return res.status(404).json({ error: 'Connect an Instagram Business account first' });
 
+  const limit = Math.min(Math.max(Number(req.query.limit) || MEDIA_PAGE_SIZE, 1), 25);
   const fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,comments_count,like_count';
   const data = await graphFetch(`${account.platform_user_id}/media`, {
     fields,
-    limit: req.query.limit || 25,
+    limit,
+    after: req.query.after,
     access_token: account.access_token,
   });
 
-  return res.status(200).json({ media: data.data || [], paging: data.paging || null, account });
+  const media = data.data || [];
+  return res.status(200).json({
+    media,
+    // Graph keeps returning a cursor past the last page, so only advertise one
+    // when this page came back full.
+    next_cursor: media.length === limit ? (data.paging?.cursors?.after || null) : null,
+    account: publicAccount(account),
+  });
 }
 
 async function handleRules(req, res, supabase) {
@@ -273,7 +345,8 @@ async function handleRules(req, res, supabase) {
 
   if (req.method === 'POST') {
     try {
-      const input = normalizeRuleInput(req.body || {}, user.id);
+      const account = await resolveRuleAccount(supabase, user.id, req.body?.connected_account_id);
+      const input = normalizeRuleInput(req.body || {}, user.id, account.id);
       const { data, error } = await supabase.from('automation_rules').insert(input).select().single();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(201).json({ rule: data });
@@ -285,7 +358,8 @@ async function handleRules(req, res, supabase) {
   if (req.method === 'PUT') {
     if (!req.query.id) return res.status(400).json({ error: 'Rule id is required' });
     try {
-      const input = normalizeRuleInput(req.body || {}, user.id);
+      const account = await resolveRuleAccount(supabase, user.id, req.body?.connected_account_id);
+      const input = normalizeRuleInput(req.body || {}, user.id, account.id);
       delete input.user_id;
       const { data, error } = await supabase
         .from('automation_rules')
@@ -386,7 +460,7 @@ async function handleWebhook(req, res, supabase) {
       } else {
         const { data, error } = await supabase
           .from('connected_accounts')
-          .select('user_id, platform_user_id, access_token, metadata')
+          .select('id, user_id, platform_user_id, access_token, metadata')
           .eq('platform', 'instagram')
           .or([
             `platform_user_id.eq.${eventAccountId}`,
@@ -404,7 +478,7 @@ async function handleWebhook(req, res, supabase) {
     if (!rulesByUserId.has(userId)) {
       const { data, error } = await supabase
         .from('automation_rules')
-        .select('id, trigger_scope, trigger_post_ids, trigger_keywords, exclude_keywords, dm_template, variables')
+        .select('id, connected_account_id, trigger_scope, trigger_post_ids, trigger_keywords, exclude_keywords, dm_template, variables')
         .eq('user_id', userId)
         .eq('is_active', true)
         .eq('trigger_type', 'comment_keyword');
@@ -450,7 +524,9 @@ async function handleWebhook(req, res, supabase) {
       }
 
       const matchingRules = (rules || []).filter(rule =>
-        ruleMatchesPost(rule, event.mediaId) && commentTextMatches(rule, event.text)
+        ruleMatchesAccount(rule, account.id)
+        && ruleMatchesPost(rule, event.mediaId)
+        && commentTextMatches(rule, event.text)
       );
       webhookLog(requestId, 'rules_evaluated', {
         eventRef,
@@ -573,6 +649,7 @@ async function handleWebhook(req, res, supabase) {
 module.exports = {
   getSupabase,
   setCors,
+  handleAccounts,
   handleMedia,
   handleRules,
   handleLogs,

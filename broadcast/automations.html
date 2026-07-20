@@ -111,6 +111,11 @@
                 <div class="panel-body">
                     <form class="form-grid" id="rule-form">
                         <input type="hidden" id="rule-id">
+                        <div class="field" id="account-field">
+                            <label for="account-select">Instagram account</label>
+                            <select id="account-select" required></select>
+                            <p class="help" id="account-help">Replies and DMs are sent from this account.</p>
+                        </div>
                         <div class="field">
                             <label for="rule-name">Rule name</label>
                             <input id="rule-name" name="name" placeholder="Free guide DM" required>
@@ -123,6 +128,10 @@
                         <div class="field">
                             <label>Instagram content</label>
                             <div class="media-picker" id="media-picker" aria-label="Recent Instagram content"></div>
+                            <button type="button" class="btn-secondary" id="load-more-media" style="display: none;">
+                                <span class="material-symbols-outlined text-base">expand_more</span>
+                                Show more posts
+                            </button>
                             <p class="help">Select the one post or reel where this keyword should work.</p>
                         </div>
                         <div class="field">
@@ -191,7 +200,11 @@
         let currentUser = null;
         let currentSession = null;
         let rules = [];
+        let accounts = [];
+        let selectedAccountId = '';
         let media = [];
+        let mediaCursor = null;
+        let selectedPostId = '';
 
         document.addEventListener('DOMContentLoaded', async () => {
             currentUser = await window.LEXAYA_AUTH.getUser();
@@ -208,6 +221,11 @@
             document.getElementById('rule-form').addEventListener('submit', saveRule);
             document.getElementById('reset-form').addEventListener('click', resetForm);
             document.getElementById('refresh-btn').addEventListener('click', loadAll);
+            document.getElementById('account-select').addEventListener('change', onAccountChange);
+            document.getElementById('load-more-media').addEventListener('click', () => loadMedia({ append: true }));
+            document.getElementById('media-picker').addEventListener('change', event => {
+                if (event.target.name === 'trigger-post') selectedPostId = event.target.value;
+            });
             await loadAll();
         });
 
@@ -220,34 +238,129 @@
         }
 
         async function loadAll() {
+            await loadAccounts();
             await Promise.all([loadMedia(), loadRules(), loadLogs()]);
         }
 
-        async function loadMedia() {
+        async function loadAccounts() {
+            const select = document.getElementById('account-select');
+            const help = document.getElementById('account-help');
+            try {
+                const response = await fetch(API.instagramAccounts(), { headers: await authHeaders() });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Could not load Instagram accounts');
+                accounts = data.accounts || [];
+            } catch (error) {
+                accounts = [];
+                console.error('[Instagram Automations] Account load failed:', error);
+            }
+
+            if (!accounts.some(account => account.id === selectedAccountId)) {
+                selectedAccountId = accounts[0]?.id || '';
+            }
+
+            select.innerHTML = accounts.length
+                ? accounts.map(account => `<option value="${escapeHtml(account.id)}">${escapeHtml(accountLabel(account))}</option>`).join('')
+                : '<option value="">No Instagram account connected</option>';
+            select.value = selectedAccountId;
+            select.disabled = accounts.length < 2;
+
+            if (!accounts.length) {
+                help.innerHTML = '<a href="/broadcast/connect.html" style="color:#005bc2;font-weight:800;">Connect an Instagram account</a> to build automations.';
+            } else if (accounts.length === 1) {
+                help.textContent = 'Replies and DMs are sent from this account.';
+            } else {
+                help.textContent = `Each rule runs on one account. You have ${accounts.length} connected.`;
+            }
+        }
+
+        function accountLabel(account) {
+            const handle = account.username || account.account_name;
+            return handle ? `@${String(handle).replace(/^@/, '')}` : 'Instagram account';
+        }
+
+        async function onAccountChange(event) {
+            selectedAccountId = event.target.value;
+            // Post ids belong to one account, so a pending selection is void here.
+            selectedPostId = '';
+            await loadMedia();
+        }
+
+        async function loadMedia({ append = false } = {}) {
             const summary = document.getElementById('media-summary');
             const picker = document.getElementById('media-picker');
+            const loadMoreBtn = document.getElementById('load-more-media');
+
+            if (!selectedAccountId) {
+                media = [];
+                mediaCursor = null;
+                picker.innerHTML = '<p class="help">Connect an Instagram account to choose a post.</p>';
+                loadMoreBtn.style.display = 'none';
+                summary.textContent = 'No Instagram account connected';
+                return;
+            }
+
+            if (!append) {
+                media = [];
+                mediaCursor = null;
+            }
+
+            loadMoreBtn.disabled = true;
             try {
-                const response = await fetch(API.instagramMedia(), { headers: await authHeaders() });
+                const params = new URLSearchParams({ account_id: selectedAccountId });
+                if (append && mediaCursor) params.set('after', mediaCursor);
+                const response = await fetch(`${API.instagramMedia()}?${params}`, { headers: await authHeaders() });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Could not load Instagram posts');
-                media = data.media || [];
-                summary.textContent = media.length ? `${media.length} recent posts available` : 'No recent posts found';
-                picker.innerHTML = media.map(item => `
-                    <label class="media-card" title="${escapeHtml(item.caption || item.id)}">
-                        <input type="radio" name="trigger-post" value="${escapeHtml(item.id)}" required>
-                        <img src="${escapeHtml(item.thumbnail_url || item.media_url || '')}" alt="" loading="lazy">
-                        <span class="media-card-copy">${escapeHtml(item.caption || `${item.media_type || 'Instagram'} post`)}</span>
-                    </label>
-                `).join('');
+
+                media = append ? media.concat(data.media || []) : (data.media || []);
+                mediaCursor = data.next_cursor || null;
+                renderMedia();
             } catch (error) {
-                summary.textContent = 'Connect Instagram before choosing specific posts';
-                picker.innerHTML = '<p class="help">Recent Instagram content could not be loaded.</p>';
+                if (!append) {
+                    picker.innerHTML = '<p class="help">Recent Instagram content could not be loaded.</p>';
+                    summary.textContent = 'Connect Instagram before choosing specific posts';
+                    loadMoreBtn.style.display = 'none';
+                }
                 console.error('[Instagram Automations] Media load failed:', error);
+            } finally {
+                loadMoreBtn.disabled = false;
+            }
+        }
+
+        function renderMedia() {
+            const summary = document.getElementById('media-summary');
+            const picker = document.getElementById('media-picker');
+            const loadMoreBtn = document.getElementById('load-more-media');
+
+            const selectionHidden = selectedPostId && !media.some(item => item.id === selectedPostId);
+            summary.textContent = media.length
+                ? `${media.length} recent post${media.length === 1 ? '' : 's'} shown${selectionHidden ? ' · selected post is further back' : ''}`
+                : 'No recent posts found';
+
+            picker.innerHTML = media.map(item => `
+                <label class="media-card" title="${escapeHtml(item.caption || item.id)}">
+                    <input type="radio" name="trigger-post" value="${escapeHtml(item.id)}" ${item.id === selectedPostId ? 'checked' : ''}>
+                    <img src="${escapeHtml(item.thumbnail_url || item.media_url || '')}" alt="" loading="lazy">
+                    <span class="media-card-copy">${escapeHtml(item.caption || `${item.media_type || 'Instagram'} post`)}</span>
+                </label>
+            `).join('');
+
+            loadMoreBtn.style.display = mediaCursor ? 'inline-flex' : 'none';
+        }
+
+        // Editing a rule whose post sits past the first page: keep paging until it
+        // shows up so the picker can reflect the saved selection.
+        async function revealPost(postId) {
+            let guard = 0;
+            while (postId && mediaCursor && !media.some(item => item.id === postId) && guard < 10) {
+                guard += 1;
+                await loadMedia({ append: true });
             }
         }
 
         function selectedPostIds() {
-            return [...document.querySelectorAll('input[name="trigger-post"]:checked')].map(input => input.value);
+            return selectedPostId ? [selectedPostId] : [];
         }
 
         async function loadRules() {
@@ -291,7 +404,7 @@
                     <div class="rule-top">
                         <div>
                             <div class="rule-name">${escapeHtml(rule.name)}</div>
-                            <div class="rule-meta">${rule.trigger_scope === 'specific' && (rule.trigger_post_ids || []).length === 1 ? '1 selected post' : 'Select a post to reactivate'} · public reply + DM</div>
+                            <div class="rule-meta">${escapeHtml(ruleAccountLabel(rule))} · ${rule.trigger_scope === 'specific' && (rule.trigger_post_ids || []).length === 1 ? '1 selected post' : 'Select a post to reactivate'} · public reply + DM</div>
                         </div>
                         <span class="status-pill ${rule.is_active ? '' : 'off'}">${rule.is_active ? 'Active' : 'Paused'}</span>
                     </div>
@@ -304,6 +417,12 @@
                     </div>
                 </article>
             `).join('');
+        }
+
+        function ruleAccountLabel(rule) {
+            const account = accounts.find(item => item.id === rule.connected_account_id);
+            if (account) return accountLabel(account);
+            return rule.connected_account_id ? 'Disconnected account' : 'All accounts';
         }
 
         function renderLogs(logs) {
@@ -341,11 +460,16 @@
             const ruleId = document.getElementById('rule-id').value;
             const existingRule = rules.find(rule => rule.id === ruleId);
             const postIds = selectedPostIds();
+            if (!selectedAccountId) {
+                showToast('Connect an Instagram account first', 'error');
+                return;
+            }
             if (postIds.length !== 1) {
                 showToast('Select exactly one Instagram post or reel', 'error');
                 return;
             }
             const payload = {
+                connected_account_id: selectedAccountId,
                 name: document.getElementById('rule-name').value,
                 trigger_keywords: document.getElementById('trigger-keywords').value,
                 trigger_post_ids: postIds,
@@ -371,16 +495,27 @@
             await loadRules();
         }
 
-        function editRule(ruleId) {
+        async function editRule(ruleId) {
             const rule = rules.find(item => item.id === ruleId);
             if (!rule) return;
             document.getElementById('rule-id').value = rule.id;
             document.getElementById('rule-name').value = rule.name || '';
             document.getElementById('trigger-keywords').value = (rule.trigger_keywords || []).join(', ');
-            const selectedIds = new Set(rule.trigger_post_ids || []);
-            document.querySelectorAll('input[name="trigger-post"]').forEach(input => {
-                input.checked = selectedIds.has(input.value);
-            });
+
+            selectedPostId = (rule.trigger_post_ids || [])[0] || '';
+            const ruleAccountId = rule.connected_account_id
+                && accounts.some(account => account.id === rule.connected_account_id)
+                ? rule.connected_account_id
+                : selectedAccountId;
+            if (ruleAccountId !== selectedAccountId) {
+                selectedAccountId = ruleAccountId;
+                document.getElementById('account-select').value = selectedAccountId;
+                await loadMedia();
+            } else {
+                renderMedia();
+            }
+            await revealPost(selectedPostId);
+
             document.getElementById('public-reply-template').value = rule.variables?.public_reply_template || 'Thanks, {{username}}! Check your DMs.';
             document.getElementById('dm-template').value = rule.dm_template || '';
             document.getElementById('is-active').checked = Boolean(rule.is_active);
@@ -407,6 +542,10 @@
             document.getElementById('rule-id').value = '';
             document.getElementById('is-active').checked = true;
             document.getElementById('public-reply-template').value = 'Thanks, {{username}}! Check your DMs.';
+            // form.reset() clears the radios but not the account choice.
+            selectedPostId = '';
+            document.getElementById('account-select').value = selectedAccountId;
+            renderMedia();
         }
 
         function formatDate(value) {

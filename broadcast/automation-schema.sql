@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS automation_rules (
     user_id TEXT,
     name TEXT NOT NULL,                          -- "Free Guide DM Automation"
 
+    -- Which connected Instagram account this rule answers for
+    connected_account_id UUID REFERENCES connected_accounts(id) ON DELETE CASCADE,
+
     -- Trigger Configuration
     trigger_type TEXT NOT NULL DEFAULT 'comment_keyword',
     trigger_keywords TEXT[] NOT NULL,            -- ['INFO', 'GUIDE', 'FREE']
@@ -42,6 +45,7 @@ CREATE TABLE IF NOT EXISTS automation_rules (
 -- Indexes for automation_rules
 CREATE INDEX IF NOT EXISTS idx_automation_rules_user_id ON automation_rules(user_id);
 CREATE INDEX IF NOT EXISTS idx_automation_rules_active ON automation_rules(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_automation_rules_connected_account ON automation_rules(connected_account_id);
 
 
 -- ============================================

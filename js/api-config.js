@@ -23,6 +23,7 @@ const API = {
   publish:            () => `${PUBLISH_BASE_URL}/broadcast/publish`,
   schedule:           () => `${PUBLISH_BASE_URL}/broadcast/publish?action=schedule`,
   instagramComplete:  () => `${PUBLISH_BASE_URL}/broadcast/publish?action=instagram-complete`,
+  instagramAccounts:  () => `${BASE_URL}/api/instagram/accounts`,
   instagramMedia:     () => `${BASE_URL}/api/instagram/media`,
   instagramRules:     () => `${BASE_URL}/api/instagram/rules`,
   instagramLogs:      () => `${BASE_URL}/api/instagram/logs`,

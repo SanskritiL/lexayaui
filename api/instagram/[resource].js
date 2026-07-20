@@ -1,6 +1,7 @@
 const {
   getSupabase,
   setCors,
+  handleAccounts,
   handleMedia,
   handleRules,
   handleLogs,
@@ -33,6 +34,8 @@ async function handler(req, res) {
     }
 
     switch (resource) {
+      case 'accounts':
+        return handleAccounts(req, res, supabase);
       case 'media':
         return handleMedia(req, res, supabase);
       case 'rules':
