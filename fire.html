@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FIRE Calculator — Coast FIRE &amp; Financial Independence | Lexaya</title>
+    <meta name="description" content="A simple, clean calculator for your Coast FIRE and full FIRE numbers. Enter a few details and see how much you need to retire early.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#2563eb",
+                        "primary-dim": "#1d4ed8",
+                    },
+                    fontFamily: {
+                        sans: ["Manrope", "sans-serif"],
+                    },
+                },
+            },
+        };
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+
+    <!-- Header -->
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+        <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
+            <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <span class="text-sm font-semibold text-slate-500">FIRE Calculator</span>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-5 py-10 md:py-14">
+
+        <!-- Intro -->
+        <div class="max-w-2xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary bg-blue-50 px-3 py-1 rounded-full">
+                <span class="material-symbols-outlined text-sm" style="font-size:15px">local_fire_department</span>
+                Financial Independence, Retire Early
+            </span>
+            <h1 class="mt-4 text-4xl md:text-5xl font-black tracking-tight text-slate-900">
+                What's your FIRE number?
+            </h1>
+            <p class="mt-3 text-lg text-slate-600 leading-relaxed">
+                Fill in a few numbers and see two targets: your <strong class="text-slate-900">Coast FIRE</strong> number —
+                the amount you'd need invested <em>today</em> so it grows into full independence on its own — and your
+                <strong class="text-slate-900">full FIRE</strong> number, the total that lets you stop working.
+            </p>
+        </div>
+
+        <div class="mt-10 grid lg:grid-cols-5 gap-8 items-start">
+
+            <!-- Inputs -->
+            <form id="fire-form" class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+                <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400">Your numbers</h2>
+
+                <div>
+                    <label for="currentAge" class="block text-sm font-semibold text-slate-700 mb-1.5">Current age</label>
+                    <input type="number" id="currentAge" value="30" min="0" max="100"
+                        class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                </div>
+
+                <div>
+                    <label for="retireAge" class="block text-sm font-semibold text-slate-700 mb-1.5">Target retirement age</label>
+                    <input type="number" id="retireAge" value="55" min="1" max="100"
+                        class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                </div>
+
+                <div>
+                    <label for="spending" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        Yearly spending in retirement
+                        <span class="font-normal text-slate-400">(today's dollars)</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                        <input type="number" id="spending" value="50000" min="0" step="1000"
+                            class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold pl-7">
+                    </div>
+                </div>
+
+                <div>
+                    <label for="current" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                        Currently invested
+                        <span class="font-normal text-slate-400">(optional)</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                        <input type="number" id="current" value="100000" min="0" step="1000"
+                            class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold pl-7">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="returnRate" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Return <span class="font-normal text-slate-400">%/yr</span>
+                        </label>
+                        <input type="number" id="returnRate" value="7" min="0" max="20" step="0.5"
+                            class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                        <p class="mt-1 text-xs text-slate-400">After inflation. ~7% is typical.</p>
+                    </div>
+                    <div>
+                        <label for="withdrawal" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                            Withdrawal <span class="font-normal text-slate-400">%</span>
+                        </label>
+                        <input type="number" id="withdrawal" value="4" min="1" max="10" step="0.1"
+                            class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                        <p class="mt-1 text-xs text-slate-400">The classic rule is 4%.</p>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Results -->
+            <div class="lg:col-span-3 space-y-5">
+
+                <!-- Coast FIRE -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-widest text-primary">Coast FIRE number</h3>
+                            <p class="text-sm text-slate-500 mt-1">Invest this much now and never add another dollar — it still grows to full FIRE by <span id="coast-year" class="font-semibold text-slate-700">55</span>.</p>
+                        </div>
+                        <span class="material-symbols-outlined text-primary bg-blue-50 rounded-full p-2" style="font-size:22px">rocket_launch</span>
+                    </div>
+                    <p id="coast-number" class="mt-4 text-5xl font-black tracking-tight text-slate-900">$0</p>
+
+                    <!-- Progress -->
+                    <div class="mt-5">
+                        <div class="flex justify-between text-xs font-semibold text-slate-500 mb-1.5">
+                            <span>Your progress</span>
+                            <span id="coast-pct">0%</span>
+                        </div>
+                        <div class="h-3 rounded-full bg-slate-100 overflow-hidden">
+                            <div id="coast-bar" class="h-full rounded-full bg-primary transition-all duration-500" style="width:0%"></div>
+                        </div>
+                        <p id="coast-msg" class="mt-2.5 text-sm text-slate-600"></p>
+                    </div>
+                </div>
+
+                <!-- Full FIRE -->
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="text-sm font-bold uppercase tracking-widest text-slate-600">Full FIRE number</h3>
+                            <p class="text-sm text-slate-500 mt-1">The total invested that fully covers your spending and lets you stop working.</p>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-600 bg-slate-100 rounded-full p-2" style="font-size:22px">savings</span>
+                    </div>
+                    <p id="fire-number" class="mt-4 text-5xl font-black tracking-tight text-slate-900">$0</p>
+                    <p class="mt-3 text-sm text-slate-500">
+                        That's <span id="fire-multiple" class="font-semibold text-slate-700">25×</span> your yearly spending —
+                        drawing <span id="fire-monthly" class="font-semibold text-slate-700">$0</span>/mo at your withdrawal rate.
+                    </p>
+                </div>
+
+                <!-- Explainer -->
+                <div class="bg-blue-50/60 rounded-2xl border border-blue-100 p-6">
+                    <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary" style="font-size:18px">lightbulb</span>
+                        How to read this
+                    </h3>
+                    <ul class="mt-3 space-y-2 text-sm text-slate-600 leading-relaxed">
+                        <li><strong class="text-slate-900">Coast FIRE</strong> is the early milestone. Once you hit it, compound growth alone gets you to retirement — you only need to cover today's expenses, not save another cent.</li>
+                        <li><strong class="text-slate-900">Full FIRE</strong> is the finish line: enough invested that a safe yearly withdrawal covers your spending forever.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <p class="mt-10 text-xs text-slate-400 max-w-2xl leading-relaxed">
+            Estimates only, not financial advice. Figures are in today's dollars and assume a steady real return, which real markets never deliver. Talk to a professional before making decisions.
+        </p>
+    </main>
+
+    <footer class="border-t border-slate-200 mt-8">
+        <div class="max-w-5xl mx-auto px-5 py-6 flex items-center justify-between text-sm text-slate-400">
+            <a href="/" class="font-black text-slate-900 no-underline">Lexaya</a>
+            <span>&copy; <span id="year"></span> Lexaya</span>
+        </div>
+    </footer>
+
+    <script>
+        const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+        const $ = (id) => document.getElementById(id);
+        const num = (id) => parseFloat($(id).value) || 0;
+
+        function calc() {
+            const currentAge = num("currentAge");
+            const retireAge = num("retireAge");
+            const spending = num("spending");
+            const current = num("current");
+            const r = num("returnRate") / 100;
+            const w = num("withdrawal") / 100;
+
+            const years = Math.max(0, retireAge - currentAge);
+
+            // Full FIRE: total needed so a safe withdrawal covers spending.
+            const fireNumber = w > 0 ? spending / w : 0;
+
+            // Coast FIRE: amount today that compounds to the FIRE number by retirement.
+            const growth = Math.pow(1 + r, years);
+            const coastNumber = growth > 0 ? fireNumber / growth : fireNumber;
+
+            // Full FIRE card
+            $("fire-number").textContent = fmt.format(fireNumber);
+            $("fire-multiple").textContent = w > 0 ? Math.round(1 / w) + "×" : "—";
+            $("fire-monthly").textContent = fmt.format((fireNumber * w) / 12);
+
+            // Coast FIRE card
+            $("coast-number").textContent = fmt.format(coastNumber);
+            $("coast-year").textContent = retireAge;
+
+            const pct = coastNumber > 0 ? Math.min(100, (current / coastNumber) * 100) : (current > 0 ? 100 : 0);
+            $("coast-pct").textContent = Math.round(pct) + "%";
+            $("coast-bar").style.width = pct + "%";
+
+            const msg = $("coast-msg");
+            if (current >= coastNumber && coastNumber > 0) {
+                const projected = current * growth;
+                msg.innerHTML = "🎉 You've reached Coast FIRE! Left alone, today's savings grow to about <strong>" +
+                    fmt.format(projected) + "</strong> by " + retireAge + ".";
+            } else if (coastNumber > 0) {
+                msg.innerHTML = "You're <strong>" + fmt.format(coastNumber - current) +
+                    "</strong> away from being able to coast.";
+            } else {
+                msg.textContent = "";
+            }
+        }
+
+        document.getElementById("fire-form").addEventListener("input", calc);
+        document.getElementById("year").textContent = new Date().getFullYear();
+        calc();
+    </script>
+</body>
+</html>

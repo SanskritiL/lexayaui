@@ -9,6 +9,7 @@ mkdir -p "$PUBLIC_DIR"
 
 rsync -a \
   "$ROOT_DIR/index.html" \
+  "$ROOT_DIR/fire.html" \
   "$ROOT_DIR/login.html" \
   "$ROOT_DIR/members.html" \
   "$ROOT_DIR/privacy.html" \
