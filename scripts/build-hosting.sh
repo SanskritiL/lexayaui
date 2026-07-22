@@ -9,7 +9,15 @@ mkdir -p "$PUBLIC_DIR"
 
 rsync -a \
   "$ROOT_DIR/index.html" \
+  "$ROOT_DIR/finances.html" \
   "$ROOT_DIR/fire.html" \
+  "$ROOT_DIR/compound.html" \
+  "$ROOT_DIR/mortgage.html" \
+  "$ROOT_DIR/rent-vs-buy.html" \
+  "$ROOT_DIR/debt.html" \
+  "$ROOT_DIR/withdraw.html" \
+  "$ROOT_DIR/salary.html" \
+  "$ROOT_DIR/goal.html" \
   "$ROOT_DIR/login.html" \
   "$ROOT_DIR/members.html" \
   "$ROOT_DIR/privacy.html" \

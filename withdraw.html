@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Withdrawal Calculator — Can I Quit Yet? | Lexaya</title>
+    <meta name="description" content="How much can you safely spend each year from your savings? The 4% rule, made simple.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = { theme: { extend: {
+            colors: { primary: "#2563eb", "primary-dim": "#1d4ed8" },
+            fontFamily: { sans: ["Manrope", "sans-serif"] },
+        } } };
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+        <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
+            <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <a href="/finances" class="text-sm font-semibold text-slate-500 hover:text-primary no-underline flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>All money tools
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-5 py-10 md:py-14">
+
+        <div class="max-w-2xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-teal-600 bg-teal-50 px-3 py-1 rounded-full">
+                <span class="material-symbols-outlined" style="font-size:15px">savings</span>
+                Safe withdrawal
+            </span>
+            <h1 class="mt-4 text-4xl md:text-5xl font-black tracking-tight text-slate-900">Can I quit yet?</h1>
+            <p class="mt-3 text-lg text-slate-600 leading-relaxed">
+                The classic "4% rule" says you can withdraw about 4% of your savings the first year, adjust for
+                inflation after, and be unlikely to run out over a 30-year retirement. Try it two ways below.
+            </p>
+        </div>
+
+        <div class="mt-10 grid lg:grid-cols-2 gap-6 items-start">
+
+            <!-- Have savings -> can spend -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <h2 class="text-sm font-bold uppercase tracking-widest text-teal-600">I have this saved</h2>
+                <form id="form-a" class="mt-4 space-y-4">
+                    <div>
+                        <label for="portfolio" class="block text-sm font-semibold text-slate-700 mb-1.5">Portfolio value</label>
+                        <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                            <input type="number" id="portfolio" value="1000000" min="0" step="10000" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold pl-7"></div>
+                    </div>
+                    <div>
+                        <label for="rateA" class="block text-sm font-semibold text-slate-700 mb-1.5">Withdrawal rate <span class="font-normal text-slate-400">%</span></label>
+                        <input type="number" id="rateA" value="4" min="1" max="10" step="0.1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                    </div>
+                </form>
+                <div class="mt-5 rounded-xl bg-teal-50 border border-teal-100 p-5">
+                    <p class="text-xs font-bold uppercase tracking-wider text-teal-600">You could spend</p>
+                    <p id="spend-year" class="mt-1 text-4xl font-black tracking-tight text-slate-900">$0</p>
+                    <p class="text-sm text-teal-700 font-semibold">per year</p>
+                    <p id="spend-month" class="mt-2 text-sm text-slate-600"></p>
+                </div>
+            </div>
+
+            <!-- Want to spend -> need to save -->
+            <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <h2 class="text-sm font-bold uppercase tracking-widest text-slate-500">I want to spend this</h2>
+                <form id="form-b" class="mt-4 space-y-4">
+                    <div>
+                        <label for="want" class="block text-sm font-semibold text-slate-700 mb-1.5">Spending per year</label>
+                        <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                            <input type="number" id="want" value="60000" min="0" step="1000" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold pl-7"></div>
+                    </div>
+                    <div>
+                        <label for="rateB" class="block text-sm font-semibold text-slate-700 mb-1.5">Withdrawal rate <span class="font-normal text-slate-400">%</span></label>
+                        <input type="number" id="rateB" value="4" min="1" max="10" step="0.1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                    </div>
+                </form>
+                <div class="mt-5 rounded-xl bg-slate-50 border border-slate-100 p-5">
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400">You'd need saved</p>
+                    <p id="need" class="mt-1 text-4xl font-black tracking-tight text-slate-900">$0</p>
+                    <p id="need-note" class="mt-2 text-sm text-slate-600"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rate sensitivity -->
+        <div class="mt-6 bg-blue-50/60 rounded-2xl border border-blue-100 p-6">
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary" style="font-size:18px">tune</span>
+                What each rate means for your portfolio
+            </h3>
+            <div id="rate-table" class="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+            <p class="mt-4 text-xs text-slate-500 leading-relaxed">A lower rate (like 3–3.5%) is safer for early retirees with a long horizon; a higher rate risks running down the balance. The 4% rule assumes a ~30-year retirement and a stock/bond mix.</p>
+        </div>
+
+        <p class="mt-10 text-xs text-slate-400 max-w-2xl leading-relaxed">Estimates only, not financial advice. Real outcomes depend on market returns, sequence of returns, taxes and how long you live.</p>
+    </main>
+
+    <footer class="border-t border-slate-200 mt-8">
+        <div class="max-w-5xl mx-auto px-5 py-6 flex items-center justify-between text-sm text-slate-400">
+            <a href="/" class="font-black text-slate-900 no-underline">Lexaya</a>
+            <span>&copy; <span id="year"></span> Lexaya</span>
+        </div>
+    </footer>
+
+    <script>
+        const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+        const $ = (id) => document.getElementById(id);
+        const num = (id) => parseFloat($(id).value) || 0;
+
+        function calc() {
+            const portfolio = num("portfolio"), rateA = num("rateA") / 100;
+            const yearSpend = portfolio * rateA;
+            $("spend-year").textContent = fmt.format(yearSpend);
+            $("spend-month").textContent = "That's about " + fmt.format(yearSpend / 12) + " a month.";
+
+            const want = num("want"), rateB = num("rateB") / 100;
+            const need = rateB > 0 ? want / rateB : 0;
+            $("need").textContent = fmt.format(need);
+            $("need-note").innerHTML = `To draw <strong class="text-slate-700">${fmt.format(want)}</strong>/yr at ${num("rateB")}%, you need <strong class="text-slate-700">${Math.round(1 / rateB)}×</strong> your annual spending invested.`;
+
+            // rate sensitivity table based on portfolio
+            const rates = [3, 3.5, 4, 5];
+            $("rate-table").innerHTML = rates.map((rt) => {
+                const y = portfolio * rt / 100;
+                const hot = rt === num("rateA");
+                return `<div class="rounded-xl border p-3 text-center ${hot ? "bg-white border-primary" : "bg-white border-slate-200"}">
+                    <p class="text-xs font-bold uppercase tracking-wider ${hot ? "text-primary" : "text-slate-400"}">${rt}%</p>
+                    <p class="mt-1 text-lg font-black text-slate-900">${fmt.format(y)}</p>
+                    <p class="text-[11px] text-slate-400">${fmt.format(y / 12)}/mo</p>
+                </div>`;
+            }).join("");
+        }
+
+        $("form-a").addEventListener("input", calc);
+        $("form-b").addEventListener("input", calc);
+        $("year").textContent = new Date().getFullYear();
+        calc();
+    </script>
+</body>
+</html>

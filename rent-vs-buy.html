@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rent vs Buy Calculator — Do the Math First | Lexaya</title>
+    <meta name="description" content="Should you rent or buy? Compare the true cost of each over time and find your break-even year before you sign.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = { theme: { extend: {
+            colors: { primary: "#2563eb", "primary-dim": "#1d4ed8" },
+            fontFamily: { sans: ["Manrope", "sans-serif"] },
+        } } };
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+        <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
+            <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <a href="/finances" class="text-sm font-semibold text-slate-500 hover:text-primary no-underline flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>All money tools
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-5 py-10 md:py-14">
+
+        <div class="max-w-2xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                <span class="material-symbols-outlined" style="font-size:15px">home</span>
+                Rent vs buy
+            </span>
+            <h1 class="mt-4 text-4xl md:text-5xl font-black tracking-tight text-slate-900">Wanna buy a house?</h1>
+            <p class="mt-3 text-lg text-slate-600 leading-relaxed">
+                Buying isn't automatically "throwing money away on rent." It depends on how long you stay. This
+                compares the <strong class="text-slate-900">true cost</strong> of each — interest, taxes, upkeep,
+                appreciation and the return you'd earn investing your down payment instead — and finds the year buying pulls ahead.
+            </p>
+        </div>
+
+        <div class="mt-10 grid lg:grid-cols-5 gap-8 items-start">
+
+            <form id="form" class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+                <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400">The basics</h2>
+                <div>
+                    <label for="price" class="block text-sm font-semibold text-slate-700 mb-1.5">Home price</label>
+                    <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                        <input type="number" id="price" value="450000" min="0" step="5000" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold pl-7"></div>
+                </div>
+                <div>
+                    <label for="rent" class="block text-sm font-semibold text-slate-700 mb-1.5">Comparable rent <span class="font-normal text-slate-400">$/mo</span></label>
+                    <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                        <input type="number" id="rent" value="2200" min="0" step="50" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold pl-7"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="downPct" class="block text-sm font-semibold text-slate-700 mb-1.5">Down <span class="font-normal text-slate-400">%</span></label>
+                        <input type="number" id="downPct" value="20" min="0" max="100" step="1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                    </div>
+                    <div>
+                        <label for="mrate" class="block text-sm font-semibold text-slate-700 mb-1.5">Rate <span class="font-normal text-slate-400">%</span></label>
+                        <input type="number" id="mrate" value="6.5" min="0" max="20" step="0.1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                    </div>
+                </div>
+                <div>
+                    <label for="stay" class="block text-sm font-semibold text-slate-700 mb-1.5">Years you'll stay</label>
+                    <input type="number" id="stay" value="10" min="1" max="40" step="1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                </div>
+
+                <details class="pt-2 border-t border-slate-100">
+                    <summary class="cursor-pointer text-sm font-bold text-slate-500 hover:text-primary">Assumptions ▾</summary>
+                    <div class="mt-4 grid grid-cols-2 gap-4">
+                        <div><label for="term" class="block text-xs font-semibold text-slate-600 mb-1">Loan term (yrs)</label>
+                            <input type="number" id="term" value="30" min="1" max="40" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="appr" class="block text-xs font-semibold text-slate-600 mb-1">Home growth %/yr</label>
+                            <input type="number" id="appr" value="3" step="0.5" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="rentG" class="block text-xs font-semibold text-slate-600 mb-1">Rent growth %/yr</label>
+                            <input type="number" id="rentG" value="3" step="0.5" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="inv" class="block text-xs font-semibold text-slate-600 mb-1">Investment return %</label>
+                            <input type="number" id="inv" value="6" step="0.5" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="tax" class="block text-xs font-semibold text-slate-600 mb-1">Property tax %/yr</label>
+                            <input type="number" id="tax" value="1.1" step="0.1" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="maint" class="block text-xs font-semibold text-slate-600 mb-1">Maintenance %/yr</label>
+                            <input type="number" id="maint" value="1" step="0.1" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="insur" class="block text-xs font-semibold text-slate-600 mb-1">Insurance %/yr</label>
+                            <input type="number" id="insur" value="0.5" step="0.1" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="hoa" class="block text-xs font-semibold text-slate-600 mb-1">HOA $/mo</label>
+                            <input type="number" id="hoa" value="0" step="25" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="closing" class="block text-xs font-semibold text-slate-600 mb-1">Closing cost %</label>
+                            <input type="number" id="closing" value="3" step="0.5" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                        <div><label for="selling" class="block text-xs font-semibold text-slate-600 mb-1">Selling cost %</label>
+                            <input type="number" id="selling" value="6" step="0.5" class="w-full rounded-lg border-slate-300 text-sm font-semibold"></div>
+                    </div>
+                </details>
+            </form>
+
+            <div class="lg:col-span-3 space-y-5">
+                <div id="verdict-card" class="rounded-2xl border p-6 shadow-sm bg-white border-slate-200">
+                    <h3 class="text-sm font-bold uppercase tracking-widest text-emerald-600">The verdict</h3>
+                    <p id="verdict" class="mt-2 text-2xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight">—</p>
+                    <p id="verdict-sub" class="mt-2 text-sm text-slate-600"></p>
+                    <div class="mt-5 grid grid-cols-2 gap-4">
+                        <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                            <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Cost to buy <span id="stay-a">10</span>yr</p>
+                            <p id="cost-buy" class="mt-1 text-2xl font-black text-slate-900">$0</p>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 border border-slate-100 p-4">
+                            <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Cost to rent <span id="stay-b">10</span>yr</p>
+                            <p id="cost-rent" class="mt-1 text-2xl font-black text-slate-900">$0</p>
+                        </div>
+                    </div>
+                    <p id="pay-note" class="mt-4 text-sm text-slate-500"></p>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between gap-4 flex-wrap">
+                        <h3 class="text-lg font-bold tracking-tight text-slate-900">Total cost over time</h3>
+                        <div class="flex items-center gap-4 text-xs font-semibold text-slate-600">
+                            <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 rounded bg-primary inline-block"></span>Buy</span>
+                            <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 rounded inline-block" style="background:#d97706"></span>Rent</span>
+                        </div>
+                    </div>
+                    <div id="chart-wrap" class="relative mt-4 select-none">
+                        <svg id="chart" viewBox="0 0 820 300" class="w-full h-auto" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Cumulative cost of buying vs renting over time"></svg>
+                        <div id="chart-tip" class="pointer-events-none absolute hidden z-10 rounded-lg bg-slate-900 text-white text-xs font-semibold px-2.5 py-1.5 shadow-lg whitespace-nowrap"></div>
+                    </div>
+                    <p class="mt-3 text-xs text-slate-400">Lower line = cheaper. Where they cross is your break-even.</p>
+                </div>
+            </div>
+        </div>
+
+        <p class="mt-10 text-xs text-slate-400 max-w-2xl leading-relaxed">A simplified model for orientation, not financial advice. It ignores taxes on investment gains, mortgage interest deductions, PMI and local specifics. Small changes to the assumptions can move the break-even a lot.</p>
+    </main>
+
+    <footer class="border-t border-slate-200 mt-8">
+        <div class="max-w-5xl mx-auto px-5 py-6 flex items-center justify-between text-sm text-slate-400">
+            <a href="/" class="font-black text-slate-900 no-underline">Lexaya</a>
+            <span>&copy; <span id="year"></span> Lexaya</span>
+        </div>
+    </footer>
+
+    <script>
+        const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+        const $ = (id) => document.getElementById(id);
+        const num = (id) => parseFloat($(id).value) || 0;
+        const fmtShort = (v) => { const a = Math.abs(v);
+            if (a >= 1e6) return "$" + (v / 1e6).toFixed(v % 1e6 === 0 ? 0 : 1) + "M";
+            if (a >= 1e3) return "$" + Math.round(v / 1e3) + "K"; return "$" + Math.round(v); };
+        function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); const n = v / p;
+            return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+
+        let chartPoints = [];
+        function renderChart(series, breakEvenYear) {
+            const W = 820, H = 300, mL = 62, mR = 24, mT = 18, mB = 34;
+            const pW = W - mL - mR, pH = H - mT - mB;
+            const n = series.length - 1;
+            const maxV = Math.max(...series.map((p) => Math.max(p.buy, p.rent)));
+            const yMax = niceMax(maxV * 1.05);
+            const X = (i) => mL + pW * (i / n);
+            const Y = (v) => mT + pH * (1 - Math.min(Math.max(v, 0), yMax) / yMax);
+            chartPoints = series.map((p, i) => ({ ...p, cx: X(i), cy: Y(p.buy), cyR: Y(p.rent) }));
+
+            let grid = "";
+            for (let k = 0; k <= 4; k++) { const gv = yMax * k / 4, gy = Y(gv);
+                grid += `<line x1="${mL}" y1="${gy}" x2="${W - mR}" y2="${gy}" stroke="#f1f5f9"/>`;
+                grid += `<text x="${mL - 10}" y="${gy + 4}" text-anchor="end" font-size="11" fill="#94a3b8">${fmtShort(gv)}</text>`; }
+            let xlab = ""; const nLab = Math.min(n, 6);
+            for (let k = 0; k <= nLab; k++) { const i = Math.round(n * k / nLab);
+                xlab += `<text x="${X(i)}" y="${H - 10}" text-anchor="middle" font-size="11" fill="#94a3b8">${series[i].label}</text>`; }
+
+            const buy = series.map((p, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(p.buy).toFixed(1)}`).join("");
+            const rent = series.map((p, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(p.rent).toFixed(1)}`).join("");
+
+            let be = "";
+            if (breakEvenYear !== null && breakEvenYear >= 1 && breakEvenYear <= n) {
+                const bx = X(breakEvenYear);
+                be = `<line x1="${bx}" y1="${mT}" x2="${bx}" y2="${mT + pH}" stroke="#10b981" stroke-width="1.5" stroke-dasharray="5 4"/>
+                      <text x="${bx}" y="${mT - 4}" text-anchor="middle" font-size="11" font-weight="700" fill="#059669">Break-even · yr ${breakEvenYear}</text>`;
+            }
+
+            $("chart").innerHTML = `
+                ${grid}${be}
+                <path d="${rent}" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                <path d="${buy}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                <line id="cross" y1="${mT}" y2="${mT + pH}" stroke="#64748b" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>
+                <circle id="dotB" r="4.5" fill="#2563eb" stroke="#fff" stroke-width="2" style="display:none"/>
+                <circle id="dotR" r="4.5" fill="#d97706" stroke="#fff" stroke-width="2" style="display:none"/>
+                ${xlab}`;
+        }
+
+        function calc() {
+            const price = num("price"), rent0 = num("rent"), dpPct = num("downPct"), mrate = num("mrate") / 100;
+            const stay = Math.max(1, Math.round(num("stay")));
+            const term = Math.max(1, num("term")), appr = num("appr") / 100, rentG = num("rentG") / 100, inv = num("inv") / 100;
+            const taxPct = num("tax") / 100, maintPct = num("maint") / 100, insurPct = num("insur") / 100;
+            const hoa = num("hoa"), closingPct = num("closing") / 100, sellingPct = num("selling") / 100;
+
+            const down = price * dpPct / 100;
+            const loan = Math.max(0, price - down);
+            const closingBuy = price * closingPct;
+            const i = mrate / 12, n = Math.round(term * 12);
+            const pay = i > 0 ? loan * i / (1 - Math.pow(1 + i, -n)) : loan / n;
+
+            let bal = loan, cumInterest = 0, cumOwn = 0, cumRent = 0, rent = rent0;
+            const series = [{ label: "0", buy: closingBuy + price * sellingPct, rent: 0 }];
+
+            for (let m = 1; m <= stay * 12; m++) {
+                const interest = bal * i;
+                let principal = pay - interest;
+                if (principal > bal) principal = bal;
+                if (bal > 0) { bal -= principal; cumInterest += interest; }
+                const hv = price * Math.pow(1 + appr, m / 12);
+                cumOwn += hv * (taxPct + maintPct + insurPct) / 12 + hoa;
+                cumRent += rent;
+                if (m % 12 === 0) {
+                    const y = m / 12;
+                    const hvEnd = price * Math.pow(1 + appr, y);
+                    const sellingCost = hvEnd * sellingPct;
+                    const dpOpp = (down + closingBuy) * (Math.pow(1 + inv, y) - 1);
+                    const appreciation = hvEnd - price;
+                    const buyCost = closingBuy + cumInterest + cumOwn + sellingCost + dpOpp - appreciation;
+                    series.push({ label: String(y), buy: buyCost, rent: cumRent });
+                    rent *= (1 + rentG);
+                }
+            }
+
+            // break-even: first year buying is cheaper
+            let be = null;
+            for (let k = 1; k < series.length; k++) { if (series[k].buy <= series[k].rent) { be = parseInt(series[k].label); break; } }
+
+            const last = series[series.length - 1];
+            $("cost-buy").textContent = fmt.format(last.buy);
+            $("cost-rent").textContent = fmt.format(last.rent);
+            $("stay-a").textContent = $("stay-b").textContent = stay;
+
+            const card = $("verdict-card");
+            if (last.buy < last.rent) {
+                $("verdict").textContent = "Buying wins 🏠";
+                $("verdict-sub").innerHTML = be
+                    ? `Buying gets cheaper than renting around <strong class="text-slate-900">year ${be}</strong>. Since you're staying ${stay} years, you come out ahead by <strong class="text-slate-900">${fmt.format(last.rent - last.buy)}</strong>.`
+                    : `Over ${stay} years buying costs ${fmt.format(last.rent - last.buy)} less than renting.`;
+                card.className = "rounded-2xl border-2 p-6 shadow-sm bg-white border-emerald-200";
+            } else {
+                $("verdict").textContent = "Renting wins 🔑";
+                $("verdict-sub").innerHTML = be
+                    ? `Buying only breaks even around year ${be}, which is longer than your ${stay}-year stay. Renting saves you <strong class="text-slate-900">${fmt.format(last.buy - last.rent)}</strong>.`
+                    : `For your ${stay}-year stay, renting costs <strong class="text-slate-900">${fmt.format(last.buy - last.rent)}</strong> less — you're not staying long enough for buying to pay off.`;
+                card.className = "rounded-2xl border-2 p-6 shadow-sm bg-white border-amber-200";
+            }
+            $("pay-note").innerHTML = `Mortgage payment: <strong class="text-slate-700">${fmt.format(pay)}</strong>/mo principal &amp; interest, on a ${fmt.format(loan)} loan.`;
+
+            renderChart(series, be);
+        }
+
+        const wrap = $("chart-wrap"), tip = $("chart-tip");
+        wrap.addEventListener("mousemove", (e) => {
+            if (!chartPoints.length) return;
+            const svg = $("chart"), rect = svg.getBoundingClientRect(), scale = 820 / rect.width;
+            const vbX = (e.clientX - rect.left) * scale;
+            let near = chartPoints[0];
+            for (const p of chartPoints) if (Math.abs(p.cx - vbX) < Math.abs(near.cx - vbX)) near = p;
+            const cross = $("cross"), dB = $("dotB"), dR = $("dotR");
+            cross.setAttribute("x1", near.cx); cross.setAttribute("x2", near.cx); cross.style.display = "";
+            dB.setAttribute("cx", near.cx); dB.setAttribute("cy", near.cy); dB.style.display = "";
+            dR.setAttribute("cx", near.cx); dR.setAttribute("cy", near.cyR); dR.style.display = "";
+            tip.innerHTML = "Year " + near.label + "<br>Buy " + fmt.format(near.buy) + " · Rent " + fmt.format(near.rent);
+            tip.style.left = (near.cx / scale) + "px"; tip.style.top = (Math.min(near.cy, near.cyR) / scale - 12) + "px";
+            tip.style.transform = "translate(-50%,-100%)"; tip.classList.remove("hidden");
+        });
+        wrap.addEventListener("mouseleave", () => { tip.classList.add("hidden");
+            ["cross", "dotB", "dotR"].forEach((id) => { const el = $(id); if (el) el.style.display = "none"; }); });
+
+        $("form").addEventListener("input", calc);
+        $("year").textContent = new Date().getFullYear();
+        calc();
+    </script>
+</body>
+</html>

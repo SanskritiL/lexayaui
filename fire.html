@@ -33,7 +33,9 @@
     <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
         <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
             <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
-            <span class="text-sm font-semibold text-slate-500">FIRE Calculator</span>
+            <a href="/finances" class="text-sm font-semibold text-slate-500 hover:text-primary no-underline flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>All money tools
+            </a>
         </div>
     </header>
 
@@ -174,6 +176,29 @@
             </div>
         </div>
 
+        <!-- Compounding chart -->
+        <div class="mt-8 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div class="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                    <h2 class="text-lg font-bold tracking-tight text-slate-900">How your money compounds</h2>
+                    <p class="text-sm text-slate-500 mt-1">
+                        What you have invested today, left to grow on its own until age
+                        <span id="chart-end-age" class="font-semibold text-slate-700">55</span> — no new contributions.
+                    </p>
+                </div>
+                <div class="flex items-center gap-4 text-xs font-semibold text-slate-600">
+                    <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 rounded bg-primary inline-block"></span>Projected balance</span>
+                    <span class="flex items-center gap-1.5"><span class="w-4 border-t-2 border-dashed border-slate-400 inline-block"></span>Full FIRE</span>
+                </div>
+            </div>
+            <div id="chart-wrap" class="relative mt-5 select-none">
+                <svg id="chart" viewBox="0 0 820 320" class="w-full h-auto" preserveAspectRatio="xMidYMid meet"
+                    role="img" aria-label="Projected growth of your investments over time"></svg>
+                <div id="chart-tip" class="pointer-events-none absolute hidden z-10 rounded-lg bg-slate-900 text-white text-xs font-semibold px-2.5 py-1.5 shadow-lg whitespace-nowrap"></div>
+            </div>
+            <p id="chart-caption" class="mt-3 text-sm text-slate-500"></p>
+        </div>
+
         <p class="mt-10 text-xs text-slate-400 max-w-2xl leading-relaxed">
             Estimates only, not financial advice. Figures are in today's dollars and assume a steady real return, which real markets never deliver. Talk to a professional before making decisions.
         </p>
@@ -190,6 +215,95 @@
         const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
         const $ = (id) => document.getElementById(id);
         const num = (id) => parseFloat($(id).value) || 0;
+
+        const fmtShort = (v) => {
+            const a = Math.abs(v);
+            if (a >= 1e6) return "$" + (v / 1e6).toFixed(v % 1e6 === 0 ? 0 : 1) + "M";
+            if (a >= 1e3) return "$" + Math.round(v / 1e3) + "K";
+            return "$" + Math.round(v);
+        };
+
+        // Round a value up to a clean axis maximum (1/2/5 × a power of ten).
+        function niceMax(v) {
+            if (v <= 0) return 1;
+            const pow = Math.pow(10, Math.floor(Math.log10(v)));
+            const n = v / pow;
+            const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+            return step * pow;
+        }
+
+        let chartPoints = [];
+
+        function renderChart(currentAge, retireAge, current, r, fireNumber) {
+            const W = 820, H = 320, mL = 62, mR = 24, mT = 18, mB = 38;
+            const pW = W - mL - mR, pH = H - mT - mB;
+            const years = Math.max(1, retireAge - currentAge);
+
+            const pts = [];
+            for (let i = 0; i <= years; i++) {
+                pts.push({ age: currentAge + i, value: current * Math.pow(1 + r, i) });
+            }
+            const finalVal = pts[pts.length - 1].value;
+            const yMax = niceMax(Math.max(fireNumber, finalVal) * 1.05);
+
+            const X = (i) => mL + pW * (i / years);
+            const Y = (v) => mT + pH * (1 - Math.min(v, yMax) / yMax);
+
+            chartPoints = pts.map((p, i) => ({ ...p, cx: X(i), cy: Y(p.value) }));
+
+            let grid = "";
+            for (let k = 0; k <= 4; k++) {
+                const gv = (yMax * k) / 4, gy = Y(gv);
+                grid += `<line x1="${mL}" y1="${gy}" x2="${W - mR}" y2="${gy}" stroke="#f1f5f9" stroke-width="1"/>`;
+                grid += `<text x="${mL - 10}" y="${gy + 4}" text-anchor="end" font-size="11" fill="#94a3b8">${fmtShort(gv)}</text>`;
+            }
+
+            let xlab = "";
+            const nLab = Math.min(years, 6);
+            for (let k = 0; k <= nLab; k++) {
+                const i = Math.round((years * k) / nLab);
+                xlab += `<text x="${X(i)}" y="${H - 12}" text-anchor="middle" font-size="11" fill="#94a3b8">${currentAge + i}</text>`;
+            }
+
+            const line = pts.map((p, i) => `${i ? "L" : "M"}${X(i).toFixed(1)},${Y(p.value).toFixed(1)}`).join("");
+            const area = line + `L${X(years).toFixed(1)},${Y(0).toFixed(1)}L${X(0).toFixed(1)},${Y(0).toFixed(1)}Z`;
+
+            const ty = Y(fireNumber);
+            const target = fireNumber <= yMax
+                ? `<line x1="${mL}" y1="${ty}" x2="${W - mR}" y2="${ty}" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="5 4"/>
+                   <text x="${W - mR}" y="${ty - 7}" text-anchor="end" font-size="11" font-weight="700" fill="#475569">Full FIRE · ${fmtShort(fireNumber)}</text>`
+                : "";
+
+            let reach = "";
+            const ri = pts.findIndex((p) => p.value >= fireNumber);
+            if (ri > 0) reach = `<circle cx="${X(ri)}" cy="${Y(pts[ri].value)}" r="5" fill="#2563eb" stroke="#fff" stroke-width="2"/>`;
+
+            $("chart").innerHTML = `
+                <defs><linearGradient id="fireGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#2563eb" stop-opacity="0.22"/>
+                    <stop offset="100%" stop-color="#2563eb" stop-opacity="0"/>
+                </linearGradient></defs>
+                ${grid}
+                <path d="${area}" fill="url(#fireGrad)"/>
+                ${target}
+                <path d="${line}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+                ${reach}
+                <line id="chart-cross" y1="${mT}" y2="${mT + pH}" stroke="#2563eb" stroke-width="1" stroke-dasharray="3 3" style="display:none"/>
+                <circle id="chart-dot" r="4.5" fill="#2563eb" stroke="#fff" stroke-width="2" style="display:none"/>
+                ${xlab}`;
+
+            // Caption: when does coasting alone reach full FIRE?
+            const cap = $("chart-caption");
+            if (ri > 0) {
+                cap.innerHTML = "Left untouched, today's balance grows past your Full FIRE number around age <strong class=\"text-slate-700\">" +
+                    pts[ri].age + "</strong>.";
+            } else if (finalVal >= fireNumber) {
+                cap.innerHTML = "Today's balance is already at or above your Full FIRE number.";
+            } else {
+                cap.innerHTML = "By age " + retireAge + " this reaches <strong class=\"text-slate-700\">" + fmt.format(finalVal) +
+                    "</strong> — short of Full FIRE, so you'd keep contributing to close the gap.";
+            }
+        }
 
         function calc() {
             const currentAge = num("currentAge");
@@ -232,7 +346,37 @@
             } else {
                 msg.textContent = "";
             }
+
+            $("chart-end-age").textContent = retireAge;
+            renderChart(currentAge, retireAge, current, r, fireNumber);
         }
+
+        // Hover crosshair + tooltip over the chart.
+        const wrap = $("chart-wrap"), tip = $("chart-tip");
+        wrap.addEventListener("mousemove", (e) => {
+            if (!chartPoints.length) return;
+            const svg = $("chart"), rect = svg.getBoundingClientRect();
+            const scale = 820 / rect.width;
+            const vbX = (e.clientX - rect.left) * scale;
+            let near = chartPoints[0];
+            for (const p of chartPoints) if (Math.abs(p.cx - vbX) < Math.abs(near.cx - vbX)) near = p;
+
+            const cross = $("chart-cross"), dot = $("chart-dot");
+            cross.setAttribute("x1", near.cx); cross.setAttribute("x2", near.cx); cross.style.display = "";
+            dot.setAttribute("cx", near.cx); dot.setAttribute("cy", near.cy); dot.style.display = "";
+
+            tip.innerHTML = "Age " + near.age + " · " + fmt.format(near.value);
+            tip.style.left = (near.cx / scale) + "px";
+            tip.style.top = (near.cy / scale - 12) + "px";
+            tip.style.transform = "translate(-50%,-100%)";
+            tip.classList.remove("hidden");
+        });
+        wrap.addEventListener("mouseleave", () => {
+            tip.classList.add("hidden");
+            const cross = $("chart-cross"), dot = $("chart-dot");
+            if (cross) cross.style.display = "none";
+            if (dot) dot.style.display = "none";
+        });
 
         document.getElementById("fire-form").addEventListener("input", calc);
         document.getElementById("year").textContent = new Date().getFullYear();

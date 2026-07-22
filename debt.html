@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debt Payoff Calculator — Snowball vs Avalanche | Lexaya</title>
+    <meta name="description" content="List your debts, add any extra payment, and see how fast you're debt-free with the snowball vs avalanche method.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = { theme: { extend: {
+            colors: { primary: "#2563eb", "primary-dim": "#1d4ed8" },
+            fontFamily: { sans: ["Manrope", "sans-serif"] },
+        } } };
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+        <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
+            <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <a href="/finances" class="text-sm font-semibold text-slate-500 hover:text-primary no-underline flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>All money tools
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-5 py-10 md:py-14">
+
+        <div class="max-w-2xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-rose-600 bg-rose-50 px-3 py-1 rounded-full">
+                <span class="material-symbols-outlined" style="font-size:15px">payments</span>
+                Debt payoff
+            </span>
+            <h1 class="mt-4 text-4xl md:text-5xl font-black tracking-tight text-slate-900">Crush your debt.</h1>
+            <p class="mt-3 text-lg text-slate-600 leading-relaxed">
+                Two proven strategies. <strong class="text-slate-900">Avalanche</strong> pays the highest interest
+                rate first (saves the most money). <strong class="text-slate-900">Snowball</strong> pays the
+                smallest balance first (quick wins to keep you going). See both.
+            </p>
+        </div>
+
+        <div class="mt-10 grid lg:grid-cols-5 gap-8 items-start">
+
+            <!-- Debts input -->
+            <div class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400">Your debts</h2>
+                    <button id="add" type="button" class="text-sm font-bold text-primary hover:text-primary-dim flex items-center gap-1">
+                        <span class="material-symbols-outlined" style="font-size:18px">add</span>Add debt
+                    </button>
+                </div>
+                <div class="mt-4 hidden sm:grid grid-cols-12 gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                    <div class="col-span-4">Name</div>
+                    <div class="col-span-3">Balance</div>
+                    <div class="col-span-2">APR %</div>
+                    <div class="col-span-2">Min/mo</div>
+                    <div class="col-span-1"></div>
+                </div>
+                <div id="rows" class="mt-2 space-y-2"></div>
+
+                <div class="mt-5 pt-5 border-t border-slate-100">
+                    <label for="extra" class="block text-sm font-semibold text-slate-700 mb-1.5">Extra payment <span class="font-normal text-slate-400">$/mo on top of minimums</span></label>
+                    <div class="relative max-w-[200px]"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                        <input type="number" id="extra" value="300" min="0" step="25" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold pl-7"></div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="lg:col-span-2 space-y-5">
+                <div id="card-ava" class="bg-white rounded-2xl border-2 border-emerald-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold uppercase tracking-widest text-emerald-600">Avalanche</h3>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Cheapest</span>
+                    </div>
+                    <p id="ava-time" class="mt-2 text-3xl font-black tracking-tight text-slate-900">—</p>
+                    <p class="text-sm text-slate-500">until debt-free</p>
+                    <p class="mt-3 text-sm text-slate-600">Interest paid: <span id="ava-int" class="font-bold text-slate-900">$0</span></p>
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Snowball</h3>
+                        <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Quick wins</span>
+                    </div>
+                    <p id="sno-time" class="mt-2 text-3xl font-black tracking-tight text-slate-900">—</p>
+                    <p class="text-sm text-slate-500">until debt-free</p>
+                    <p class="mt-3 text-sm text-slate-600">Interest paid: <span id="sno-int" class="font-bold text-slate-900">$0</span></p>
+                </div>
+                <div id="verdict" class="rounded-2xl bg-blue-50/60 border border-blue-100 p-5 text-sm text-slate-600"></div>
+            </div>
+        </div>
+
+        <p class="mt-10 text-xs text-slate-400 max-w-2xl leading-relaxed">Estimates only. Assumes fixed balances, rates and a constant total monthly payment (minimums + extra) with no new charges.</p>
+    </main>
+
+    <footer class="border-t border-slate-200 mt-8">
+        <div class="max-w-5xl mx-auto px-5 py-6 flex items-center justify-between text-sm text-slate-400">
+            <a href="/" class="font-black text-slate-900 no-underline">Lexaya</a>
+            <span>&copy; <span id="year"></span> Lexaya</span>
+        </div>
+    </footer>
+
+    <script>
+        const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+        const $ = (id) => document.getElementById(id);
+
+        const seed = [
+            { name: "Credit card", balance: 6000, apr: 22, min: 150 },
+            { name: "Car loan", balance: 12000, apr: 6, min: 280 },
+            { name: "Student loan", balance: 9000, apr: 5, min: 110 },
+        ];
+
+        function rowHtml(d) {
+            return `<div class="debt-row grid grid-cols-12 gap-2 items-center">
+                <input class="d-name col-span-4 rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-sm font-semibold" value="${d.name}" placeholder="Name">
+                <input class="d-bal col-span-3 rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-sm font-semibold" type="number" min="0" value="${d.balance}">
+                <input class="d-apr col-span-2 rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-sm font-semibold" type="number" min="0" step="0.1" value="${d.apr}">
+                <input class="d-min col-span-2 rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-sm font-semibold" type="number" min="0" value="${d.min}">
+                <button type="button" class="d-del col-span-1 text-slate-300 hover:text-rose-500 flex justify-center" aria-label="Remove">
+                    <span class="material-symbols-outlined" style="font-size:20px">close</span>
+                </button>
+            </div>`;
+        }
+
+        function readDebts() {
+            return [...document.querySelectorAll(".debt-row")].map((r) => ({
+                name: r.querySelector(".d-name").value || "Debt",
+                balance: parseFloat(r.querySelector(".d-bal").value) || 0,
+                apr: parseFloat(r.querySelector(".d-apr").value) || 0,
+                min: parseFloat(r.querySelector(".d-min").value) || 0,
+            })).filter((d) => d.balance > 0);
+        }
+
+        // Simulate payoff. order: "avalanche" (high APR first) or "snowball" (low balance first).
+        function simulate(debts, extra, order) {
+            let d = debts.map((x) => ({ ...x }));
+            const budget = d.reduce((s, x) => s + x.min, 0) + extra;
+            let months = 0, totalInterest = 0;
+            const CAP = 1200;
+            while (d.some((x) => x.balance > 0.005) && months < CAP) {
+                months++;
+                // accrue interest
+                for (const x of d) if (x.balance > 0) { const it = x.balance * x.apr / 1200; x.balance += it; totalInterest += it; }
+                let pool = budget;
+                // pay minimums (capped at balance)
+                for (const x of d) if (x.balance > 0) { const p = Math.min(x.min, x.balance, pool); x.balance -= p; pool -= p; }
+                // target order for leftover
+                const active = d.filter((x) => x.balance > 0.005);
+                active.sort(order === "avalanche" ? (a, b) => b.apr - a.apr : (a, b) => a.balance - b.balance);
+                for (const x of active) { if (pool <= 0) break; const p = Math.min(pool, x.balance); x.balance -= p; pool -= p; }
+            }
+            return { months: months >= CAP ? null : months, totalInterest };
+        }
+
+        function timeStr(months) {
+            if (months === null) return "Never*";
+            const y = Math.floor(months / 12), m = months % 12;
+            if (y === 0) return m + " mo";
+            if (m === 0) return y + " yr";
+            return y + " yr " + m + " mo";
+        }
+
+        function calc() {
+            const debts = readDebts();
+            const extra = parseFloat($("extra").value) || 0;
+            if (!debts.length) {
+                $("ava-time").textContent = $("sno-time").textContent = "—";
+                $("ava-int").textContent = $("sno-int").textContent = "$0";
+                $("verdict").textContent = "Add a debt to get started.";
+                return;
+            }
+            const ava = simulate(debts, extra, "avalanche");
+            const sno = simulate(debts, extra, "snowball");
+            $("ava-time").textContent = timeStr(ava.months);
+            $("sno-time").textContent = timeStr(sno.months);
+            $("ava-int").textContent = fmt.format(ava.totalInterest);
+            $("sno-int").textContent = fmt.format(sno.totalInterest);
+
+            const totalMin = debts.reduce((s, x) => s + x.min, 0);
+            if (ava.months === null) {
+                $("verdict").innerHTML = `*Your ${fmt.format(totalMin + extra)}/mo doesn't cover the interest — the balance never falls. Add more to the extra payment.`;
+            } else {
+                const saved = sno.totalInterest - ava.totalInterest;
+                if (saved > 1) {
+                    $("verdict").innerHTML = `<strong class="text-slate-900">Avalanche saves you ${fmt.format(saved)}</strong> in interest versus snowball. If you need motivation to stick with it, snowball's quick wins can be worth the extra cost.`;
+                } else {
+                    $("verdict").innerHTML = `Both methods finish about the same here — go with <strong class="text-slate-900">snowball</strong> for the motivation of clearing a balance sooner.`;
+                }
+            }
+        }
+
+        function render(list) {
+            $("rows").innerHTML = list.map(rowHtml).join("");
+        }
+
+        document.addEventListener("input", (e) => { if (e.target.closest("#rows") || e.target.id === "extra") calc(); });
+        document.addEventListener("click", (e) => {
+            if (e.target.closest(".d-del")) { e.target.closest(".debt-row").remove(); calc(); }
+        });
+        $("add").addEventListener("click", () => {
+            $("rows").insertAdjacentHTML("beforeend", rowHtml({ name: "New debt", balance: 1000, apr: 15, min: 30 }));
+            calc();
+        });
+
+        render(seed);
+        $("year").textContent = new Date().getFullYear();
+        calc();
+    </script>
+</body>
+</html>

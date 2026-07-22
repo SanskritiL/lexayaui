@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take-Home Pay Calculator — What's My Real Paycheck? | Lexaya</title>
+    <meta name="description" content="Turn a salary into estimated take-home pay, or an hourly rate into a yearly number. Adjust the tax rate to match your situation.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <script>
+        tailwind.config = { theme: { extend: {
+            colors: { primary: "#2563eb", "primary-dim": "#1d4ed8" },
+            fontFamily: { sans: ["Manrope", "sans-serif"] },
+        } } };
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+        <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
+            <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <a href="/finances" class="text-sm font-semibold text-slate-500 hover:text-primary no-underline flex items-center gap-1">
+                <span class="material-symbols-outlined" style="font-size:16px">arrow_back</span>All money tools
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-5 py-10 md:py-14">
+
+        <div class="max-w-2xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-sky-600 bg-sky-50 px-3 py-1 rounded-full">
+                <span class="material-symbols-outlined" style="font-size:15px">payments</span>
+                Take-home pay
+            </span>
+            <h1 class="mt-4 text-4xl md:text-5xl font-black tracking-tight text-slate-900">What's my real paycheck?</h1>
+            <p class="mt-3 text-lg text-slate-600 leading-relaxed">
+                The number on the offer letter isn't what lands in your account. Enter your pay and an estimated
+                tax rate to see what you actually keep — and what an hour of your time is worth.
+            </p>
+        </div>
+
+        <div class="mt-10 grid lg:grid-cols-5 gap-8 items-start">
+
+            <form id="form" class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-5">
+                <h2 class="text-sm font-bold uppercase tracking-widest text-slate-400">Your pay</h2>
+                <div>
+                    <label for="gross" class="block text-sm font-semibold text-slate-700 mb-1.5">Gross salary <span class="font-normal text-slate-400">$/yr</span></label>
+                    <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-semibold">$</span>
+                        <input type="number" id="gross" value="90000" min="0" step="1000" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold pl-7"></div>
+                </div>
+                <div>
+                    <label for="pretax" class="block text-sm font-semibold text-slate-700 mb-1.5">401(k) / pre-tax <span class="font-normal text-slate-400">% of salary</span></label>
+                    <input type="number" id="pretax" value="6" min="0" max="100" step="1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                    <p class="mt-1 text-xs text-slate-400">Lowers taxable income — you keep it, it just goes to retirement.</p>
+                </div>
+                <div>
+                    <label for="tax" class="block text-sm font-semibold text-slate-700 mb-1.5">Estimated tax rate <span class="font-normal text-slate-400">%</span></label>
+                    <input type="number" id="tax" value="22" min="0" max="60" step="1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary text-lg font-semibold">
+                    <p class="mt-1 text-xs text-slate-400">Rough combined income tax. FICA (7.65%) is added automatically.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="hours" class="block text-sm font-semibold text-slate-700 mb-1.5">Hours/week</label>
+                        <input type="number" id="hours" value="40" min="1" max="100" step="1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary font-semibold">
+                    </div>
+                    <div>
+                        <label for="weeks" class="block text-sm font-semibold text-slate-700 mb-1.5">Weeks/year</label>
+                        <input type="number" id="weeks" value="50" min="1" max="52" step="1" class="w-full rounded-lg border-slate-300 focus:border-primary focus:ring-primary font-semibold">
+                    </div>
+                </div>
+            </form>
+
+            <div class="lg:col-span-3 space-y-5">
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="text-sm font-bold uppercase tracking-widest text-sky-600">Take-home pay</h3>
+                    <p id="net-year" class="mt-2 text-5xl font-black tracking-tight text-slate-900">$0</p>
+                    <p class="text-sm text-slate-500">per year</p>
+                    <div class="mt-5 grid grid-cols-3 gap-3 text-center">
+                        <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Monthly</p>
+                            <p id="net-month" class="mt-1 text-lg font-black text-slate-900">$0</p>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 border border-slate-100 p-3">
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Biweekly</p>
+                            <p id="net-biweek" class="mt-1 text-lg font-black text-slate-900">$0</p>
+                        </div>
+                        <div class="rounded-xl bg-sky-50 border border-sky-100 p-3">
+                            <p class="text-[11px] font-bold uppercase tracking-wider text-sky-500">Per hour</p>
+                            <p id="net-hour" class="mt-1 text-lg font-black text-sky-700">$0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                    <h3 class="text-lg font-bold tracking-tight text-slate-900">Where the money goes</h3>
+                    <div class="mt-4 h-5 rounded-full overflow-hidden flex bg-slate-100">
+                        <div id="bar-net" class="h-full bg-sky-500" style="width:0%"></div>
+                        <div id="bar-pretax" class="h-full bg-indigo-400" style="width:0%"></div>
+                        <div id="bar-tax" class="h-full bg-rose-400" style="width:0%"></div>
+                    </div>
+                    <div class="mt-4 space-y-2 text-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-2 text-slate-600"><span class="w-3 h-3 rounded bg-sky-500 inline-block"></span>Take-home</span>
+                            <span id="leg-net" class="font-semibold text-slate-900">$0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-2 text-slate-600"><span class="w-3 h-3 rounded bg-indigo-400 inline-block"></span>Retirement (pre-tax)</span>
+                            <span id="leg-pretax" class="font-semibold text-slate-900">$0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-2 text-slate-600"><span class="w-3 h-3 rounded bg-rose-400 inline-block"></span>Taxes (income + FICA)</span>
+                            <span id="leg-tax" class="font-semibold text-slate-900">$0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="mt-10 text-xs text-slate-400 max-w-2xl leading-relaxed">A rough estimate, not tax advice. Actual withholding depends on your location, filing status, deductions and credits. FICA is estimated at 7.65% and income tax uses the rate you enter.</p>
+    </main>
+
+    <footer class="border-t border-slate-200 mt-8">
+        <div class="max-w-5xl mx-auto px-5 py-6 flex items-center justify-between text-sm text-slate-400">
+            <a href="/" class="font-black text-slate-900 no-underline">Lexaya</a>
+            <span>&copy; <span id="year"></span> Lexaya</span>
+        </div>
+    </footer>
+
+    <script>
+        const fmt = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+        const fmtc = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+        const $ = (id) => document.getElementById(id);
+        const num = (id) => parseFloat($(id).value) || 0;
+        const FICA = 0.0765;
+
+        function calc() {
+            const gross = num("gross"), pretaxPct = num("pretax") / 100, taxPct = num("tax") / 100;
+            const hours = Math.max(1, num("hours")), weeks = Math.max(1, num("weeks"));
+
+            const pretax = gross * pretaxPct;
+            const taxable = Math.max(0, gross - pretax);
+            const incomeTax = taxable * taxPct;
+            const ficaTax = gross * FICA;
+            const totalTax = incomeTax + ficaTax;
+            const net = Math.max(0, gross - pretax - totalTax);
+
+            $("net-year").textContent = fmt.format(net);
+            $("net-month").textContent = fmt.format(net / 12);
+            $("net-biweek").textContent = fmt.format(net / 26);
+            $("net-hour").textContent = fmtc.format(net / (hours * weeks));
+
+            $("leg-net").textContent = fmt.format(net);
+            $("leg-pretax").textContent = fmt.format(pretax);
+            $("leg-tax").textContent = fmt.format(totalTax);
+
+            const g = gross || 1;
+            $("bar-net").style.width = (net / g * 100) + "%";
+            $("bar-pretax").style.width = (pretax / g * 100) + "%";
+            $("bar-tax").style.width = (totalTax / g * 100) + "%";
+        }
+
+        $("form").addEventListener("input", calc);
+        $("year").textContent = new Date().getFullYear();
+        calc();
+    </script>
+</body>
+</html>

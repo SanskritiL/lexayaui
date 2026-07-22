@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Tools — Free Financial Calculators | Lexaya</title>
+    <meta name="description" content="Simple, pretty money calculators. Retire early, buy a house, kill debt, hit a savings goal — do the math first, then decide.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link crossorigin rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: {
+                colors: { primary: "#2563eb", "primary-dim": "#1d4ed8" },
+                fontFamily: { sans: ["Manrope", "sans-serif"] },
+            } },
+        };
+    </script>
+    <style>
+        .tool-card { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+        .tool-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px -12px rgba(15,23,42,.18); }
+        .tool-card:hover .tool-arrow { transform: translateX(4px); }
+        .tool-arrow { transition: transform .25s ease; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+
+    <!-- Header -->
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+        <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+            <a href="/" class="text-2xl font-black tracking-tighter text-slate-900 no-underline">Lexaya</a>
+            <span class="text-sm font-semibold text-slate-500">Money Tools</span>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-5 py-12 md:py-16">
+
+        <!-- Hero -->
+        <div class="max-w-2xl">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary bg-blue-50 px-3 py-1 rounded-full">
+                <span class="material-symbols-outlined" style="font-size:15px">calculate</span>
+                Free · No sign-up
+            </span>
+            <h1 class="mt-4 text-4xl md:text-6xl font-black tracking-tight text-slate-900 leading-[1.05]">
+                Do the math first.
+            </h1>
+            <p class="mt-4 text-lg text-slate-600 leading-relaxed">
+                Big money decisions get a lot less scary once you see the numbers. Pick a question below —
+                each one is a quick, clean calculator that gives you a straight answer.
+            </p>
+        </div>
+
+        <!-- Tool grid -->
+        <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+            <!-- FIRE (live) -->
+            <a href="/fire" class="tool-card group block bg-white rounded-2xl border border-slate-200 p-6 no-underline">
+                <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined rounded-xl p-2.5 bg-amber-50 text-amber-600" style="font-size:24px">local_fire_department</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <h2 class="mt-4 text-xl font-bold tracking-tight text-slate-900">Wanna retire early?</h2>
+                <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">Find your Coast FIRE and full FIRE number — and watch it compound.</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">Open <span class="material-symbols-outlined tool-arrow" style="font-size:18px">arrow_forward</span></span>
+            </a>
+
+            <!-- Rent vs Buy -->
+            <a href="/rent-vs-buy" class="tool-card group block bg-white rounded-2xl border border-slate-200 p-6 no-underline">
+                <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined rounded-xl p-2.5 bg-emerald-50 text-emerald-600" style="font-size:24px">home</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <h2 class="mt-4 text-xl font-bold tracking-tight text-slate-900">Wanna buy a house?</h2>
+                <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">Rent vs buy — see the real break-even year before you sign.</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">Open <span class="material-symbols-outlined tool-arrow" style="font-size:18px">arrow_forward</span></span>
+            </a>
+
+            <!-- Mortgage -->
+            <a href="/mortgage" class="tool-card group block bg-white rounded-2xl border border-slate-200 p-6 no-underline">
+                <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined rounded-xl p-2.5 bg-blue-50 text-blue-600" style="font-size:24px">account_balance</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <h2 class="mt-4 text-xl font-bold tracking-tight text-slate-900">What'll it really cost?</h2>
+                <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">Mortgage payment, total interest, and the full payoff picture.</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">Open <span class="material-symbols-outlined tool-arrow" style="font-size:18px">arrow_forward</span></span>
+            </a>
+
+            <!-- Compound -->
+            <a href="/compound" class="tool-card group block bg-white rounded-2xl border border-slate-200 p-6 no-underline">
+                <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined rounded-xl p-2.5 bg-violet-50 text-violet-600" style="font-size:24px">trending_up</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <h2 class="mt-4 text-xl font-bold tracking-tight text-slate-900">Watch it snowball.</h2>
+                <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">Drop in a monthly amount and see compound interest do the work.</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">Open <span class="material-symbols-outlined tool-arrow" style="font-size:18px">arrow_forward</span></span>
+            </a>
+
+            <!-- Debt payoff -->
+            <a href="/debt" class="tool-card group block bg-white rounded-2xl border border-slate-200 p-6 no-underline">
+                <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined rounded-xl p-2.5 bg-rose-50 text-rose-600" style="font-size:24px">payments</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <h2 class="mt-4 text-xl font-bold tracking-tight text-slate-900">Crush your debt.</h2>
+                <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">Snowball vs avalanche — payoff date and interest saved, side by side.</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">Open <span class="material-symbols-outlined tool-arrow" style="font-size:18px">arrow_forward</span></span>
+            </a>
+
+            <!-- Withdrawal / 4% -->
+            <a href="/withdraw" class="tool-card group block bg-white rounded-2xl border border-slate-200 p-6 no-underline">
+                <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined rounded-xl p-2.5 bg-teal-50 text-teal-600" style="font-size:24px">savings</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <h2 class="mt-4 text-xl font-bold tracking-tight text-slate-900">Can I quit yet?</h2>
+                <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">How much you can safely spend each year on what you've saved.</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">Open <span class="material-symbols-outlined tool-arrow" style="font-size:18px">arrow_forward</span></span>
+            </a>
+
+            <!-- Take-home pay -->
+            <a href="/salary" class="tool-card group block bg-white rounded-2xl border border-slate-200 p-6 no-underline">
+                <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined rounded-xl p-2.5 bg-sky-50 text-sky-600" style="font-size:24px">payments</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <h2 class="mt-4 text-xl font-bold tracking-tight text-slate-900">What's my real paycheck?</h2>
+                <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">Turn a salary into take-home, or an hourly rate into a year.</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">Open <span class="material-symbols-outlined tool-arrow" style="font-size:18px">arrow_forward</span></span>
+            </a>
+
+            <!-- Savings goal -->
+            <a href="/goal" class="tool-card group block bg-white rounded-2xl border border-slate-200 p-6 no-underline">
+                <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined rounded-xl p-2.5 bg-indigo-50 text-indigo-600" style="font-size:24px">flag</span>
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Live</span>
+                </div>
+                <h2 class="mt-4 text-xl font-bold tracking-tight text-slate-900">Hit your goal.</h2>
+                <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">Name a target and a date — we'll tell you what to save each month.</p>
+                <span class="mt-4 inline-flex items-center gap-1 text-sm font-bold text-primary">Open <span class="material-symbols-outlined tool-arrow" style="font-size:18px">arrow_forward</span></span>
+            </a>
+        </div>
+
+        <p class="mt-12 text-xs text-slate-400 max-w-2xl leading-relaxed">
+            These tools give estimates to help you think, not financial advice. Talk to a professional before making big decisions.
+        </p>
+    </main>
+
+    <footer class="border-t border-slate-200">
+        <div class="max-w-6xl mx-auto px-5 py-6 flex items-center justify-between text-sm text-slate-400">
+            <a href="/" class="font-black text-slate-900 no-underline">Lexaya</a>
+            <span>&copy; <span id="year"></span> Lexaya</span>
+        </div>
+    </footer>
+
+    <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>
