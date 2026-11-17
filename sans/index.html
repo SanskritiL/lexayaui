@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sans — Media Kit</title>
+<meta name="description" content="Sans — tech content creator. 100M+ views. Media kit & brand partnerships.">
+<meta property="og:title" content="Sans — Media Kit">
+<meta property="og:description" content="Tech content creator · 100M+ views · brand partnerships">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://lexaya.io/sans">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+<!-- ========================================================================
+     EDIT ME — everything you need to change lives in the CONFIG block in the
+     <script> at the bottom of this file. Four things to fill in:
+       1. contact.email + social @handles/links
+       2. videos[]  — your best work (title, views, link, optional thumbnail)
+       3. profilePhoto (optional)
+       4. tagline / location if you want to tweak the wording
+     Stats and brands are already filled with what you gave me.
+======================================================================== -->
+
+<style>
+  :root{
+    --paper:#f4f1ea;        /* warm editorial paper   */
+    --ink:#121212;          /* near-black ink          */
+    --ink-soft:#4a4740;      /* muted ink               */
+    --line:#ddd7ca;          /* hairline rules          */
+    --accent:#ff4a1c;        /* one punchy accent       */
+    --accent-ink:#121212;
+    --max:1240px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--accent);color:#fff}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 clamp(20px,5vw,56px)}
+
+  /* grain / paper texture */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 0;border-bottom:1.5px solid var(--ink);
+    position:sticky;top:0;background:var(--paper);z-index:50;
+  }
+  .wordmark{font-weight:900;font-size:1.15rem;letter-spacing:-.03em}
+  .wordmark b{color:var(--accent)}
+  .topbar .meta{font-family:'Fraunces',serif;font-style:italic;font-size:.95rem;color:var(--ink-soft)}
+  .topbar .cta{
+    font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.08em;
+    border:1.5px solid var(--ink);padding:9px 16px;border-radius:40px;transition:.2s;
+  }
+  .topbar .cta:hover{background:var(--ink);color:var(--paper)}
+  @media(max-width:640px){.topbar .meta{display:none}}
+
+  /* ---------- hero ---------- */
+  .hero{padding:clamp(44px,7vw,96px) 0 clamp(30px,4vw,52px)}
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:10px;
+    font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.16em;color:var(--ink-soft);
+    margin-bottom:clamp(18px,3vw,30px);
+  }
+  .eyebrow .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:blink 2.2s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .hero .kicker{font-weight:900;font-size:clamp(1.2rem,2.6vw,1.9rem);letter-spacing:-.02em;margin-bottom:clamp(14px,2vw,22px)}
+  .hero .kicker b{color:var(--accent)}
+  .hero-stat{display:flex;align-items:baseline;gap:clamp(10px,2vw,30px);flex-wrap:wrap;line-height:.82}
+  .hero-stat .hs-num{font-weight:900;letter-spacing:-.05em;font-size:clamp(4.2rem,20vw,14.5rem);text-transform:uppercase}
+  .hero-stat .hs-unit{display:flex;flex-direction:column;line-height:.95}
+  .hero-stat .hs-unit em{font-family:'Fraunces',serif;font-style:italic;color:var(--accent);font-size:clamp(1.8rem,6vw,4.5rem);font-weight:400}
+  .hero-stat .hs-unit small{text-transform:uppercase;letter-spacing:.12em;font-weight:600;font-size:clamp(.7rem,1.3vw,.85rem);color:var(--ink-soft);margin-top:8px}
+  .hero-platforms{display:flex;flex-wrap:wrap;gap:0;margin-top:clamp(22px,3vw,34px)}
+  .hero-platforms .hp{padding:0 clamp(16px,2.4vw,28px);border-left:1.5px solid var(--ink);line-height:1}
+  .hero-platforms .hp:first-child{padding-left:0;border-left:none}
+  .hero-platforms .hp b{display:block;font-weight:900;font-size:clamp(1.5rem,4vw,2.6rem);letter-spacing:-.03em}
+  .hero-platforms .hp span{font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);font-weight:600}
+  @media(max-width:560px){.hero-platforms .hp{padding:0 14px}}
+  .hero-sub{
+    display:grid;grid-template-columns:1.4fr .9fr;gap:clamp(20px,4vw,48px);
+    align-items:end;margin-top:clamp(22px,3vw,34px);
+    padding-top:26px;border-top:1.5px solid var(--ink);
+  }
+  .hero-lede{font-family:'Fraunces',serif;font-size:clamp(1.25rem,2.6vw,2rem);line-height:1.22;font-weight:400}
+  .hero-lede em{color:var(--accent);font-style:italic}
+  .hero-right{display:flex;flex-direction:column}
+  #hero-photo img{width:100%;max-width:180px;aspect-ratio:4/5;object-fit:cover;border:1.5px solid var(--ink);box-shadow:7px 7px 0 var(--accent);display:block;margin-bottom:22px}
+  .hero-facts{display:flex;flex-direction:column;gap:12px;font-size:.92rem}
+  .hero-facts .row{display:flex;justify-content:space-between;gap:14px;padding-bottom:9px;border-bottom:1px solid var(--line)}
+  .hero-facts .row span:first-child{color:var(--ink-soft);text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;font-weight:600}
+  .hero-facts .row span:last-child{font-weight:700;text-align:right}
+  @media(max-width:760px){.hero-sub{grid-template-columns:1fr;align-items:start}}
+
+  /* ---------- marquee ---------- */
+  .marquee{
+    border-top:1.5px solid var(--ink);border-bottom:1.5px solid var(--ink);
+    background:var(--ink);color:var(--paper);overflow:hidden;white-space:nowrap;
+    padding:14px 0;
+  }
+  .marquee .track{display:inline-flex;gap:46px;align-items:center;animation:scroll 32s linear infinite;will-change:transform}
+  .marquee span{font-weight:800;font-size:1rem;text-transform:uppercase;letter-spacing:.04em;display:inline-flex;gap:46px;align-items:center}
+  .marquee span::after{content:"✦";color:var(--accent)}
+  @keyframes scroll{to{transform:translateX(-50%)}}
+  @media(prefers-reduced-motion:reduce){.marquee .track{animation:none}}
+
+  /* ---------- section scaffolding ---------- */
+  section.block{padding:clamp(56px,8vw,110px) 0}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:20px;margin-bottom:clamp(30px,4vw,54px);border-bottom:1.5px solid var(--ink);padding-bottom:18px}
+  .sec-head h2{font-weight:900;font-size:clamp(2rem,6vw,4.2rem);letter-spacing:-.04em;text-transform:uppercase;line-height:.9}
+  .sec-no{font-family:'Fraunces',serif;font-style:italic;font-size:clamp(1rem,2vw,1.4rem);color:var(--accent);white-space:nowrap}
+
+  /* ---------- big stats ---------- */
+  .stats{display:grid;grid-template-columns:repeat(12,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+  .stat{background:var(--paper);padding:clamp(22px,3vw,40px) clamp(18px,2.4vw,30px)}
+  .stat.feature{grid-column:span 12}
+  .stat.half{grid-column:span 6}
+  .stat.third{grid-column:span 4}
+  .stat .num{font-weight:900;letter-spacing:-.04em;line-height:.9}
+  .stat.feature .num{font-size:clamp(4rem,16vw,11rem)}
+  .stat .num{font-size:clamp(2.4rem,7vw,4.4rem)}
+  .stat .lab{margin-top:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:.76rem;color:var(--ink-soft)}
+  .stat .sublab{font-family:'Fraunces',serif;font-style:italic;color:var(--accent);font-size:.95rem;margin-top:4px}
+  @media(max-width:760px){.stat.third,.stat.half{grid-column:span 6}}
+  @media(max-width:480px){.stat.third,.stat.half{grid-column:span 12}}
+
+  /* ---------- clients ---------- */
+  .clients{display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(30px,5vw,70px)}
+  .client{
+    display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:18px;
+    padding:clamp(16px,2.4vw,24px) 0;border-bottom:1px solid var(--line);
+    transition:.25s;
+  }
+  .client:hover{padding-left:12px}
+  .client .cno{font-family:'Fraunces',serif;font-style:italic;color:var(--ink-soft);font-size:1rem;width:30px}
+  .client .cmid{display:flex;align-items:center;gap:14px;min-width:0}
+  .client img{width:26px;height:26px;border-radius:6px;background:#fff;object-fit:contain;flex:none}
+  .client .cname{font-weight:800;font-size:clamp(1.3rem,3.2vw,2.1rem);letter-spacing:-.02em;white-space:nowrap}
+  .client .ctag{font-family:'Fraunces',serif;font-style:italic;color:var(--ink-soft);font-size:.9rem;text-align:right}
+  .client:hover .cname{color:var(--accent)}
+  @media(max-width:720px){.clients{grid-template-columns:1fr}.client .ctag{display:none}}
+
+  /* ---------- results / success stories ---------- */
+  .results-lede{font-family:'Fraunces',serif;font-size:clamp(1.2rem,2.8vw,2rem);line-height:1.3;max-width:900px;margin-bottom:clamp(28px,4vw,48px)}
+  .results{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,2.6vw,32px)}
+  .rcard{border:1.5px solid var(--ink);padding:clamp(24px,3vw,42px);background:var(--paper);transition:.25s}
+  .rcard:hover{background:var(--ink);color:var(--paper);transform:translate(-4px,-4px);box-shadow:8px 8px 0 var(--accent)}
+  .rnum{font-weight:900;font-size:clamp(3rem,9vw,6.5rem);letter-spacing:-.04em;line-height:.88;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .rnum small{font-family:'Fraunces',serif;font-style:italic;font-weight:400;font-size:clamp(1rem,2.2vw,1.6rem);letter-spacing:0;color:var(--accent)}
+  .rbrand{font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:.78rem;color:var(--accent);margin:18px 0 12px}
+  .rdesc{font-size:1rem;line-height:1.55;opacity:.9}
+  @media(max-width:720px){.results{grid-template-columns:1fr}}
+
+  /* ---------- featured work ---------- */
+  .carousel{position:relative}
+  .work{display:flex;gap:clamp(16px,2vw,26px);overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 18px;scrollbar-width:thin;scrollbar-color:var(--ink) transparent}
+  .work::-webkit-scrollbar{height:8px}
+  .work::-webkit-scrollbar-thumb{background:var(--ink);border-radius:8px}
+  .work .embed-wrap{flex:0 0 auto;width:min(345px,82vw);scroll-snap-align:start}
+  .car-btn{position:absolute;top:42%;z-index:6;width:54px;height:54px;border-radius:50%;border:1.5px solid var(--ink);background:var(--paper);font-size:1.4rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.2s;box-shadow:3px 3px 0 var(--ink)}
+  .car-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:3px 3px 0 var(--ink)}
+  .car-btn.prev{left:-14px}
+  .car-btn.next{right:-14px}
+  @media(max-width:860px){.car-btn{display:none}}
+  .embed-wrap .ig-crop{width:100%;height:478px;overflow:hidden;border:1.5px solid var(--ink);background:#000;position:relative}
+  .embed-wrap .ig-frame{width:100%;height:720px;border:0;display:block}
+  .tt-card{height:478px;display:flex;flex-direction:column;text-decoration:none}
+  .tt-card .thumb{flex:1;aspect-ratio:auto;border-bottom:1.5px solid var(--ink)}
+  .embed-tag{font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin-bottom:12px;padding-bottom:10px;border-bottom:1.5px solid var(--ink)}
+  .embed-wrap .instagram-media,.embed-wrap .tiktok-embed{margin:0 auto!important;min-width:0!important}
+  .work-note{font-family:'Fraunces',serif;font-style:italic;color:var(--ink-soft);margin-bottom:clamp(24px,3vw,40px);font-size:1.05rem}
+  .work-note strong{color:var(--accent);font-style:normal;font-weight:700}
+  .vid{display:block;border:1.5px solid var(--ink);background:var(--paper);transition:.25s;position:relative}
+  .vid:hover{transform:translate(-4px,-4px);box-shadow:8px 8px 0 var(--ink)}
+  .vid .thumb{aspect-ratio:16/9;position:relative;overflow:hidden;border-bottom:1.5px solid var(--ink);display:flex;align-items:center;justify-content:center}
+  .vid:nth-child(3n+1) .thumb{aspect-ratio:21/9}
+  .vid .thumb img{width:100%;height:100%;object-fit:cover}
+  .vid .ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+    background:
+      repeating-linear-gradient(45deg,#1d1d1d,#1d1d1d 2px,transparent 2px,transparent 11px),
+      linear-gradient(135deg,#222,#000);
+    color:var(--paper)}
+  .vid .play{width:66px;height:66px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;z-index:2;position:relative}
+  .vid .play::after{content:"";border-left:18px solid #fff;border-top:11px solid transparent;border-bottom:11px solid transparent;margin-left:5px}
+  .vid .body{padding:clamp(16px,2.4vw,26px);display:flex;flex-direction:column;gap:8px}
+  .vid .vbrand{font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+  .vid .vtitle{font-weight:800;font-size:clamp(1.05rem,2.3vw,1.5rem);letter-spacing:-.02em;line-height:1.1}
+  .vid .vviews{font-family:'Fraunces',serif;font-style:italic;color:var(--ink-soft);font-size:.95rem}
+  .vid .pill{position:absolute;top:14px;right:14px;z-index:3;background:var(--paper);border:1.5px solid var(--ink);font-weight:800;font-size:.72rem;padding:5px 11px;border-radius:30px;text-transform:uppercase;letter-spacing:.06em}
+  @media(max-width:720px){.work{grid-template-columns:1fr}.work .vid:nth-child(3n+1){grid-column:span 1}.vid:nth-child(3n+1) .thumb{aspect-ratio:16/9}}
+
+  /* ---------- offer ---------- */
+  .offer{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line)}
+  .offer .card{background:var(--paper);padding:clamp(24px,3vw,38px)}
+  .offer .card .on{font-family:'Fraunces',serif;font-style:italic;color:var(--accent);font-size:1.1rem}
+  .offer .card h3{font-weight:800;font-size:clamp(1.2rem,2.6vw,1.6rem);letter-spacing:-.02em;margin:12px 0 10px}
+  .offer .card p{color:var(--ink-soft);font-size:.96rem;line-height:1.5}
+  @media(max-width:760px){.offer{grid-template-columns:1fr}}
+
+  /* ---------- audience strip ---------- */
+  .aud{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,60px);align-items:center}
+  .aud .big{font-family:'Fraunces',serif;font-size:clamp(1.6rem,4vw,3rem);line-height:1.18;font-weight:400}
+  .aud .big em{color:var(--accent);font-style:italic}
+  .aud ul{list-style:none;display:flex;flex-direction:column;gap:14px}
+  .aud li{display:flex;gap:14px;align-items:flex-start;font-size:1rem;padding-bottom:14px;border-bottom:1px solid var(--line)}
+  .aud li b{color:var(--accent);font-family:'Fraunces',serif;font-style:italic;font-weight:500}
+  @media(max-width:760px){.aud{grid-template-columns:1fr}}
+
+  /* ---------- contact ---------- */
+  .contact{background:var(--ink);color:var(--paper);border-top:1.5px solid var(--ink)}
+  .contact .wrap{padding-top:clamp(56px,8vw,110px);padding-bottom:clamp(44px,6vw,80px)}
+  .contact .k{font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.16em;color:#9b968c}
+  .contact h2{font-weight:900;font-size:clamp(3rem,13vw,10rem);letter-spacing:-.045em;line-height:.86;text-transform:uppercase;margin:16px 0 10px}
+  .contact h2 a:hover{color:var(--accent)}
+  .contact .email{display:inline-block;font-family:'Fraunces',serif;font-style:italic;font-size:clamp(1.3rem,3.5vw,2.4rem);margin-top:10px;border-bottom:2px solid var(--accent);padding-bottom:4px}
+  .socials{display:flex;flex-wrap:wrap;gap:12px;margin-top:clamp(30px,4vw,50px)}
+  .socials a{display:flex;align-items:center;gap:12px;border:1.5px solid #3a3730;padding:14px 20px;border-radius:12px;transition:.2s;min-width:180px}
+  .socials a:hover{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+  .socials .sname{font-weight:800;font-size:.95rem}
+  .socials .snum{margin-left:auto;font-family:'Fraunces',serif;font-style:italic;opacity:.8}
+  .foot{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-top:clamp(40px,6vw,70px);padding-top:24px;border-top:1px solid #3a3730;font-size:.85rem;color:#9b968c}
+  .foot a:hover{color:var(--accent)}
+
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  @media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+  <div class="topbar wrap" style="max-width:none">
+    <div class="wrap" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:0">
+      <div class="wordmark">SANS<b>.</b></div>
+      <div class="meta">Media Kit — 2026</div>
+      <a class="cta" id="nav-cta" href="#contact">Work with me</a>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <header class="hero wrap">
+    <div class="eyebrow"><span class="dot"></span> <span id="eye-role">Tech content creator</span></div>
+    <div class="kicker" id="hero-kicker">Sans<b>.</b></div>
+    <h1 class="hero-stat">
+      <span class="hs-num" data-to="100" data-suffix="M+">0M+</span>
+      <span class="hs-unit"><em>views</em><small>across platforms &amp; counting</small></span>
+    </h1>
+    <div class="hero-platforms" id="hero-platforms"></div>
+    <div class="hero-sub">
+      <p class="hero-lede" id="hero-lede">I turn developer tools and AI products into <em>stories people actually watch</em> — short-form content that drives installs, signups, and launch-day buzz.</p>
+      <div class="hero-right">
+        <div id="hero-photo"></div>
+        <div class="hero-facts" id="hero-facts"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MARQUEE -->
+  <div class="marquee" aria-hidden="true"><div class="track" id="marquee"></div></div>
+
+  <!-- CLIENTS -->
+  <section class="block wrap reveal">
+    <div class="sec-head"><h2>Selected Clients</h2><div class="sec-no">01 — Partners</div></div>
+    <p class="work-note">A selection from <strong>150+ brands</strong> I've partnered with — driving millions of views per campaign.</p>
+    <div class="clients" id="clients"></div>
+  </section>
+
+  <!-- WORK -->
+  <section class="block wrap reveal">
+    <div class="sec-head"><h2>Featured Work</h2><div class="sec-no">02 — Portfolio</div></div>
+    <p class="work-note">Recent partnerships — swipe through, tap any post to watch the full reel.</p>
+    <div class="carousel">
+      <button class="car-btn prev" id="car-prev" aria-label="Previous">&#8592;</button>
+      <div class="work" id="work"></div>
+      <button class="car-btn next" id="car-next" aria-label="Next">&#8594;</button>
+    </div>
+  </section>
+
+  <!-- OFFER -->
+  <section class="block wrap reveal">
+    <div class="sec-head"><h2>What I Make</h2><div class="sec-no">03 — Formats</div></div>
+    <div class="offer" id="offer"></div>
+  </section>
+
+  <!-- AUDIENCE -->
+  <section class="block wrap reveal">
+    <div class="sec-head"><h2>Why Partner</h2><div class="sec-no">04 — Audience</div></div>
+    <div class="aud">
+      <p class="big" id="aud-big">My audience is <em>builders</em> — developers, founders, and technical early-adopters who try the tools I feature and tell their teams.</p>
+      <ul id="aud-list"></ul>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <footer class="contact" id="contact">
+    <div class="wrap">
+      <div class="k">Let's collaborate</div>
+      <h2><a href="#" id="contact-mailto">Let's work</a></h2>
+      <a class="email" id="contact-email" href="#">hello@example.com</a>
+      <div class="socials" id="socials"></div>
+      <div class="foot">
+        <span>© 2026 Sans — Media Kit</span>
+        <a href="https://lexaya.io">lexaya.io</a>
+      </div>
+    </div>
+  </footer>
+
+<script>
+/* =========================================================================
+   ░░  CONFIG — THIS IS THE ONLY PART YOU NEED TO EDIT  ░░
+   ========================================================================= */
+const CONFIG = {
+  name: "Sans",
+  role: "Tech content creator",
+  lede: "I turn developer tools and AI products into <em>stories people actually watch</em> — short-form content that drives installs, signups, and launch-day buzz.",
+
+  // ---- quick facts shown in the hero (right column) ----
+  facts: [
+    ["Niche",     "Dev tools · AI · SaaS"],
+    ["Based",     "Chicago, USA"],
+    ["Platforms", "TikTok · Instagram · LinkedIn"],
+    ["Formats",   "Short-form · UGC · Founder POV"],
+  ],
+
+  // ---- big number tiles ----  (num counts up to this value + suffix)
+  stats: [
+    { num: 100, suffix: "M+", lab: "Total views across platforms", sub: "and counting", size: "feature" },
+    { num: 58,  suffix: "K",  lab: "Combined following",            sub: "",             size: "third"   },
+    { num: 41,  suffix: "K",  lab: "Instagram followers",           sub: "@npmisans",    size: "third"   },
+    { num: 12,  suffix: "K",  lab: "TikTok followers",              sub: "",             size: "third"   },
+    { num: 5,   suffix: "K",  lab: "LinkedIn followers",            sub: "B2B reach",    size: "half"    },
+    { num: 100, suffix: "+",  lab: "Brands worked with",            sub: "and counting", size: "half"    },
+  ],
+
+  // ---- clients (logo auto-loads from the domain's favicon) ----
+  clients: [
+    { name: "Claude",     domain: "claude.ai",    tag: "AI assistant" },
+    { name: "Microsoft",  domain: "microsoft.com",tag: "Enterprise software" },
+    { name: "Replit",     domain: "replit.com",   tag: "Dev platform" },
+    { name: "Lovable",    domain: "lovable.dev",  tag: "AI app builder" },
+    { name: "Asana",      domain: "asana.com",    tag: "Work management" },
+    { name: "CapCut",     domain: "capcut.com",   tag: "Video editing" },
+    { name: "TRAE",       domain: "trae.ai",      tag: "AI IDE" },
+    { name: "Printify",   domain: "printify.com", tag: "Print-on-demand" },
+    { name: "CodeRabbit", domain: "coderabbit.ai",tag: "AI code review" },
+    { name: "Freebuff",   domain: "freebuff.com", tag: "Security media" },
+    { name: "Genspark",   domain: "genspark.ai",  tag: "AI agents" },
+    { name: "HeyGen",     domain: "heygen.com",   tag: "AI video" },
+    { name: "Topmate",    domain: "topmate.io",   tag: "Creator platform" },
+  ],
+
+  // ---- FEATURED WORK — replace the placeholders with your best videos ----
+  //  title : short punchy line     views : "2.3M" etc    url : link to the post
+  //  brand : which client/topic    thumb : (optional) image URL, else a styled placeholder
+  videos: [
+    { brand: "Claude · Partnership",    url: "https://www.instagram.com/reel/DSLBubdjDJB/" },
+    { brand: "Microsoft · Partnership", url: "https://www.instagram.com/reel/DcL4SpBRcox/" },
+    { brand: "HeyGen · Partnership",    url: "https://www.instagram.com/reel/Db675fUtl7S/" },
+    { brand: "Brand Partnership",       url: "https://www.instagram.com/reel/DckLsOBghQ8/" },
+    { brand: "AI Tools",                url: "https://www.instagram.com/reel/Dchs_eMB5Pr/" },
+    { brand: "TikTok",                  url: "https://www.tiktok.com/t/ZTkeV8LKX/" },
+  ],
+
+  offer: [
+    { h: "Short-form video",  p: "Vertical TikTok / Reels / Shorts that explain a product in 15–60s and make developers want to try it immediately." },
+    { h: "Founder & POV",     p: "Authentic creator-voice content and talking-head reviews that read as a real recommendation, not an ad." },
+    { h: "Launch campaigns",  p: "Multi-video sequences timed to a product launch — teaser, demo, and reaction — across every platform." },
+  ],
+
+  audience: [
+    ["Developers & builders", "the people who actually install your tool"],
+    ["Founders & operators",  "decision-makers who buy for their teams"],
+    ["AI early-adopters",     "first to try and share new products"],
+  ],
+
+  // ---- CONTACT — fill these in! ----
+  contact: {
+    email: "hello@lexaya.io",            // ← your real booking email
+    socials: [
+      { name: "Instagram", handle: "@npmisans", num: "41K", url: "https://instagram.com/npmisans" },
+      { name: "TikTok",    handle: "@npmisans", num: "12K", url: "https://tiktok.com/@npmisans" },
+      { name: "LinkedIn",  handle: "npmisans",  num: "5K",  url: "https://linkedin.com/in/npmisans" },
+    ],
+  },
+
+  profilePhoto: "", // optional image URL
+};
+/* =========================================================================
+   ░░  END CONFIG — you can stop editing here  ░░
+   ========================================================================= */
+
+const $ = (id) => document.getElementById(id);
+const favicon = (d) => `https://www.google.com/s2/favicons?domain=${d}&sz=128`;
+
+// hero
+$("hero-kicker").innerHTML = CONFIG.name + '<b>.</b>';
+$("eye-role").textContent = CONFIG.role;
+$("hero-lede").innerHTML = CONFIG.lede;
+if (CONFIG.profilePhoto) $("hero-photo").innerHTML = `<img src="${CONFIG.profilePhoto}" alt="${CONFIG.name}">`;
+$("hero-facts").innerHTML = CONFIG.facts.map(([k,v]) =>
+  `<div class="row"><span>${k}</span><span>${v}</span></div>`).join("");
+
+// hero platform row (combined + each social)
+const combined = CONFIG.stats.find(s => /combined/i.test(s.lab));
+const hp = [];
+if (combined) hp.push(`<div class="hp"><b>${combined.num}${combined.suffix}</b><span>Combined following</span></div>`);
+CONFIG.contact.socials.forEach(s => hp.push(`<div class="hp"><b>${s.num}</b><span>${s.name} followers</span></div>`));
+$("hero-platforms").innerHTML = hp.join("");
+
+// marquee (clients x2 for seamless loop)
+const names = CONFIG.clients.map(c => c.name);
+$("marquee").innerHTML = `<span>${names.join("</span><span>")}</span>`.repeat(2);
+
+// clients
+$("clients").innerHTML = CONFIG.clients.map((c,i) =>
+  `<a class="client" href="https://${c.domain}" target="_blank" rel="noopener">
+     <span class="cno">${String(i+1).padStart(2,"0")}</span>
+     <span class="cmid">
+       <img src="${favicon(c.domain)}" alt="" loading="lazy" onerror="this.style.display='none'">
+       <span class="cname">${c.name}</span>
+     </span>
+     <span class="ctag">${c.tag}</span>
+   </a>`).join("");
+
+// work — clean embeds (Instagram /embed/ shows the video with NO like/comment metrics)
+function reelId(url){ const m = url.match(/\/(?:reel|reels|p|tv)\/([^/?#]+)/); return m ? m[1] : ""; }
+function embedFor(v){
+  if(/instagram\.com/.test(v.url)){
+    const id = reelId(v.url);
+    return `<div class="ig-crop"><iframe class="ig-frame" src="https://www.instagram.com/reel/${id}/embed/" loading="lazy" scrolling="no" frameborder="0" allowtransparency="true" title="${v.brand} reel"></iframe></div>`;
+  }
+  // fallback card (e.g. TikTok) — clean, no metrics
+  return `<a class="vid tt-card" href="${v.url}" target="_blank" rel="noopener">
+     <div class="thumb"><div class="ph"><div class="play"></div></div></div>
+     <div class="body"><div class="vbrand">Watch on TikTok →</div></div>
+   </a>`;
+}
+$("work").innerHTML = CONFIG.videos.map(v =>
+  `<div class="embed-wrap"><div class="embed-tag">${v.brand}</div>${embedFor(v)}</div>`).join("");
+
+// carousel nav
+const workEl = $("work");
+const step = () => Math.min(workEl.clientWidth * 0.85, 371);
+$("car-prev").addEventListener("click", () => workEl.scrollBy({left: -step(), behavior: "smooth"}));
+$("car-next").addEventListener("click", () => workEl.scrollBy({left:  step(), behavior: "smooth"}));
+
+// offer
+$("offer").innerHTML = CONFIG.offer.map((o,i) =>
+  `<div class="card"><div class="on">${String(i+1).padStart(2,"0")}</div><h3>${o.h}</h3><p>${o.p}</p></div>`).join("");
+
+// audience
+$("aud-list").innerHTML = CONFIG.audience.map(([a,b]) =>
+  `<li><b>→</b><span><strong>${a}</strong> — ${b}</span></li>`).join("");
+
+// contact
+$("contact-email").textContent = CONFIG.contact.email;
+$("contact-email").href = "mailto:" + CONFIG.contact.email;
+$("contact-mailto").href = "mailto:" + CONFIG.contact.email;
+$("nav-cta").href = "#contact";
+$("socials").innerHTML = CONFIG.contact.socials.map(s =>
+  `<a href="${s.url}" target="_blank" rel="noopener">
+     <span class="sname">${s.name}</span>
+     <span class="snum">${s.num}</span>
+   </a>`).join("");
+
+// ---- count-up on scroll ----
+function countUp(el){
+  const to = parseFloat(el.dataset.to), suf = el.dataset.suffix || "";
+  const dur = 1400, t0 = performance.now();
+  (function step(t){
+    const p = Math.min((t - t0)/dur, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(to * e) + suf;
+    if(p < 1) requestAnimationFrame(step); else el.textContent = to + suf;
+  })(t0);
+}
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(en=>{
+    if(en.isIntersecting){
+      en.target.classList.add("in");
+      en.target.querySelectorAll?.("[data-to]").forEach(countUp);
+      if(en.target.dataset.to) countUp(en.target);
+      io.unobserve(en.target);
+    }
+  });
+},{threshold:.2});
+document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+
+// hero number counts up immediately (above the fold)
+document.querySelectorAll(".hero-stat [data-to]").forEach(countUp);
+</script>
+</body>
+</html>

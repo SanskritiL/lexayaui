@@ -26,7 +26,7 @@ rsync -a \
   "$ROOT_DIR/script.js" \
   "$PUBLIC_DIR/"
 
-for directory in admin blog broadcast cs js kit resources; do
+for directory in admin blog broadcast cs js kit resources sans; do
   rsync -a \
     --exclude='*.sql' \
     --exclude='*.md' \
